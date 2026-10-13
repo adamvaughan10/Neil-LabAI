@@ -57,7 +57,7 @@ _HAT_STATUS = r"""
 from buildhat import Hat, Motor
 hat = Hat()
 status = {"vin": hat.get_vin(), "ports": {}}
-for port, dev in hat.get_devices().items():
+for port, dev in hat.get().items():
     entry = {"name": dev.get("name"), "type_id": dev.get("typeid"),
              "description": dev.get("description"), "connected": dev.get("connected")}
     if dev.get("connected") and "Motor" in (dev.get("name") or "") + (dev.get("description") or ""):
