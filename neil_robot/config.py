@@ -25,6 +25,8 @@ MOTOR_MIN_SPEED, MOTOR_MAX_SPEED = 15, 60
 # ── camera (Pi Camera v1, OV5647) ─────────────────────────────────────────────
 CAMERA_WIDTH = int(os.getenv("CAMERA_WIDTH", "1296"))
 CAMERA_HEIGHT = int(os.getenv("CAMERA_HEIGHT", "972"))
+# The camera is mounted upside down on the robot; the sensor flips it (0 or 180).
+CAMERA_ROTATION = int(os.getenv("CAMERA_ROTATION", "180"))
 CAMERA_WARMUP_S = float(os.getenv("CAMERA_WARMUP_S", "1.0"))
 
 # 1296x972 is the sensor's full-view binned mode (up to 46 fps).

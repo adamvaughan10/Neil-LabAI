@@ -44,6 +44,8 @@ def main() -> int:
     ap.add_argument("--width", type=int, default=config.VIDEO_WIDTH)
     ap.add_argument("--height", type=int, default=config.VIDEO_HEIGHT)
     ap.add_argument("--fps", type=int, default=config.VIDEO_FPS)
+    ap.add_argument("--rotation", type=int, choices=(0, 180), default=config.CAMERA_ROTATION,
+                    help="180 (default) corrects the upside-down mount")
     args = ap.parse_args()
 
     out_dir = config.LOGS_DIR / f"recording_{time.strftime('%Y%m%d_%H%M%S')}"
@@ -55,7 +57,8 @@ def main() -> int:
           f"({args.width}x{args.height} @ {args.fps} fps) ...")
     try:
         with RPiClient() as pi:
-            info = hardware.record_video(raw_path, args.seconds, args.width, args.height, args.fps, client=pi)
+            info = hardware.record_video(raw_path, args.seconds, args.width, args.height, args.fps,
+                                         args.rotation, client=pi)
     except RPiError as exc:
         print(f"Recording failed: {exc}")
         return 1
@@ -79,7 +82,8 @@ def main() -> int:
 
     meta = {
         "camera": info["camera"], "host": config.RPI_HOST,
-        "requested": {"seconds": args.seconds, "width": args.width, "height": args.height, "fps": args.fps},
+        "requested": {"seconds": args.seconds, "width": args.width, "height": args.height, "fps": args.fps,
+                      "rotation": args.rotation},
         "frames": len(jpegs), "size": [w, h],
         "recorded_s": round(info["elapsed_s"], 3), "measured_fps": round(measured_fps, 2),
     }

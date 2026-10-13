@@ -73,13 +73,18 @@ emit(status)
 
 _CAPTURE_STILL = r"""
 import base64, io, time
+from libcamera import Transform
 from picamera2 import Picamera2
 cams = Picamera2.global_camera_info()
 if not cams:
     raise RuntimeError("no camera detected")
 cam = Picamera2()
 try:
-    cam.configure(cam.create_still_configuration(main={"size": (PARAMS["width"], PARAMS["height"])}))
+    flip = PARAMS["rotation"] == 180
+    cam.configure(cam.create_still_configuration(
+        main={"size": (PARAMS["width"], PARAMS["height"])},
+        transform=Transform(hflip=flip, vflip=flip),
+    ))
     cam.start()
     time.sleep(PARAMS["warmup"])
     buf = io.BytesIO()
@@ -96,6 +101,7 @@ import os, time
 from picamera2 import Picamera2
 from picamera2.encoders import MJPEGEncoder
 from picamera2.outputs import FileOutput
+from libcamera import Transform
 cams = Picamera2.global_camera_info()
 if not cams:
     raise RuntimeError("no camera detected")
@@ -104,6 +110,7 @@ try:
     cam.configure(cam.create_video_configuration(
         main={"size": (PARAMS["width"], PARAMS["height"])},
         controls={"FrameRate": PARAMS["fps"]},
+        transform=Transform(hflip=PARAMS["rotation"] == 180, vflip=PARAMS["rotation"] == 180),
     ))
     cam.start_recording(MJPEGEncoder(), FileOutput(PARAMS["path"]))
     t0 = time.monotonic()
@@ -154,7 +161,8 @@ def capture_still(
     client: RPiClient | None = None,
 ) -> tuple[str, bytes]:
     """Return (camera model, JPEG bytes)."""
-    params = {"width": width, "height": height, "warmup": config.CAMERA_WARMUP_S}
+    params = {"width": width, "height": height, "warmup": config.CAMERA_WARMUP_S,
+              "rotation": config.CAMERA_ROTATION}
     r = (client or get_client()).run_python(_CAPTURE_STILL, params, timeout=60)
     return r["camera"], base64.b64decode(r["jpeg_b64"])
 
@@ -165,12 +173,16 @@ def record_video(
     width: int = config.VIDEO_WIDTH,
     height: int = config.VIDEO_HEIGHT,
     fps: int = config.VIDEO_FPS,
+    rotation: int = config.CAMERA_ROTATION,
     client: RPiClient | None = None,
 ) -> dict:
     """Record *seconds* of video on the Pi camera and copy the MJPEG file to *local_path*."""
     client = client or get_client()
     remote = f"/tmp/neil_clip_{int(time.time() * 1000)}.mjpeg"
-    params = {"path": remote, "seconds": seconds, "width": width, "height": height, "fps": fps}
+    if rotation not in (0, 180):
+        raise ValueError("rotation must be 0 or 180")
+    params = {"path": remote, "seconds": seconds, "width": width, "height": height, "fps": fps,
+              "rotation": rotation}
     info = client.run_python(_RECORD_MJPEG, params, timeout=seconds + 60)
     client.fetch_file(remote, local_path, delete_remote=True)
     return info
