@@ -49,7 +49,7 @@ def panel(stream: MjpegStream, label: str, now: float) -> np.ndarray:
 
 
 def report(summary: dict, out_dir: Path) -> str:
-    cams = ", ".join(f"{n} repeated {c['repeated_pct']}% (age p95 {c['age_ms']['p95']} ms)"
+    cams = ", ".join(f"{n}: {c['images_saved']} images, repeated {c['repeated_pct']}% (age p95 {c['age_ms']['p95']} ms)"
                      for n, c in summary["cameras"].items())
     skew = summary["skew_ms"]
     return (f"Recorded {summary['steps']} steps at {summary['fps']:g} fps ({summary['duration_s']} s). {cams}. "

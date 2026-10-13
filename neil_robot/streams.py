@@ -3,7 +3,9 @@ Live MJPEG streams from both cameras.
 
     with PiCameraStream() as pi, ExternalCameraStream() as ext:
         frame = pi.latest()        # Frame(jpeg=bytes, ts=clock.now(), index=n) or None
-        pi.start_recording(); ...; frames = pi.stop_recording()
+
+To save frames, use neil_robot.recorder.SyncRecorder: it samples the streams at a
+fixed rate. The streams themselves never store anything but the newest frame.
 
 Each stream reads in a background thread and keeps the newest frame. Frames
 are kept as the JPEG bytes the camera sent (no re-encoding), stamped with the
@@ -53,8 +55,6 @@ class MjpegStream:
     def __init__(self, url: str):
         self.url = url
         self._latest: Frame | None = None
-        self._recording: list[Frame] | None = None
-        self._lock = threading.Lock()
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._conn: http.client.HTTPConnection | None = None
@@ -102,15 +102,6 @@ class MjpegStream:
 
     def latest(self) -> Frame | None:
         return self._latest
-
-    def start_recording(self) -> None:
-        with self._lock:
-            self._recording = []
-
-    def stop_recording(self) -> list[Frame]:
-        with self._lock:
-            frames, self._recording = self._recording or [], None
-        return frames
 
     # ── reader ────────────────────────────────────────────────────────────────
 
@@ -168,9 +159,6 @@ class MjpegStream:
         self.count += 1
         frame = Frame(jpeg, clock.now() - self.latency_s, self.count)
         self._latest = frame
-        with self._lock:
-            if self._recording is not None:
-                self._recording.append(frame)
 
 
 class ExternalCameraStream(MjpegStream):

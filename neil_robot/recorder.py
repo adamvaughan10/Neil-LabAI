@@ -176,6 +176,8 @@ class SyncRecorder:
             st = self._stats[name]
             cams[name] = {
                 "url": cam.url, "rotation": cam.rotation, "latency_s": cam.latency_s,
+                # One image per step, sampled at fps; the camera's other frames are never stored.
+                "images_saved": sum(1 for _ in (self.out_dir / name).glob("*.jpg")),
                 "repeated_steps": st["repeated"], "missing_steps": st["missing"],
                 "repeated_pct": round(100 * st["repeated"] / max(self.steps - 1, 1), 2),
                 "age_ms": {"median": pct(st["age_ms"], 50), "p95": pct(st["age_ms"], 95)},
