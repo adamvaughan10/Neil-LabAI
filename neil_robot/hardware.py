@@ -1,11 +1,13 @@
 """
 Robot hardware access: Pi system checks, Build HAT, motors, camera.
 
-Only move_motor() moves anything. Everything else is read-only.
+move_motor(), arm_down_up(), drive_and_arm_sequence() and LiveMotors move things.
+Everything else is read-only.
 """
 from __future__ import annotations
 
 import base64
+import json
 import time
 
 from neil_robot import config
@@ -207,6 +209,45 @@ emit({"steps": steps})
 """
 
 
+# Live control: holds each motor at the speed the laptop last sent, one JSON line
+# per command, e.g. {"A": 30, "B": -30, "C": 0, "D": 0}. Speed 0 holds the motor
+# still (speed control at 0) rather than letting it go limp, so the arm doesn't
+# drop. If no line arrives for PARAMS["watchdog_s"], every motor goes to 0.
+# When stdin closes the motors coast and the script exits.
+_LIVE_MOTORS = r"""
+import os, select, sys, time
+from buildhat import Motor
+motors = {p: Motor(p) for p in PARAMS["ports"]}
+current = {p: None for p in motors}
+def apply(cmd):
+    for p, m in motors.items():
+        speed = max(-100, min(100, int(cmd.get(p, 0))))
+        if speed != current[p]:
+            m.start(speed)
+            current[p] = speed
+apply({})
+emit({"ready": True})
+fd, buf, last = sys.stdin.fileno(), b"", time.monotonic()
+try:
+    while True:
+        ready, _, _ = select.select([fd], [], [], 0.05)
+        if ready:
+            chunk = os.read(fd, 4096)
+            if not chunk:
+                break
+            buf += chunk
+            *lines, buf = buf.split(b"\n")
+            if lines:
+                apply(_json.loads(lines[-1]))  # only the newest command matters
+                last = time.monotonic()
+        elif time.monotonic() - last > PARAMS["watchdog_s"]:
+            apply({})
+finally:
+    for m in motors.values():
+        m.stop()
+"""
+
+
 # ── host-side API ─────────────────────────────────────────────────────────────
 
 def system_info(client: RPiClient | None = None) -> dict:
@@ -313,3 +354,50 @@ def move_motor(
         raise ValueError(f"speed must be {config.MOTOR_MIN_SPEED}..{config.MOTOR_MAX_SPEED}")
     params = {"port": port, "degrees": degrees, "speed": speed, "return_to_start": return_to_start}
     return (client or get_client()).run_python(_MOVE_MOTOR, params, timeout=60)
+
+
+class LiveMotors:
+    """Drive all four motors continuously from the laptop. This MOVES the robot.
+
+    Speeds are in robot terms (-100..100): wheels + = forward, arm + = down,
+    gripper + = open. The mounting sign flips are applied here.
+
+        with LiveMotors() as live:
+            live.send(left=30, right=30)  # keep calling it, or the Pi's watchdog stops the motors
+    """
+
+    def __init__(self, client: RPiClient | None = None, watchdog_s: float = config.PAD_WATCHDOG_S):
+        params = {"ports": [config.PORT_LEFT_WHEEL, config.PORT_RIGHT_WHEEL, config.PORT_ARM,
+                            config.PORT_GRIPPER], "watchdog_s": watchdog_s}
+        self._stdin, self._stdout = (client or get_client()).open_python(_LIVE_MOTORS, params)
+        output = []
+        for line in self._stdout:  # wait until the HAT is ready (it may load firmware first)
+            if line.startswith("__NEIL_RESULT__"):
+                break
+            output.append(line)
+        else:
+            raise RuntimeError("Pi live-motor script exited before it was ready:\n" + "".join(output[-20:]))
+
+    def send(self, left: int = 0, right: int = 0, arm: int = 0, grip: int = 0) -> None:
+        cmd = {
+            config.PORT_LEFT_WHEEL: config.LEFT_WHEEL_SIGN_FORWARD * left,
+            config.PORT_RIGHT_WHEEL: config.RIGHT_WHEEL_SIGN_FORWARD * right,
+            config.PORT_ARM: config.ARM_MOTOR_SIGN_DOWN * arm,
+            config.PORT_GRIPPER: config.GRIPPER_MOTOR_SIGN_OPEN * grip,
+        }
+        self._stdin.write(json.dumps(cmd) + "\n")
+        self._stdin.flush()
+
+    def close(self) -> None:
+        try:
+            self.send()
+            self._stdin.channel.shutdown_write()
+            self._stdout.channel.recv_exit_status()
+        except OSError:
+            pass
+
+    def __enter__(self) -> "LiveMotors":
+        return self
+
+    def __exit__(self, *exc) -> None:
+        self.close()

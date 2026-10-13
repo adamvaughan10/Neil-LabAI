@@ -142,6 +142,20 @@ class RPiClient:
         return result
 
 
+    def open_python(self, script: str, params: dict | None = None):
+        """Start *script* on the Pi and leave it running; return its (stdin, stdout+stderr).
+
+        For live control: the laptop writes lines to stdin and the script reads
+        sys.stdin. Closing stdin ends the script. Uses its own channel on the
+        shared connection, so run_python calls still work meanwhile.
+        """
+        full = _PRELUDE + textwrap.dedent(script).strip("\n") + "\n"
+        arg = shlex.quote(json.dumps(params or {}))
+        with self._lock:
+            stdin, stdout, _ = self.connect().exec_command(f"python3 -u -c {shlex.quote(full)} {arg} 2>&1")
+        return stdin, stdout
+
+
 _client: RPiClient | None = None
 
 

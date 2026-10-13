@@ -59,6 +59,8 @@ Then run any script. Add `--help` to see its options.
 | `python scripts\sequence_test.py` | **yes** | Forward 0.5 s, backward 0.5 s, then arm up 30° and back down. Prints how far each motor turned. |
 | `python scripts\arm_test.py` | **yes** | Lowers the arm 30° and raises it back while recording video. |
 | `python scripts\motor_test.py` | **yes** | Turns each port 30° and back, asking before each. |
+| `python gamepad.py` | no | Prints the USB gamepad's D-pad and buttons live. |
+| `python scripts\gamepad_drive.py` | **yes** | Drives the robot from the gamepad: D-pad drives and rotates, X/B arm up/down, Y/A gripper open/close. |
 
 Before running anything that moves: lift the robot so the wheels spin freely (or give it about 30 cm of room)
 and keep hands clear of the arm.
