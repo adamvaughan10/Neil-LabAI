@@ -212,10 +212,8 @@ class SyncRecorder:
                     writers[name] = cv2.VideoWriter(str(self.out_dir / f"{name}.mp4"), fourcc, self.fps, size)
                     sizes[name] = size
                 writers[name].write(img if (img.shape[1], img.shape[0]) == sizes[name] else cv2.resize(img, sizes[name]))
-                tile = cv2.resize(img, (round(img.shape[1] * PANEL_HEIGHT / img.shape[0]), PANEL_HEIGHT))
-                cv2.putText(tile, f"{name}  step {row['step']}", (10, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 4)
-                cv2.putText(tile, f"{name}  step {row['step']}", (10, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
-                tiles.append(tile)
+                # No text overlays: these videos may be used as model input.
+                tiles.append(cv2.resize(img, (round(img.shape[1] * PANEL_HEIGHT / img.shape[0]), PANEL_HEIGHT)))
             combined = np.hstack(tiles)
             if "combined" not in writers:
                 sizes["combined"] = (combined.shape[1], combined.shape[0])
