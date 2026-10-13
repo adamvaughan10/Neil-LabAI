@@ -57,6 +57,8 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--speed", type=int, default=30, help="wheel speed, 15..60")
     ap.add_argument("--arm-step", type=int, default=5, help="arm degrees per press")
+    ap.add_argument("--arm-speed", type=int, default=25,
+                    help="arm motor speed for each step, 5..50 (at 10 the arm can't lift itself)")
     ap.add_argument("--reverse-delay", type=float, default=1.0,
                     help="seconds the other wheel waits while one wheel reverses")
     ap.add_argument("--grip-step", type=int, default=10, help="gripper degrees per press")
@@ -70,10 +72,12 @@ def main() -> int:
     args = ap.parse_args()
     if not config.MOTOR_MIN_SPEED <= args.speed <= config.MOTOR_MAX_SPEED:
         ap.error(f"speed must be {config.MOTOR_MIN_SPEED}..{config.MOTOR_MAX_SPEED}")
+    if not 5 <= args.arm_speed <= 50:
+        ap.error("arm speed must be 5..50")
 
     settings = {"left": config.PORT_LEFT_WHEEL, "right": config.PORT_RIGHT_WHEEL,
                 "arm": config.PORT_ARM, "grip": config.PORT_GRIPPER,
-                "arm_speed": config.ARM_TEST_SPEED, "grip_speed": 25,
+                "arm_speed": args.arm_speed, "grip_speed": 25,
                 "reverse_delay": args.reverse_delay,
                 "state_hz": config.MOTOR_STREAM_HZ if args.record else 10}
     code = (ROOT / "pi" / "gamepad_server.py").read_text()
