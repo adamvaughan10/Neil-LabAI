@@ -18,7 +18,7 @@ On this pad (D-pad + 4 face buttons, no sticks), checked by pressing each:
     axes[2]  D-pad X: left -1, right +1
     axes[3]  D-pad Y: up -1, down +1
     axes[0], axes[1]  always 0
-    buttons[0..3]  the four face buttons; buttons[4..11] always 0
+    buttons[0] X (top), [1] A (right), [2] B (bottom), [3] Y (left); [4..11] always 0
     hat  always "-"
 
 Run:  .venv/bin/python gamepad.py          (live line, Ctrl-C to quit)
