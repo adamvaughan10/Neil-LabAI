@@ -56,6 +56,7 @@ Then run any script. Add `--help` to see its options.
 |--------|------------------|--------------|
 | `python scripts\check_pi.py` | no | Checks SSH, OS, serial port, libraries, HAT voltage, what's on each port, and saves a camera still to `output/`. Run this first. |
 | `python scripts\record_video.py` | no | Records 5 s from the Pi camera (`--seconds` to change). |
+| `python scripts\stream_cameras.py` | no | Live window with both cameras side by side. `r` starts/stops a **synced recording** (15 fps), `s` saves a snapshot, `q` quits. `--record 10` records 10 s without a window; `--fps` changes the rate. |
 | `python scripts\sequence_test.py` | **yes** | Forward 0.5 s, backward 0.5 s, then arm up 30° and back down. Prints how far each motor turned. |
 | `python scripts\arm_test.py` | **yes** | Lowers the arm 30° and raises it back while recording video. |
 | `python scripts\motor_test.py` | **yes** | Turns each port 30° and back, asking before each. |
@@ -63,11 +64,49 @@ Then run any script. Add `--help` to see its options.
 Before running anything that moves: lift the robot so the wheels spin freely (or give it about 30 cm of room)
 and keep hands clear of the arm.
 
+### External camera
+
+A phone IP-camera app serving MJPEG at `http://132.68.34.87:8080/stream.mjpg` (plain **http**; https fails).
+Keep the app open and in the foreground, with the phone unlocked and on the same Wi-Fi as the Pi:
+the stream stops otherwise. Set `EXTERNAL_CAMERA_URL` if its address changes, and
+`EXTERNAL_CAMERA_ROTATION` (0/90/180/270, clockwise) if its image comes out sideways.
+
+The Pi camera has no stream of its own: `stream_cameras.py` starts a small MJPEG server on the Pi
+(port 8765) for as long as it runs. Recordings from it are 640x480; `record_video.py` gives full 1296x972.
+
+### Synced recording (for VLA data)
+
+`stream_cameras.py` records through `neil_robot/recorder.py`. It ticks at a fixed rate (15 fps by
+default, `RECORD_FPS`) on a high-resolution clock (`neil_robot/clock.py`; Windows' `time.time()` only
+ticks every 4-16 ms). On each tick it takes the newest frame from each camera and writes it to disk
+immediately, so every step has one image per camera:
+
+```
+logs/session_<date>_<time>/
+  pi/000000.jpg ...  external/000000.jpg ...
+  steps.jsonl      one line per step: t, and per camera: file, frame number, capture ts, age_ms, new
+  info.json        rate, repeated-frame %, image age and camera skew statistics
+  pi.mp4  external.mp4  combined.mp4   made when the recording stops
+```
+
+15 fps is the highest rate where both cameras deliver a new frame on nearly every step (the external
+camera tops out around 26 fps and stalls now and then on Wi-Fi). `new: false` marks a step whose image
+repeats the previous one. Frame timestamps are arrival time minus each camera's delay
+(`PI_CAMERA_LATENCY_S`, `EXTERNAL_CAMERA_LATENCY_S`, both 0 until calibrated).
+
+**Motors are recorded too (read-only).** A reader on the Pi streams all four motors ~50 times a
+second without driving them, and every step gets a `"motors"` entry:
+`left_wheel`, `right_wheel`, `gripper`, `arm`, each with `pos_deg` (encoder position since the HAT
+powered up), `abs_pos_deg` (-180..180) and `speed`, plus the reading's `age_ms`. `--no-motors`
+records cameras only. Only one program can use the Build HAT at a time: recording with motors
+fails with "HAT not found" while anything else (a gamepad driver, a motor test) has it open.
+
 ### Output
 
 Each run saves to its own folder under `logs/` (not committed to git):
 
 - `video.mp4` and `frames/frame_NNNN.jpg` for scripts that record
+  (`stream_cameras.py`: one folder per camera, plus `combined.mp4` with both side by side)
 - `info.json` with the settings and the motors' encoder positions
 
 ### Conventions
@@ -75,7 +114,9 @@ Each run saves to its own folder under `logs/` (not committed to git):
 - **Wheels:** the left motor is mounted reversed, so forward is left `-speed`, right `+speed`. The code handles it.
 - **Arm:** the motor is mounted reversed (a positive motor turn raises the arm) and runs at speed 5–15.
   Its weight pulls it down, so moves hold position instead of going limp.
-- **Camera:** mounted upside down; frames are flipped 180° on the sensor (`CAMERA_ROTATION`).
+- **Pi camera:** always flipped 180° on the sensor (`CAMERA_ROTATION`, default 180; 0 = as mounted).
+  The flip is fixed: it never changes while running, so the image only turns if the camera or robot
+  physically turns. The external camera is not flipped (`EXTERNAL_CAMERA_ROTATION`, default 0).
 - **Motor positions** reset whenever the Build HAT restarts. Compare positions within a run, not across runs.
 
 ### Code layout
@@ -85,7 +126,8 @@ neil_robot/
   config.py      all settings (ports, speeds, camera); each can be overridden with an env var
   rpi_client.py  SSH connection; runs Python on the Pi and returns its result
   hardware.py    Pi-side scripts and the functions that call them (motors, camera, status)
-  video.py       turns a raw recording into video.mp4 + frames
+  streams.py     live MJPEG streams: Pi camera (server started on the Pi) and the external camera
+  video.py       turns frames into video.mp4 + frames/
 scripts/         the command-line tools above
 ```
 
