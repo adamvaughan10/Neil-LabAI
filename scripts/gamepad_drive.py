@@ -179,7 +179,9 @@ def main() -> int:
         def action_step(t: float) -> dict:
             """Recorder extra: the controller's target, in exactly the "motors" format.
             Wheels are speed controlled and the arm / gripper angle controlled, so the
-            value the controller doesn't set is None."""
+            value the controller doesn't set is None. "vector" is the same target as one
+            list, in robot terms like the live line (+ = forward / down / open), named
+            like the "gamepad" extra's vector."""
             ports = {"left_wheel": config.PORT_LEFT_WHEEL, "right_wheel": config.PORT_RIGHT_WHEEL,
                      "gripper": config.PORT_GRIPPER, "arm": config.PORT_ARM}
             speeds = {"left_wheel": target["drive"][0], "right_wheel": target["drive"][1]}
@@ -188,6 +190,10 @@ def main() -> int:
             for role in ROLES.values():
                 out[role] = {"port": ports[role], "pos_deg": angles.get(role), "abs_pos_deg": None,
                              "speed": speeds.get(role)}
+            out["names"] = ["left_wheel.vel", "right_wheel.vel", "arm.pos", "grip.pos"]
+            out["vector"] = [config.LEFT_WHEEL_SIGN_FORWARD * target["drive"][0],
+                             config.RIGHT_WHEEL_SIGN_FORWARD * target["drive"][1],
+                             config.ARM_MOTOR_SIGN_DOWN * target["arm"], config.GRIPPER_MOTOR_SIGN_OPEN * target["grip"]]
             return out
 
         seen = [0]  # hat_calls already given to a step

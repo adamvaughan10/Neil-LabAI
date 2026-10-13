@@ -4,12 +4,15 @@ folders for the SmolVLA pipeline (vla-learning/smolvla-pipeline, DATA-CONTRACT.m
 
     episodes/ep_0000/  episode.json  frames.jsonl  front.mp4  top.mp4
 
-    python scripts/session_to_episode.py logs/session_20261013_152154 --out episodes --action target
+    python scripts/session_to_episode.py logs/session_* --out episodes
+        -> episodes/target/ep_0000 ...  and  episodes/buttons/ep_0000 ...   (two datasets, default)
     python scripts/session_to_episode.py logs/session_* --out episodes_hat --action hat --task "pick up the cup"
+        -> episodes_hat/ep_0000 ...   (one --action: no sub-folder)
 
 Then check_episodes.py and convert_to_lerobot.py from the pipeline take it from there.
 
---action picks what goes in action.left/right/arm/grip, all in robot terms (+ = forward /
+--action picks what goes in "action" (one dataset per choice; the same frames, state and
+videos in each), all in robot terms (+ = forward /
 arm down / gripper open, the mounting sign flips applied):
     target  the controller's target: wheel speeds, arm and gripper target angles (degrees)
     hat     the Build HAT calls the Pi made: the wheel speeds the HAT was running (after the
@@ -139,17 +142,22 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("sessions", type=Path, nargs="+", help="logs/session_* folders")
     ap.add_argument("--out", type=Path, default=Path("episodes"))
-    ap.add_argument("--action", choices=("target", "hat", "buttons"), required=True)
+    ap.add_argument("--action", choices=("target", "hat", "buttons"), nargs="+", default=["target", "buttons"],
+                    help="one dataset per choice (default: target and buttons)")
     ap.add_argument("--task", default=TASK, help="the instruction sentence, the same in every episode")
     ap.add_argument("--failed", action="store_true", help="mark these episodes success=false")
     ap.add_argument("--fps", type=float, default=10, help="the pipeline's frame rate")
     args = ap.parse_args()
-    for session in args.sessions:
-        try:
-            folder = convert(session, args.out, args.action, args.task, not args.failed, args.fps)
-            print(f"{session.name} -> {folder}")
-        except (OSError, ValueError, KeyError) as exc:
-            print(f"{session.name}: skipped ({exc})")
+    for action in args.action:
+        out = args.out / action if len(args.action) > 1 else args.out
+        for session in args.sessions:
+            try:
+                folder = convert(session, out, action, args.task, not args.failed, args.fps)
+                print(f"{session.name} -> {folder}")
+            except (OSError, ValueError, KeyError) as exc:
+                print(f"{session.name}: skipped for {action} ({exc})")
+        fields = BUTTON_FIELDS if action == "buttons" else ["left", "right", "arm", "grip"]
+        print(f"{out}: train with neil_features.ACTION_FIELDS = {fields}")
     return 0
 
 
