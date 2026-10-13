@@ -14,6 +14,13 @@ Raw report layout (8 bytes, report id 1):
     byte 6     buttons 5-12
     byte 7     unused
 
+On this pad (D-pad + 4 face buttons, no sticks), checked by pressing each:
+    axes[2]  D-pad X: left -1, right +1
+    axes[3]  D-pad Y: up -1, down +1
+    axes[0], axes[1]  always 0
+    buttons[0..3]  the four face buttons; buttons[4..11] always 0
+    hat  always "-"
+
 Run:  .venv/bin/python gamepad.py          (live line, Ctrl-C to quit)
       .venv/bin/python gamepad.py --raw    (also show the raw bytes)
       .venv/bin/python gamepad.py --log    (one JSON line per change)
