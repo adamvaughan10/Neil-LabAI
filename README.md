@@ -94,7 +94,12 @@ camera tops out around 26 fps and stalls now and then on Wi-Fi). `new: false` ma
 repeats the previous one. Frame timestamps are arrival time minus each camera's delay
 (`PI_CAMERA_LATENCY_S`, `EXTERNAL_CAMERA_LATENCY_S`, both 0 until calibrated).
 
-Extra per-step data (motor encoders next) plugs in through `SyncRecorder(extras=...)`.
+**Motors are recorded too (read-only).** A reader on the Pi streams all four motors ~50 times a
+second without driving them, and every step gets a `"motors"` entry:
+`left_wheel`, `right_wheel`, `gripper`, `arm`, each with `pos_deg` (encoder position since the HAT
+powered up), `abs_pos_deg` (-180..180) and `speed`, plus the reading's `age_ms`. `--no-motors`
+records cameras only. Only one program can use the Build HAT at a time: recording with motors
+fails with "HAT not found" while anything else (a gamepad driver, a motor test) has it open.
 
 ### Output
 
