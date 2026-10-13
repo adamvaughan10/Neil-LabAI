@@ -62,6 +62,7 @@ Then run any script. Add `--help` to see its options.
 | `python gamepad.py` | no | Prints the USB gamepad's D-pad and buttons live. |
 | `python scripts\gamepad_drive.py` | **yes** | Drives the robot from the gamepad: D-pad drives and rotates while held, X/B move the arm and Y/A the gripper a fixed angle per press. The Pi side is `pi/gamepad_server.py`. |
 | `python scripts\gamepad_drive.py --dashboard` | **yes** | Same, plus a live Rerun dashboard: Pi camera, iPhone camera (set `IPHONE_CAMERA_URL` to the SimpleIPCamera app's stream), arm and gripper angles, and wheel speeds. `--dashboard serve` shows it in the browser on :9090. |
+| `python scripts\record_episodes.py` | **yes** | Drives like `gamepad_drive.py` and records training episodes: Enter starts/stops one, then `s`/`f`/`d` keeps it as success, failure or deletes it. Writes `episodes/ep_NNNN/` (frames.jsonl, episode.json, front.mp4, top.mp4 at 10 fps) as in DATA-CONTRACT.md. Start with the arm fully up and the gripper open. |
 
 Before running anything that moves: lift the robot so the wheels spin freely (or give it about 30 cm of room)
 and keep hands clear of the arm.

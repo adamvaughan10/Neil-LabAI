@@ -64,7 +64,7 @@ def start_pi_script(client: RPiClient, path: Path, settings: dict):
         f"python3 -u -c {shlex.quote(code)} {shlex.quote(json.dumps(settings))} 2>&1")
     output = []
     for line in stdout:  # wait for the HAT or camera (the HAT may load firmware first)
-        if line.strip() == "ready":
+        if line.split(" ", 1)[0].strip() == "ready":  # gamepad_server.py adds its start angles
             return stdin, stdout
         output.append(line)
     raise RuntimeError(f"{path.name} stopped before it was ready:\n" + "".join(output[-20:]))
