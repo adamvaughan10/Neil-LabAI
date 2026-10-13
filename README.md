@@ -63,11 +63,22 @@ Then run any script. Add `--help` to see its options.
 Before running anything that moves: lift the robot so the wheels spin freely (or give it about 30 cm of room)
 and keep hands clear of the arm.
 
+### External camera
+
+A phone IP-camera app serving MJPEG at `http://132.68.34.87:8080/stream.mjpg` (plain **http**; https fails).
+Keep the app open and in the foreground, with the phone unlocked and on the same Wi-Fi as the Pi:
+the stream stops otherwise. Set `EXTERNAL_CAMERA_URL` if its address changes, and
+`EXTERNAL_CAMERA_ROTATION` (0/90/180/270, clockwise) if its image comes out sideways.
+
+The Pi camera has no stream of its own: `stream_cameras.py` starts a small MJPEG server on the Pi
+(port 8765) for as long as it runs. Recordings from it are 640x480; `record_video.py` gives full 1296x972.
+
 ### Output
 
 Each run saves to its own folder under `logs/` (not committed to git):
 
 - `video.mp4` and `frames/frame_NNNN.jpg` for scripts that record
+  (`stream_cameras.py`: one folder per camera, plus `combined.mp4` with both side by side)
 - `info.json` with the settings and the motors' encoder positions
 
 ### Conventions
@@ -85,7 +96,8 @@ neil_robot/
   config.py      all settings (ports, speeds, camera); each can be overridden with an env var
   rpi_client.py  SSH connection; runs Python on the Pi and returns its result
   hardware.py    Pi-side scripts and the functions that call them (motors, camera, status)
-  video.py       turns a raw recording into video.mp4 + frames
+  streams.py     live MJPEG streams: Pi camera (server started on the Pi) and the external camera
+  video.py       turns frames into video.mp4 + frames/
 scripts/         the command-line tools above
 ```
 

@@ -50,6 +50,18 @@ VIDEO_WIDTH = int(os.getenv("VIDEO_WIDTH", "1296"))
 VIDEO_HEIGHT = int(os.getenv("VIDEO_HEIGHT", "972"))
 VIDEO_FPS = int(os.getenv("VIDEO_FPS", "30"))
 
-_ROOT = Path(__file__).resolve().parent.parent
+# ── live streams ──────────────────────────────────────────────────────────────
+# Pi camera: an MJPEG server started on the Pi over SSH, read over HTTP.
+# Smaller than recordings so both streams fit comfortably on the Wi-Fi.
+PI_STREAM_PORT = int(os.getenv("PI_STREAM_PORT", "8765"))
+PI_STREAM_WIDTH = int(os.getenv("PI_STREAM_WIDTH", "640"))
+PI_STREAM_HEIGHT = int(os.getenv("PI_STREAM_HEIGHT", "480"))
+PI_STREAM_FPS = int(os.getenv("PI_STREAM_FPS", "30"))
+# External camera: a phone IP-camera app serving MJPEG (plain http, not https).
+EXTERNAL_CAMERA_URL = os.getenv("EXTERNAL_CAMERA_URL", "http://132.68.34.87:8080/stream.mjpg")
+EXTERNAL_CAMERA_ROTATION = int(os.getenv("EXTERNAL_CAMERA_ROTATION", "0"))  # clockwise: 0/90/180/270
+STREAM_CONNECT_TIMEOUT = float(os.getenv("STREAM_CONNECT_TIMEOUT", "10"))
+
+_ROOT =Path(__file__).resolve().parent.parent
 LOGS_DIR = Path(os.getenv("LOGS_DIR", _ROOT / "logs"))
 OUTPUT_DIR =Path(os.getenv("OUTPUT_DIR", Path(__file__).resolve().parent.parent / "output"))
