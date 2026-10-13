@@ -41,8 +41,9 @@ ARM_TEST_SPEED = int(os.getenv("ARM_TEST_SPEED", "10"))
 # ── camera (Pi Camera v1, OV5647) ─────────────────────────────────────────────
 CAMERA_WIDTH = int(os.getenv("CAMERA_WIDTH", "1296"))
 CAMERA_HEIGHT = int(os.getenv("CAMERA_HEIGHT", "972"))
-# The camera is mounted upside down on the robot; the sensor flips it (0 or 180).
-CAMERA_ROTATION = int(os.getenv("CAMERA_ROTATION", "180"))
+# No software flip: the image is exactly how the camera is mounted. If it comes out
+# upside down, turn the camera over on the robot. 180 flips it on the sensor instead.
+CAMERA_ROTATION = int(os.getenv("CAMERA_ROTATION", "0"))
 CAMERA_WARMUP_S = float(os.getenv("CAMERA_WARMUP_S", "1.0"))
 
 # 1296x972 is the sensor's full-view binned mode (up to 46 fps).
