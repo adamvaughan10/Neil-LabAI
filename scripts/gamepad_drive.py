@@ -46,6 +46,8 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--speed", type=int, default=30, help="wheel speed, 15..60")
     ap.add_argument("--arm-step", type=int, default=5, help="arm degrees per press")
+    ap.add_argument("--reverse-delay", type=float, default=1.0,
+                    help="seconds the other wheel waits while one wheel reverses")
     ap.add_argument("--grip-step", type=int, default=10, help="gripper degrees per press")
     args = ap.parse_args()
     if not config.MOTOR_MIN_SPEED <= args.speed <= config.MOTOR_MAX_SPEED:
@@ -53,7 +55,8 @@ def main() -> int:
 
     settings = {"left": config.PORT_LEFT_WHEEL, "right": config.PORT_RIGHT_WHEEL,
                 "arm": config.PORT_ARM, "grip": config.PORT_GRIPPER,
-                "arm_speed": config.ARM_TEST_SPEED, "grip_speed": 25}
+                "arm_speed": config.ARM_TEST_SPEED, "grip_speed": 25,
+                "reverse_delay": args.reverse_delay}
     code = (ROOT / "pi" / "gamepad_server.py").read_text()
     # Motor degrees for one press, after the mounting sign flips.
     arm_down = config.ARM_MOTOR_SIGN_DOWN * args.arm_step
