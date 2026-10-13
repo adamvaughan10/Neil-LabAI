@@ -63,19 +63,28 @@ def main() -> int:
         stdin, stdout, _ = pi.connect().exec_command(
             f"python3 -u -c {shlex.quote(code)} {shlex.quote(json.dumps(settings))} 2>&1")
         for line in stdout:  # wait for the HAT (it may load firmware first)
-            if line.strip() == "ready":
+            if line.startswith("ready "):
+                start = json.loads(line[len("ready "):])  # encoder angles at startup
                 break
             print("Pi:", line, end="")
         else:
             print("The Pi script stopped before it was ready.")
             return 1
 
+        # The target the controller sets, in robot terms and the dataset's names: wheel
+        # speeds (+ = forward) and arm / gripper encoder angles (+ = down / open). The
+        # motors then move to meet it. Printed on every change.
+        target = {"left_wheel.vel": 0, "right_wheel.vel": 0,
+                  "arm.pos": config.ARM_MOTOR_SIGN_DOWN * start["arm"],
+                  "grip.pos": config.GRIPPER_MOTOR_SIGN_OPEN * start["grip"]}
+
         def send(cmd: dict) -> None:
             stdin.write(json.dumps(cmd) + "\n")
             stdin.flush()
-            print(cmd)
+            print("target  " + "  ".join(f"{k} {v:+5.0f}" for k, v in target.items()))
 
         print("Ready. D-pad drives, X/B arm up/down, Y/A gripper open/close. Ctrl-C to quit.")
+        print("start   " + "  ".join(f"{k} {v:+5.0f}" for k, v in target.items()))
         last_drive, last_buttons = (0, 0), [0] * 12
         try:
             while True:
@@ -83,18 +92,17 @@ def main() -> int:
                 left, right = wheel_speeds(state, args.speed)
                 drive = (config.LEFT_WHEEL_SIGN_FORWARD * left, config.RIGHT_WHEEL_SIGN_FORWARD * right)
                 if drive != last_drive:
+                    target["left_wheel.vel"], target["right_wheel.vel"] = left, right
                     send({"drive": list(drive)})
                     last_drive = drive
                 pressed = [b and not was for b, was in zip(state["buttons"], last_buttons)]
                 last_buttons = state["buttons"]
-                if pressed[BTN_X]:
-                    send({"arm": -arm_down})
-                if pressed[BTN_B]:
-                    send({"arm": arm_down})
-                if pressed[BTN_Y]:
-                    send({"grip": grip_open})
-                if pressed[BTN_A]:
-                    send({"grip": -grip_open})
+                for button, part, motor_deg in ((BTN_X, "arm", -arm_down), (BTN_B, "arm", arm_down),
+                                                 (BTN_Y, "grip", grip_open), (BTN_A, "grip", -grip_open)):
+                    if pressed[button]:
+                        sign = config.ARM_MOTOR_SIGN_DOWN if part == "arm" else config.GRIPPER_MOTOR_SIGN_OPEN
+                        target[f"{part}.pos"] += sign * motor_deg
+                        send({part: motor_deg})
         except KeyboardInterrupt:
             print("\nStopping.")
         finally:

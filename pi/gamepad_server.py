@@ -20,7 +20,8 @@ arm = Motor(settings["arm"])
 grip = Motor(settings["grip"])
 arm.release = False  # hold the angle after each move instead of going limp
 grip.release = False
-print("ready", flush=True)
+# Starting encoder angles, so the laptop can track the absolute target angle.
+print("ready " + json.dumps({"arm": arm.get_position(), "grip": grip.get_position()}), flush=True)
 
 for line in iter(sys.stdin.readline, ""):
     cmd = json.loads(line)
