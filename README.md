@@ -43,10 +43,51 @@ The Pi's address and user default to `132.68.34.107` / `rpi`. If the Pi gets a n
 
 ## Usage
 
+Every time, in a new PowerShell window:
+
 ```powershell
-python scripts/check_pi.py      # read-only: SSH, OS, serial, libraries, HAT voltage, ports, camera still
-python scripts/record_video.py  # read-only: records 5 s from the Pi camera into logs/
-python scripts/motor_test.py    # MOVES motors: each port +30° and back, asks before each
+cd robot\Neil-LabAI          # this repo
+conda activate neil_robot
 ```
 
-Camera stills go to `output/`. All settings are in `neil_robot/config.py`.
+Then run any script. Add `--help` to see its options.
+
+| Script | Moves the robot? | What it does |
+|--------|------------------|--------------|
+| `python scripts\check_pi.py` | no | Checks SSH, OS, serial port, libraries, HAT voltage, what's on each port, and saves a camera still to `output/`. Run this first. |
+| `python scripts\record_video.py` | no | Records 5 s from the Pi camera (`--seconds` to change). |
+| `python scripts\sequence_test.py` | **yes** | Forward 0.5 s, backward 0.5 s, then arm up 30° and back down. Prints how far each motor turned. |
+| `python scripts\arm_test.py` | **yes** | Lowers the arm 30° and raises it back while recording video. |
+| `python scripts\motor_test.py` | **yes** | Turns each port 30° and back, asking before each. |
+
+Before running anything that moves: lift the robot so the wheels spin freely (or give it about 30 cm of room)
+and keep hands clear of the arm.
+
+### Output
+
+Each run saves to its own folder under `logs/` (not committed to git):
+
+- `video.mp4` and `frames/frame_NNNN.jpg` for scripts that record
+- `info.json` with the settings and the motors' encoder positions
+
+### Conventions
+
+- **Wheels:** the left motor is mounted reversed, so forward is left `-speed`, right `+speed`. The code handles it.
+- **Arm:** the motor is mounted reversed (a positive motor turn raises the arm) and runs at speed 5–15.
+  Its weight pulls it down, so moves hold position instead of going limp.
+- **Camera:** mounted upside down; frames are flipped 180° on the sensor (`CAMERA_ROTATION`).
+- **Motor positions** reset whenever the Build HAT restarts. Compare positions within a run, not across runs.
+
+### Code layout
+
+```
+neil_robot/
+  config.py      all settings (ports, speeds, camera); each can be overridden with an env var
+  rpi_client.py  SSH connection; runs Python on the Pi and returns its result
+  hardware.py    Pi-side scripts and the functions that call them (motors, camera, status)
+  video.py       turns a raw recording into video.mp4 + frames
+scripts/         the command-line tools above
+```
+
+To add a new robot action, write its Pi-side script and a function for it in `hardware.py`, following
+`drive_and_arm_sequence`, then call it from a script.
