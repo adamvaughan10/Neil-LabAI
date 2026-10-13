@@ -42,21 +42,6 @@ ARM_TEST_SPEED = int(os.getenv("ARM_TEST_SPEED", "10"))
 # As in lego-robot-mcp (control_gripper): a negative motor turn opens the gripper.
 GRIPPER_MOTOR_SIGN_OPEN = -1
 
-# ── gamepad driving (scripts/gamepad_drive.py) ────────────────────────────────
-# The D-pad is on/off, so each direction is one fixed speed (-100..100).
-PAD_DRIVE_SPEED = int(os.getenv("PAD_DRIVE_SPEED", "30"))
-PAD_TURN_SPEED = int(os.getenv("PAD_TURN_SPEED", "30"))
-# Arm and gripper are position controlled: holding a button moves their target
-# angle at this many motor degrees per second.
-PAD_ARM_DEG_S = float(os.getenv("PAD_ARM_DEG_S", "40"))
-PAD_GRIPPER_DEG_S = float(os.getenv("PAD_GRIPPER_DEG_S", "90"))
-# How far the target may run ahead of the real angle. Against a stop or an object
-# the motor pushes in proportion to this gap, so it sets how hard the gripper squeezes.
-PAD_MAX_LEAD_DEG = float(os.getenv("PAD_MAX_LEAD_DEG", "15"))
-PAD_SEND_HZ = 20
-# The Pi stops every motor if it hears nothing for this long (laptop froze, SSH dropped).
-PAD_WATCHDOG_S = float(os.getenv("PAD_WATCHDOG_S", "0.5"))
-
 # ── camera (Pi Camera v1, OV5647) ─────────────────────────────────────────────
 CAMERA_WIDTH = int(os.getenv("CAMERA_WIDTH", "1296"))
 CAMERA_HEIGHT = int(os.getenv("CAMERA_HEIGHT", "972"))

@@ -1,13 +1,11 @@
 """
 Robot hardware access: Pi system checks, Build HAT, motors, camera.
 
-move_motor(), arm_down_up(), drive_and_arm_sequence() and LiveMotors move things.
-Everything else is read-only.
+Only move_motor() moves anything. Everything else is read-only.
 """
 from __future__ import annotations
 
 import base64
-import json
 import time
 
 from neil_robot import config
@@ -209,78 +207,6 @@ emit({"steps": steps})
 """
 
 
-# Live control. The laptop sends one JSON line per command, e.g.
-# {"A": 30, "B": -30, "C": 0, "D": -40}, and the Pi keeps applying the newest one.
-# Wheel ports (PARAMS["speed_ports"]) run in speed mode at that speed (-100..100)
-# and coast at 0. Position ports (PARAMS["position_ports"]: arm, gripper) take a
-# rate in motor degrees per second: the Pi moves a target angle at that rate and
-# the motor's position control follows it and holds it when the rate is 0, so
-# the arm doesn't sag. The target never runs more than PARAMS["max_lead_deg"]
-# ahead of the measured angle, so pushing into a stop or an object squeezes
-# firmly instead of winding up. (Holding speed 0 in speed mode made the motors
-# shake, which is why nothing idles that way.)
-# If no line arrives for PARAMS["watchdog_s"], wheels stop and targets freeze.
-# When stdin closes the motors coast and the script exits.
-_LIVE_MOTORS = r"""
-import os, select, sys, time
-from buildhat import Motor
-P = PARAMS
-wheels = {p: Motor(p) for p in P["speed_ports"]}
-posm = {p: Motor(p) for p in P["position_ports"]}
-speed = {p: None for p in wheels}
-rate = {p: 0.0 for p in posm}
-target = {}
-for p, m in posm.items():
-    # buildhat's own position-control command (from Motor._run_positional_ramp),
-    # written directly because its ramp form expects a Future per move. Units: rotations.
-    target[p] = m.get_position()
-    m._write(f"port {p}; select 0 ; selrate {m._interval}; "
-             f"pid {p} 0 1 s4 0.0027777778 0 5 0 .1 3 0.01; set {target[p] / 360}\r")
-def apply(cmd):
-    for p, m in wheels.items():
-        s = max(-100, min(100, int(cmd.get(p, 0))))
-        if s != speed[p]:
-            m.stop()  # coast, and reset buildhat's run mode so start() reconfigures
-            if s:
-                m.start(s)
-            speed[p] = s
-    for p in posm:
-        rate[p] = float(cmd.get(p, 0))
-def step_targets(dt):
-    for p, m in posm.items():
-        if not rate[p]:
-            continue
-        pos = m.get_position()
-        lead = P["max_lead_deg"]
-        target[p] = max(pos - lead, min(pos + lead, target[p] + rate[p] * dt))
-        m._write(f"port {p} ; set {target[p] / 360}\r")
-apply({})
-emit({"ready": True})
-fd, buf = sys.stdin.fileno(), b""
-last = prev = time.monotonic()
-try:
-    while True:
-        ready, _, _ = select.select([fd], [], [], 0.05)
-        now = time.monotonic()
-        if ready:
-            chunk = os.read(fd, 4096)
-            if not chunk:
-                break
-            buf += chunk
-            *lines, buf = buf.split(b"\n")
-            if lines:
-                apply(_json.loads(lines[-1]))  # only the newest command matters
-                last = now
-        elif now - last > P["watchdog_s"]:
-            apply({})
-        step_targets(now - prev)
-        prev = now
-finally:
-    for m in list(wheels.values()) + list(posm.values()):
-        m.stop()
-"""
-
-
 # ── host-side API ─────────────────────────────────────────────────────────────
 
 def system_info(client: RPiClient | None = None) -> dict:
@@ -387,58 +313,3 @@ def move_motor(
         raise ValueError(f"speed must be {config.MOTOR_MIN_SPEED}..{config.MOTOR_MAX_SPEED}")
     params = {"port": port, "degrees": degrees, "speed": speed, "return_to_start": return_to_start}
     return (client or get_client()).run_python(_MOVE_MOTOR, params, timeout=60)
-
-
-class LiveMotors:
-    """Drive all four motors continuously from the laptop. This MOVES the robot.
-
-    Robot terms, mounting sign flips applied here: wheels -100..100, + = forward,
-    limp at 0. Arm and gripper are degrees per second (arm + = down, gripper + = open):
-    the motor follows a moving target angle and holds it at 0, and the target stays
-    within config.PAD_MAX_LEAD_DEG of the real angle, so closing on an object squeezes
-    it without straining.
-
-        with LiveMotors() as live:
-            live.send(left=30, right=30)  # keep calling it, or the Pi's watchdog stops the wheels
-    """
-
-    def __init__(self, client: RPiClient | None = None, watchdog_s: float = config.PAD_WATCHDOG_S):
-        params = {"speed_ports": [config.PORT_LEFT_WHEEL, config.PORT_RIGHT_WHEEL],
-                  "position_ports": [config.PORT_ARM, config.PORT_GRIPPER],
-                  "max_lead_deg": config.PAD_MAX_LEAD_DEG, "watchdog_s": watchdog_s}
-        self._stdin, self._stdout = (client or get_client()).open_python(_LIVE_MOTORS, params)
-        output = []
-        for line in self._stdout:  # wait until the HAT is ready (it may load firmware first)
-            if line.startswith("__NEIL_RESULT__"):
-                break
-            output.append(line)
-        else:
-            raise RuntimeError("Pi live-motor script exited before it was ready:\n" + "".join(output[-20:]))
-
-    def send(self, left: int = 0, right: int = 0, arm: float = 0, grip: float = 0) -> None:
-        cmd = {
-            config.PORT_LEFT_WHEEL: config.LEFT_WHEEL_SIGN_FORWARD * left,
-            config.PORT_RIGHT_WHEEL: config.RIGHT_WHEEL_SIGN_FORWARD * right,
-            config.PORT_ARM: config.ARM_MOTOR_SIGN_DOWN * arm,
-            config.PORT_GRIPPER: config.GRIPPER_MOTOR_SIGN_OPEN * grip,
-        }
-        try:
-            self._stdin.write(json.dumps(cmd) + "\n")
-            self._stdin.flush()
-        except OSError as exc:
-            pi_said = self._stdout.read().decode(errors="replace")[-2000:]
-            raise RuntimeError(f"Lost the Pi's live-motor script. It printed:\n{pi_said}") from exc
-
-    def close(self) -> None:
-        try:
-            self.send()
-            self._stdin.channel.shutdown_write()
-            self._stdout.channel.recv_exit_status()
-        except (OSError, RuntimeError):
-            pass
-
-    def __enter__(self) -> "LiveMotors":
-        return self
-
-    def __exit__(self, *exc) -> None:
-        self.close()

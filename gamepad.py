@@ -28,7 +28,6 @@ Run:  .venv/bin/python gamepad.py          (live line, Ctrl-C to quit)
 import argparse
 import json
 import sys
-from pathlib import Path
 
 import hid
 
@@ -36,7 +35,7 @@ VENDOR_ID = 0x0810
 PRODUCT_ID = 0xE501
 DEADZONE = 0.05  # rest values sit at 127/128, not exactly centre
 
-LABELS_FILE = Path(__file__).with_name("gamepad_labels.json")  # written by label_buttons.py
+BUTTON_NAMES = ["X", "A", "B", "Y"]  # buttons[0..3] on this pad
 
 HAT_NAMES = {0: "N", 1: "NE", 2: "E", 3: "SE", 4: "S", 5: "SW", 6: "W", 7: "NW", 15: "-"}
 
@@ -103,7 +102,6 @@ def main() -> None:
     except OSError as e:
         sys.exit(f"Could not open gamepad {VENDOR_ID:04x}:{PRODUCT_ID:04x}: {e}")
 
-    labels = json.loads(LABELS_FILE.read_text()) if LABELS_FILE.exists() else {}
     last = None
     try:
         while True:
@@ -119,7 +117,7 @@ def main() -> None:
                 print(json.dumps(out), flush=True)
                 continue
             axes = " ".join(f"{a:+.2f}" for a in state["axes"])
-            pressed = [labels.get(str(i), str(i)) for i, b in enumerate(state["buttons"]) if b]
+            pressed = [BUTTON_NAMES[i] if i < 4 else str(i) for i, b in enumerate(state["buttons"]) if b]
             line = f"axes [{axes}]  hat {hat(pad.report):>2}  buttons [{' '.join(pressed) or '-'}]"
             if args.raw:
                 line += f"  raw {list(pad.report)}"
