@@ -87,10 +87,9 @@ Each run saves to its own folder under `logs/` (not committed to git):
 - **Wheels:** the left motor is mounted reversed, so forward is left `-speed`, right `+speed`. The code handles it.
 - **Arm:** the motor is mounted reversed (a positive motor turn raises the arm) and runs at speed 5–15.
   Its weight pulls it down, so moves hold position instead of going limp.
-- **Camera orientation comes from the mount, not software.** Frames are not flipped, so mount the Pi
-  camera right side up (ribbon cable at the bottom of the board as you look at the lens, typically).
-  The image only turns if the camera or robot physically turns. `CAMERA_ROTATION=180` flips it in
-  software if you can't remount it.
+- **Pi camera:** always flipped 180° on the sensor (`CAMERA_ROTATION`, default 180; 0 = as mounted).
+  The flip is fixed: it never changes while running, so the image only turns if the camera or robot
+  physically turns. The external camera is not flipped (`EXTERNAL_CAMERA_ROTATION`, default 0).
 - **Motor positions** reset whenever the Build HAT restarts. Compare positions within a run, not across runs.
 
 ### Code layout

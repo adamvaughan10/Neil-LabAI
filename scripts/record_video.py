@@ -30,7 +30,7 @@ def main() -> int:
     ap.add_argument("--height", type=int, default=config.VIDEO_HEIGHT)
     ap.add_argument("--fps", type=int, default=config.VIDEO_FPS)
     ap.add_argument("--rotation", type=int, choices=(0, 180), default=config.CAMERA_ROTATION,
-                    help="0 (default): as mounted; 180 flips the image")
+                    help="180 (default): fixed flip; 0: as mounted")
     args = ap.parse_args()
 
     out_dir = config.LOGS_DIR / f"recording_{time.strftime('%Y%m%d_%H%M%S')}"
