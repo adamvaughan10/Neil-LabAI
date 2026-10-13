@@ -7,9 +7,10 @@ then writes one JSON command per line to its stdin whenever a button changes:
     {"grip": degrees}          turn the gripper motor by this many degrees, then hold
 
 Speeds and degrees are raw motor values: the laptop applies the mounting sign flips.
-When only one wheel has to reverse (e.g. forward -> turn), the other wheel stops and
-waits settings["reverse_delay"] seconds, so it doesn't push the robot while the
-reversing wheel takes up its gear slack.
+When one wheel now turns opposite to the direction it last turned (even if it has
+stopped since) and the other wheel doesn't, the other wheel waits
+settings["reverse_delay"] seconds while the reversing wheel takes up its gear slack.
+E.g. forward, then left: the right wheel waits. Forward then back: no wait.
 When stdin closes (Ctrl-C on the laptop, or SSH drops) every motor stops.
 """
 import json
@@ -27,22 +28,22 @@ arm = Motor(settings["arm"])
 grip = Motor(settings["grip"])
 arm.release = False  # hold the angle after each move instead of going limp
 grip.release = False
-running = {left: 0, right: 0}  # speed each wheel is currently running at
+last_dir = {left: 0, right: 0}  # direction each wheel last turned: -1, +1, or 0 = never
 delayed = None  # (wheel, speed, when) waiting for the other wheel to reverse
 
 
 def set_speed(wheel, speed):
     if speed:
         wheel.start(speed)
+        last_dir[wheel] = 1 if speed > 0 else -1
     else:
         wheel.stop()
-    running[wheel] = speed
 
 
 def drive(speeds):
     global delayed
     delayed = None
-    reversing = [w for w, s in speeds.items() if s * running[w] < 0]
+    reversing = [w for w, s in speeds.items() if s * last_dir[w] < 0]
     for wheel, speed in speeds.items():
         if len(reversing) == 1 and wheel not in reversing and speed:
             set_speed(wheel, 0)
