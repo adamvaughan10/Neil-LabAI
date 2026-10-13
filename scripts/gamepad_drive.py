@@ -202,8 +202,16 @@ def main() -> int:
                                                  (BTN_Y, "grip", grip_open), (BTN_A, "grip", -grip_open)):
                     if pressed[button]:
                         sign = config.ARM_MOTOR_SIGN_DOWN if part == "arm" else config.GRIPPER_MOTOR_SIGN_OPEN
-                        action[f"{part}.pos"] += sign * motor_deg
+                        # The Pi turns the motor motor_deg from wherever it is when the move runs.
+                        # If the last move fell short (the arm sagging under its weight, the
+                        # gripper closing on an object), count from where the motor really is,
+                        # so the recorded target stays where the motor is actually headed.
+                        port = config.PORT_ARM if part == "arm" else config.PORT_GRIPPER
+                        now = latest["state"][port][1] if latest else target[part]
+                        if abs(target[part] - now) >= abs(motor_deg):
+                            target[part] = now
                         target[part] += motor_deg
+                        action[f"{part}.pos"] = sign * target[part]
                         target.update(ts=clock.now(), seq=target["seq"] + 1)
                         send({part: motor_deg})
         except KeyboardInterrupt:
