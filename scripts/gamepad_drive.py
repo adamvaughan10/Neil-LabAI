@@ -128,6 +128,10 @@ def main() -> int:
         target = {"drive": [0, 0], "arm": start["arm"], "grip": start["grip"], "ts": clock.now(), "seq": 0}
         latest = {}  # newest Pi state line: {"state", "ts", "seq"}
         hat_calls = []  # every Build HAT call the Pi made, in order, stamped on arrival
+        pad_seen = {"buttons": [0] * 4, "dpad": [0, 0], "ts": clock.now(), "seq": 0}  # since the last step
+        pad_lock = threading.Lock()
+        pad_now = [{"axes": [0.0] * 4, "buttons": [0] * 12}]  # newest pad state
+        pad_prev = [pad_now[0]]
 
         short = {"left_wheel.vel": "L", "right_wheel.vel": "R", "arm.pos": "arm", "grip.pos": "grip"}
 
@@ -215,10 +219,26 @@ def main() -> int:
                            "degrees": c.get("degrees"), "ts": round(c["ts"], 6)} for c in new]
             return out
 
+        def gamepad_step(t: float) -> dict:
+            """Recorder extra: which buttons were pressed, as a fixed vector.
+            vector = [dpad_x, dpad_y, X, A, B, Y]: dpad_x left -1 / right +1, dpad_y up +1 /
+            down -1, buttons 1 when pressed at any moment since the previous step (a tap
+            shorter than a step still counts), else 0."""
+            with pad_lock:
+                seen = dict(pad_seen)
+                cur = pad_now[0]
+                pad_seen.update(buttons=[cur["buttons"][b] for b in (BTN_X, BTN_A, BTN_B, BTN_Y)],
+                                dpad=[cur["axes"][AXIS_DPAD_X], -cur["axes"][AXIS_DPAD_Y]])
+            vector = [int(round(v)) for v in seen["dpad"]] + seen["buttons"]
+            return {"seq": seen["seq"], "ts": round(seen["ts"], 6), "age_ms": round((t - seen["ts"]) * 1000, 2),
+                    "names": ["dpad_x", "dpad_y", "X", "A", "B", "Y"], "vector": vector,
+                    "axes": cur["axes"], "buttons": cur["buttons"]}
+
         recorder = None
         if args.record:
             recorder = SyncRecorder(cameras, fps=args.fps, extras={"motors": motors_step, "action": action_step,
-                                                                      "hat_commands": hat_step})
+                                                                      "hat_commands": hat_step,
+                                                                      "gamepad": gamepad_step})
             recorder.start()
             print(f"Recording at {args.fps:g} fps to {recorder.out_dir} until Ctrl-C ...")
 
@@ -228,6 +248,16 @@ def main() -> int:
         try:
             while True:
                 state = pad.wait()
+                with pad_lock:  # remember everything pressed until the recorder's next step
+                    pad_now[0] = state
+                    for i, b in enumerate((BTN_X, BTN_A, BTN_B, BTN_Y)):
+                        pad_seen["buttons"][i] |= state["buttons"][b]
+                    dpad = [state["axes"][AXIS_DPAD_X], -state["axes"][AXIS_DPAD_Y]]
+                    if any(dpad):  # the latest direction held, even if let go before the step
+                        pad_seen["dpad"] = dpad
+                    if state["buttons"] != last_buttons or state["axes"] != pad_prev[0]["axes"]:
+                        pad_seen.update(ts=clock.now(), seq=pad_seen["seq"] + 1)
+                    pad_prev[0] = state
                 left, right = wheel_speeds(state, args.speed)
                 drive = (config.LEFT_WHEEL_SIGN_FORWARD * left, config.RIGHT_WHEEL_SIGN_FORWARD * right)
                 if drive != last_drive:

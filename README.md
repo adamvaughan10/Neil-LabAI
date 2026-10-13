@@ -117,9 +117,11 @@ speed the HAT is running them at (0 after `stop`). Arm and gripper: `degrees` su
 `run_for_degrees` made since the previous step (0 when none). `"new"` lists each call with its time.
 
 **For VLA training:** `python scripts\session_to_episode.py logs\session_* --out episodes --action target`
-(or `--action hat`) turns sessions into the SmolVLA pipeline's episode folders (DATA-CONTRACT.md, 10 fps,
+(or `--action hat`, or `--action buttons`) turns sessions into the SmolVLA pipeline's episode folders (DATA-CONTRACT.md, 10 fps,
 robot terms). Both actions are kept in every line as `target` and `hat`; `--action` picks which one
-goes in `action`.
+goes in `action`. Every step of a recording also has `"gamepad"`: `vector` = `[dpad_x, dpad_y, X, A, B, Y]`
+(D-pad -1/0/1, + = right / up; a button is 1 if pressed at any moment since the previous step), which
+`--action buttons` uses (set the pipeline's `ACTION_FIELDS` to `dpad_x, dpad_y, x, a, b, y`).
 
 ### Output
 

@@ -15,7 +15,13 @@ arm down / gripper open, the mounting sign flips applied):
     hat     the Build HAT calls the Pi made: the wheel speeds the HAT was running (after the
             reverse delay), and the degrees of every run_for_degrees issued during that frame
             for the arm and gripper (0 when none)
-Both are kept in every line anyway, as "target" and "hat", so either can be trained on later.
+    buttons which gamepad buttons were pressed, as a 6-number vector
+            [dpad_x, dpad_y, X, A, B, Y]: dpad_x left -1 / right +1, dpad_y up +1 / down -1,
+            buttons 1 if pressed at any moment during the frame, else 0. The action keys are
+            then dpad_x, dpad_y, x, a, b, y: set the pipeline's neil_features.ACTION_FIELDS
+            to BUTTON_FIELDS below before check_episodes.py / convert_to_lerobot.py.
+All three are kept in every line anyway, as "target", "hat" and "buttons", so any of them
+can be trained on later.
 
 state is the measured motors: wheel speeds, arm and gripper encoder angles (robot terms).
 Sessions are resampled to the pipeline's 10 fps (--fps): each frame takes the nearest
@@ -38,6 +44,7 @@ from neil_robot import config  # noqa: E402
 SIGN = {"left_wheel": config.LEFT_WHEEL_SIGN_FORWARD, "right_wheel": config.RIGHT_WHEEL_SIGN_FORWARD,
         "arm": config.ARM_MOTOR_SIGN_DOWN, "gripper": config.GRIPPER_MOTOR_SIGN_OPEN}
 CAMERAS = {"front": "pi", "top": "external"}  # pipeline name -> recorder camera
+BUTTON_FIELDS = ["dpad_x", "dpad_y", "x", "a", "b", "y"]  # action keys with --action buttons
 TASK = "kick the ball"  # must match neil_features.TASK in the pipeline
 
 
@@ -83,8 +90,19 @@ def convert(session: Path, out: Path, action: str, task: str, success: bool, fps
                                            for s in span)),
                    "grip": robot("gripper", sum((s.get("hat_commands") or {}).get("gripper", {}).get("degrees") or 0
                                                 for s in span))}
-            lines.append({"i": i, "t": step["t"], "state": state, "action": target if action == "target" else hat,
-                          "target": target, "hat": hat, "step": step["step"]})
+            # Buttons over the steps this frame stands for, so a press between two frames isn't
+            # lost: X/A/B/Y are 1 if pressed in any of them; the D-pad takes the latest direction
+            # held (both axes together).
+            vectors = [s["gamepad"]["vector"] for s in span if s.get("gamepad")]
+            buttons = None
+            if vectors:
+                dpad = next((v[:2] for v in reversed(vectors) if any(v[:2])), [0, 0])
+                buttons = dict(zip(BUTTON_FIELDS, dpad + [max(v[k] for v in vectors) for k in range(2, 6)]))
+            elif action == "buttons":
+                raise ValueError("no gamepad data: recorded before buttons were saved")
+            chosen = {"target": target, "hat": hat, "buttons": buttons}[action]
+            lines.append({"i": i, "t": step["t"], "state": state, "action": chosen,
+                          "target": target, "hat": hat, "buttons": buttons, "step": step["step"]})
             for name, cam in CAMERAS.items():
                 img = cv2.imdecode(np.frombuffer((session / step[cam]["file"]).read_bytes(), np.uint8),
                                    cv2.IMREAD_COLOR)
@@ -108,9 +126,11 @@ def convert(session: Path, out: Path, action: str, task: str, success: bool, fps
         "task": task, "success": success, "frames": len(lines),
         "date": time.strftime("%Y-%m-%d", time.localtime(steps[0]["t"])),
         "source": session.name, "action": action, "fps": fps,
+        "action_fields": BUTTON_FIELDS if action == "buttons" else ["left", "right", "arm", "grip"],
         "units": {"state": "wheel speed -100..100 (+ forward), arm/gripper encoder degrees (+ down / + open)",
                   "target": "controller target: wheel speeds; arm/gripper target angles, degrees",
-                  "hat": "Build HAT calls: wheel speeds running; arm/gripper run_for_degrees degrees this frame"},
+                  "hat": "Build HAT calls: wheel speeds running; arm/gripper run_for_degrees degrees this frame",
+                  "buttons": "[dpad_x, dpad_y, X, A, B, Y]: -1/0/1 D-pad (+ right / + up), 1 = pressed this frame"},
     }, indent=2) + "\n")
     return folder
 
@@ -119,7 +139,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("sessions", type=Path, nargs="+", help="logs/session_* folders")
     ap.add_argument("--out", type=Path, default=Path("episodes"))
-    ap.add_argument("--action", choices=("target", "hat"), required=True)
+    ap.add_argument("--action", choices=("target", "hat", "buttons"), required=True)
     ap.add_argument("--task", default=TASK, help="the instruction sentence, the same in every episode")
     ap.add_argument("--failed", action="store_true", help="mark these episodes success=false")
     ap.add_argument("--fps", type=float, default=10, help="the pipeline's frame rate")
