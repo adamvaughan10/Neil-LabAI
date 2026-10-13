@@ -43,7 +43,7 @@ def wheel_speeds(pad: dict, speed: int) -> tuple[int, int]:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--speed", type=int, default=30, help="wheel speed, 15..60")
-    ap.add_argument("--arm-step", type=int, default=15, help="arm degrees per press")
+    ap.add_argument("--arm-step", type=int, default=5, help="arm degrees per press")
     ap.add_argument("--grip-step", type=int, default=10, help="gripper degrees per press")
     args = ap.parse_args()
     if not config.MOTOR_MIN_SPEED <= args.speed <= config.MOTOR_MAX_SPEED:
