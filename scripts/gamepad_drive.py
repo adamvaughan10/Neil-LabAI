@@ -35,9 +35,11 @@ def wheel_speeds(pad: dict, speed: int) -> tuple[int, int]:
     """Robot-terms (left, right) wheel speeds, + = forward."""
     forward = -pad["axes"][AXIS_DPAD_Y]
     right = pad["axes"][AXIS_DPAD_X]
-    if forward:
-        return int(forward * speed), int(forward * speed)
-    return int(right * speed), int(-right * speed)  # rotate on the spot
+    # Turning wins over driving: this pad often reports left as up+left, which
+    # used to drive both wheels forward instead of turning.
+    if right:
+        return int(right * speed), int(-right * speed)  # rotate on the spot
+    return int(forward * speed), int(forward * speed)
 
 
 def main() -> int:
