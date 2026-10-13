@@ -62,7 +62,7 @@ def report_state(period):
     while True:
         time.sleep(period)
         try:
-            state = {port: m.get()[:2] for port, m in motors.items()}  # [speed, position]
+            state = {port: m.get() for port, m in motors.items()}  # [speed, position, absolute position]
         except Exception as e:  # never let the readout stop the robot
             state = {"error": repr(e)}
         print("state " + json.dumps(state), flush=True)

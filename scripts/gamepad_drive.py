@@ -116,7 +116,7 @@ def main() -> int:
                   "grip.pos": config.GRIPPER_MOTOR_SIGN_OPEN * start["grip"]}
         measured = {}
         # The same target in raw motor terms, shaped like the recorder's "motors" entry.
-        target = {"drive": [0, 0], "arm": start["arm"], "grip": start["grip"], "ts": clock.now()}
+        target = {"drive": [0, 0], "arm": start["arm"], "grip": start["grip"], "ts": clock.now(), "seq": 0}
         latest = {}  # newest Pi state line: {"state", "ts", "seq"}
 
         short = {"left_wheel.vel": "L", "right_wheel.vel": "R", "arm.pos": "arm", "grip.pos": "grip"}
@@ -155,15 +155,23 @@ def main() -> int:
                 return None
             out = {"seq": latest["seq"], "ts": round(latest["ts"], 6), "age_ms": round((t - latest["ts"]) * 1000, 2)}
             for port, role in ROLES.items():
-                speed, pos = latest["state"][port]
-                out[role] = {"port": port, "pos_deg": pos, "speed": speed}
+                speed, pos, apos = (latest["state"][port] + [None])[:3]
+                out[role] = {"port": port, "pos_deg": pos, "abs_pos_deg": apos, "speed": speed}
             return out
 
-        def action_step(t: float) -> dict:  # recorder extra: the controller's target, same terms
-            return {"ts": round(target["ts"], 6), "age_ms": round((t - target["ts"]) * 1000, 2),
-                    "left_wheel": {"speed": target["drive"][0]}, "right_wheel": {"speed": target["drive"][1]},
-                    "arm": {"pos_deg": target["arm"]}, "gripper": {"pos_deg": target["grip"]},
-                    "robot": dict(action)}  # the same, with sign flips applied (as printed)
+        def action_step(t: float) -> dict:
+            """Recorder extra: the controller's target, in exactly the "motors" format.
+            Wheels are speed controlled and the arm / gripper angle controlled, so the
+            value the controller doesn't set is None."""
+            ports = {"left_wheel": config.PORT_LEFT_WHEEL, "right_wheel": config.PORT_RIGHT_WHEEL,
+                     "gripper": config.PORT_GRIPPER, "arm": config.PORT_ARM}
+            speeds = {"left_wheel": target["drive"][0], "right_wheel": target["drive"][1]}
+            angles = {"arm": target["arm"], "gripper": target["grip"]}
+            out = {"seq": target["seq"], "ts": round(target["ts"], 6), "age_ms": round((t - target["ts"]) * 1000, 2)}
+            for role in ROLES.values():
+                out[role] = {"port": ports[role], "pos_deg": angles.get(role), "abs_pos_deg": None,
+                             "speed": speeds.get(role)}
+            return out
 
         recorder = None
         if args.record:
@@ -181,7 +189,7 @@ def main() -> int:
                 drive = (config.LEFT_WHEEL_SIGN_FORWARD * left, config.RIGHT_WHEEL_SIGN_FORWARD * right)
                 if drive != last_drive:
                     action["left_wheel.vel"], action["right_wheel.vel"] = left, right
-                    target.update(drive=list(drive), ts=clock.now())
+                    target.update(drive=list(drive), ts=clock.now(), seq=target["seq"] + 1)
                     send({"drive": list(drive)})
                     last_drive = drive
                 pressed = [b and not was for b, was in zip(state["buttons"], last_buttons)]
@@ -192,7 +200,7 @@ def main() -> int:
                         sign = config.ARM_MOTOR_SIGN_DOWN if part == "arm" else config.GRIPPER_MOTOR_SIGN_OPEN
                         action[f"{part}.pos"] += sign * motor_deg
                         target[part] += motor_deg
-                        target["ts"] = clock.now()
+                        target.update(ts=clock.now(), seq=target["seq"] + 1)
                         send({part: motor_deg})
         except KeyboardInterrupt:
             print("\nStopping.")

@@ -106,10 +106,11 @@ fails with "HAT not found" while anything else (a gamepad driver, a motor test) 
 
 **Recording while driving: `gamepad_drive.py --record`.** Same recording, but the motor readings come
 from the gamepad driver itself (`pi/gamepad_server.py`, 50 a second), and every step also gets
-`"action"`: the target the controller has set, in the same raw motor terms as `"motors"`
-(`left_wheel`/`right_wheel` `speed`, `arm`/`gripper` `pos_deg`), plus `"robot"`: the same target with
-the mounting sign flips applied (wheels + = forward, arm + = down, gripper + = open), as printed live.
-Wheel targets are speeds; arm and gripper targets are encoder angles, moved by one step per press.
+`"action"`: the target the controller has set, formatted exactly like `"motors"` (same keys, raw motor
+terms, `seq` counts the controller's changes, `age_ms` is how long ago it last changed). Wheels are
+speed controlled, so their action has `speed` and `pos_deg: null`; the arm and gripper are angle
+controlled (one step per press), so theirs has `pos_deg` (the target encoder angle) and `speed: null`.
+`abs_pos_deg` is always null in the action.
 
 ### Output
 
