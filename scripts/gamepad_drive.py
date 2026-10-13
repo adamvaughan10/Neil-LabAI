@@ -9,6 +9,8 @@ Drive the robot with the USB gamepad. THIS MOVES THE ROBOT: give it room, keep h
 
     python scripts/gamepad_drive.py
     python scripts/gamepad_drive.py --speed 40 --grip-step 20
+    python scripts/gamepad_drive.py --dashboard          live Rerun view: both cameras + motors
+    python scripts/gamepad_drive.py --dashboard serve    same, in the browser on :9090
 
 The Pi side is pi/gamepad_server.py, a plain buildhat script that this sends over
 SSH and runs. Commands go only when a button changes. While running it shows a live
@@ -26,6 +28,7 @@ sys.path.insert(0, str(ROOT))
 
 from gamepad import Gamepad  # noqa: E402
 from neil_robot import config  # noqa: E402
+from neil_robot.dashboard import MODES, STATE_HZ, Dashboard  # noqa: E402
 from neil_robot.rpi_client import RPiClient  # noqa: E402
 
 # Indexes in gamepad.axes / gamepad.buttons for this pad (see gamepad.py).
@@ -51,6 +54,9 @@ def main() -> int:
     ap.add_argument("--reverse-delay", type=float, default=1.0,
                     help="seconds the other wheel waits while one wheel reverses")
     ap.add_argument("--grip-step", type=int, default=10, help="gripper degrees per press")
+    ap.add_argument("--dashboard", nargs="?", const="spawn", choices=MODES, metavar="MODE",
+                    help="show the cameras and motors live in Rerun: spawn (desktop viewer, default), "
+                         "serve (browser on :9090) or connect (viewer already running)")
     args = ap.parse_args()
     if not config.MOTOR_MIN_SPEED <= args.speed <= config.MOTOR_MAX_SPEED:
         ap.error(f"speed must be {config.MOTOR_MIN_SPEED}..{config.MOTOR_MAX_SPEED}")
@@ -58,12 +64,13 @@ def main() -> int:
     settings = {"left": config.PORT_LEFT_WHEEL, "right": config.PORT_RIGHT_WHEEL,
                 "arm": config.PORT_ARM, "grip": config.PORT_GRIPPER,
                 "arm_speed": config.ARM_TEST_SPEED, "grip_speed": 25,
-                "reverse_delay": args.reverse_delay, "state_hz": 10}
+                "reverse_delay": args.reverse_delay, "state_hz": STATE_HZ}
     code = (ROOT / "pi" / "gamepad_server.py").read_text()
     # Motor degrees for one press, after the mounting sign flips.
     arm_down = config.ARM_MOTOR_SIGN_DOWN * args.arm_step
     grip_open = config.GRIPPER_MOTOR_SIGN_OPEN * args.grip_step
 
+    dash = Dashboard(args.dashboard) if args.dashboard else None
     pad = Gamepad()
     print(f"Connecting to {config.RPI_USER}@{config.RPI_HOST} ...")
     with RPiClient() as pi:
@@ -107,6 +114,8 @@ def main() -> int:
                     print("Pi:", line, end="")
                     continue
                 state = json.loads(line[len("state "):])
+                if dash:
+                    dash.log_state(state)
                 if "error" in state:
                     continue
                 for name, (port, i, sign) in signs.items():
@@ -132,6 +141,8 @@ def main() -> int:
                     action["left_wheel.vel"], action["right_wheel.vel"] = left, right
                     send({"drive": list(drive)})
                     last_drive = drive
+                    if dash:
+                        dash.log_drive(left, right)
                 pressed = [b and not was for b, was in zip(state["buttons"], last_buttons)]
                 last_buttons = state["buttons"]
                 for button, part, motor_deg in ((BTN_X, "arm", -arm_down), (BTN_B, "arm", arm_down),
@@ -145,6 +156,8 @@ def main() -> int:
         finally:
             pad.close()
             stdin.channel.shutdown_write()
+            if dash:
+                dash.close()
     return 0
 
 
