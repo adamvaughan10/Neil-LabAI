@@ -57,7 +57,7 @@ def wheel_speeds(pad: dict, speed: int) -> tuple[int, int]:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--speed", type=int, default=30, help="wheel speed, 15..60")
-    ap.add_argument("--arm-raise", type=int, default=40,
+    ap.add_argument("--arm-raise", type=int, default=20,
                     help="degrees X raises the arm above its starting (down) angle")
     ap.add_argument("--arm-speed", type=int, default=25,
                     help="arm motor speed for each step, 5..50 (at 10 the arm can't lift itself)")
