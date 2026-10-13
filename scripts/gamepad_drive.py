@@ -92,14 +92,19 @@ def main() -> int:
 
         short = {"left_wheel.vel": "L", "right_wheel.vel": "R", "arm.pos": "arm", "grip.pos": "grip"}
 
-        def show() -> None:  # one line, rewritten in place, short enough not to wrap
+        last_shown = [None]
+
+        def show() -> None:  # a new line whenever a displayed value changes
             fmt = lambda d: " ".join(f"{short[k]} {d[k]:+4.0f}" if k in d else f"{short[k]}    ?" for k in action)
-            print(f"\raction {fmt(action)}  |  measured {fmt(measured)} ", end="", flush=True)
+            line = f"action {fmt(action)}  |  measured {fmt(measured)}"
+            if line != last_shown[0]:
+                print(line, flush=True)
+                last_shown[0] = line
 
         def read_pi() -> None:  # the Pi's state lines, 10 a second
             for line in stdout:
                 if not line.startswith("state "):
-                    print("\nPi:", line, end="")
+                    print("Pi:", line, end="")
                     continue
                 state = json.loads(line[len("state "):])
                 if "error" in state:
