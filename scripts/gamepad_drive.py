@@ -3,7 +3,7 @@ Drive the robot with the USB gamepad. THIS MOVES THE ROBOT: give it room, keep h
 
     D-pad up / down      both wheels forward / backward while held
     D-pad left / right   rotate counter-clockwise / clockwise on the spot while held
-    X / B                arm up / down: X raises it to --arm-up angle (-13, as shown in the live
+    X / B                arm up / down: X raises it to --arm-up angle (-20, as shown in the live
                          line), B lowers it back to where it started (two positions only)
     Y / A                gripper open / close by --grip-step degrees per press
     Ctrl-C               stop and quit (the motors go limp, so the arm drops)
@@ -57,9 +57,12 @@ def wheel_speeds(pad: dict, speed: int) -> tuple[int, int]:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--speed", type=int, default=30, help="wheel speed, 15..60")
-    ap.add_argument("--arm-up", type=int, default=-13,
+    ap.add_argument("--arm-up", type=int, default=-20,
                     help="arm angle X raises it to, as shown in the live line (- = up); "
                          "encoder degrees, which reset when the Build HAT powers up")
+    ap.add_argument("--arm-sag", type=float, nargs=2, default=(7, 3), metavar=("UP", "DOWN"),
+                    help="degrees the arm settles below its goal after a move up / down (gravity and "
+                         "gear slack); commands aim that much higher to cancel it. Measured on 2026-10-13")
     ap.add_argument("--arm-speed", type=int, default=25,
                     help="arm motor speed for each step, 5..50 (at 10 the arm can't lift itself)")
     ap.add_argument("--reverse-delay", type=float, default=1.0,
@@ -201,14 +204,18 @@ def main() -> int:
                 pressed = [b and not was for b, was in zip(state["buttons"], last_buttons)]
                 last_buttons = state["buttons"]
                 # Arm: two positions, down (where it started) and raised (--arm-up). The command
-                # is the turn from where the arm really is to that position.
+                # is the turn from where the arm really is to that position, aimed --arm-sag
+                # higher because the arm settles that far below where it is sent. The recorded
+                # target is the goal itself.
                 for button, raised in ((BTN_X, True), (BTN_B, False)):
                     goal = config.ARM_MOTOR_SIGN_DOWN * args.arm_up if raised else start["arm"]
                     if pressed[button] and target["arm"] != goal:
                         now = latest["state"][config.PORT_ARM][1] if latest else target["arm"]
                         target.update(arm=goal, ts=clock.now(), seq=target["seq"] + 1)
                         action["arm.pos"] = config.ARM_MOTOR_SIGN_DOWN * goal
-                        send({"arm": goal - now})
+                        going_up = config.ARM_MOTOR_SIGN_DOWN * (goal - now) < 0
+                        sag = args.arm_sag[0] if going_up else args.arm_sag[1]
+                        send({"arm": round(goal - now - config.ARM_MOTOR_SIGN_DOWN * sag)})
                 for button, part, motor_deg in ((BTN_Y, "grip", grip_open), (BTN_A, "grip", -grip_open)):
                     if pressed[button]:
                         sign = config.GRIPPER_MOTOR_SIGN_OPEN
