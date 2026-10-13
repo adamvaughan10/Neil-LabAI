@@ -72,6 +72,7 @@ class SyncRecorder:
         self._stats = {n: {"repeated": 0, "missing": 0, "age_ms": []} for n in cameras}
         self._skews: list[float] = []
         self._late_ticks = 0
+        self._extra_stats = {n: {"age_ms": [], "repeated": 0, "missing": 0, "last_seq": None} for n in self.extras}
         self.writer_error: Exception | None = None
 
     # ── lifecycle ─────────────────────────────────────────────────────────────
@@ -145,6 +146,15 @@ class SyncRecorder:
                     row[name] = fn(t)
                 except Exception as exc:  # noqa: BLE001
                     row[name] = {"error": repr(exc)}
+                st = self._extra_stats[name]
+                value = row[name]
+                if not isinstance(value, dict) or "age_ms" not in value:
+                    st["missing"] += 1
+                    continue
+                st["age_ms"].append(value["age_ms"])
+                if "seq" in value:
+                    st["repeated"] += value["seq"] == st["last_seq"]
+                    st["last_seq"] = value["seq"]
             self._queue.put((row, files))
             self.steps = k = k + 1
 
@@ -187,6 +197,9 @@ class SyncRecorder:
             "t0": self.t0, "late_ticks": self._late_ticks, "cameras": cams,
             "skew_ms": {"median": pct(self._skews, 50), "p95": pct(self._skews, 95),
                         "max": round(max(self._skews), 1) if self._skews else None},
+            "extras": {n: {"missing_steps": st["missing"], "repeated_steps": st["repeated"],
+                           "age_ms": {"median": pct(st["age_ms"], 50), "p95": pct(st["age_ms"], 95)}}
+                       for n, st in self._extra_stats.items()},
             "writer_error": repr(self.writer_error) if self.writer_error else None,
         }
 

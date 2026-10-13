@@ -66,6 +66,10 @@ EXTERNAL_CAMERA_ROTATION = int(os.getenv("EXTERNAL_CAMERA_ROTATION", "0"))  # cl
 # taken at the same moment get the same timestamp. 0 until calibrated.
 PI_CAMERA_LATENCY_S = float(os.getenv("PI_CAMERA_LATENCY_S", "0"))
 EXTERNAL_CAMERA_LATENCY_S = float(os.getenv("EXTERNAL_CAMERA_LATENCY_S", "0"))
+# Motor state stream (read-only): readings per second sent from the Pi, and the
+# Pi-to-laptop delay subtracted from their timestamps (SSH on the LAN: ~10 ms).
+MOTOR_STREAM_HZ = float(os.getenv("MOTOR_STREAM_HZ", "50"))
+MOTOR_STREAM_LATENCY_S = float(os.getenv("MOTOR_STREAM_LATENCY_S", "0"))
 # Synced recording rate. 15 fps is the highest where both cameras deliver a new frame
 # on (nearly) every step: the external camera tops out around 26 fps, with jitter.
 RECORD_FPS = float(os.getenv("RECORD_FPS", "15"))

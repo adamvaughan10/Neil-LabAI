@@ -1,17 +1,20 @@
 """
-Stream the Pi camera and the external camera together, and record them synced. Nothing moves.
+Stream the Pi camera, the external camera and the motors' state together, and record them synced.
+Nothing moves: motors are only read (position, absolute position, speed), never driven.
 
     python scripts/stream_cameras.py                 # live window, both cameras side by side
     python scripts/stream_cameras.py --record 10     # no window: record 10 s synced, then exit
     python scripts/stream_cameras.py --fps 10        # record at 10 steps per second (default 15)
     python scripts/stream_cameras.py --no-external   # Pi camera only (or --no-pi)
+    python scripts/stream_cameras.py --no-motors     # cameras only
 
 In the live window:  r = start/stop recording   s = snapshot   q or Esc = quit
 
 Recording samples both cameras at a fixed rate and writes every step to disk as it
 happens (see neil_robot/recorder.py), into logs/session_<date>_<time>/:
     pi/000000.jpg ...  external/000000.jpg ...   one image per camera per step
-    steps.jsonl                                  one line per step: time, frames, ages, skew
+    steps.jsonl                                  one line per step: time, frames, ages, skew,
+                                                 and "motors": each motor's position/speed
     info.json                                    settings and sync quality
     pi.mp4  external.mp4  combined.mp4           made when the recording stops
 """
@@ -26,6 +29,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from neil_robot import clock, config  # noqa: E402
+from neil_robot.motor_stream import MotorStateStream  # noqa: E402
 from neil_robot.recorder import SyncRecorder  # noqa: E402
 from neil_robot.streams import ExternalCameraStream, MjpegStream, PiCameraStream  # noqa: E402
 
@@ -54,6 +58,8 @@ def report(summary: dict, out_dir: Path) -> str:
     skew = summary["skew_ms"]
     return (f"Recorded {summary['steps']} steps at {summary['fps']:g} fps ({summary['duration_s']} s). {cams}. "
             f"Camera skew median {skew['median']} ms, p95 {skew['p95']} ms. Late ticks: {summary['late_ticks']}."
+            + "".join(f" {n}: age p95 {e['age_ms']['p95']} ms, missing {e['missing_steps']}, repeated {e['repeated_steps']}."
+                      for n, e in summary.get("extras", {}).items())
             + (f" WRITE ERROR: {summary['writer_error']}" if summary["writer_error"] else "")
             + f"\nSaved to {out_dir}")
 
@@ -65,6 +71,7 @@ def main() -> int:
     ap.add_argument("--no-videos", action="store_true", help="don't make mp4s when a recording stops")
     ap.add_argument("--no-pi", action="store_true")
     ap.add_argument("--no-external", action="store_true")
+    ap.add_argument("--no-motors", action="store_true", help="don't read or record the motors")
     ap.add_argument("--external-url", default=config.EXTERNAL_CAMERA_URL)
     ap.add_argument("--external-rotation", type=int, choices=(0, 90, 180, 270), default=config.EXTERNAL_CAMERA_ROTATION)
     args = ap.parse_args()
@@ -77,8 +84,15 @@ def main() -> int:
     if not streams:
         ap.error("nothing to stream")
 
+    motors = None if args.no_motors else MotorStateStream()
+
+    def motor_step(t: float) -> dict | None:
+        state = motors.latest()
+        return None if state is None else state.as_step(t)
+
     def new_recorder() -> SyncRecorder:
-        return SyncRecorder(streams, fps=args.fps, make_videos=not args.no_videos)
+        extras = {"motors": motor_step} if motors else None
+        return SyncRecorder(streams, fps=args.fps, extras=extras, make_videos=not args.no_videos)
 
     started = []
     recorder = None
@@ -91,6 +105,21 @@ def main() -> int:
             except Exception as exc:  # noqa: BLE001
                 print(f"  {name} camera failed: {exc}")
                 return 1
+        if motors:
+            print("Connecting to the motors (read-only; first HAT connection can take ~10 s) ...")
+            try:
+                motors.start()
+                motors.check_ready()
+            except Exception as exc:  # noqa: BLE001
+                print(f"  motors failed: {exc}")
+                if "HAT not found" in str(exc):
+                    print("  Another program has the Build HAT open (e.g. a gamepad driver or motor test). "
+                          "Stop it, or record cameras only with --no-motors.")
+                motors.stop()
+                return 1
+            state = motors.latest().as_step(clock.now())
+            print("  " + ", ".join(f"{r}: {state[r]['pos_deg']}°" if state[r] else f"{r}: not connected"
+                                   for r in ("left_wheel", "right_wheel", "gripper", "arm")))
         print("Streaming.")
 
         if args.record:
@@ -108,6 +137,12 @@ def main() -> int:
         while True:
             now = clock.now()
             img = np.hstack([panel(s, n, now) for n, s in streams.items()])
+            if motors and motors.latest():
+                st = motors.latest().as_step(now)
+                text = "  ".join(f"{r}: {st[r]['pos_deg']}" for r in ("left_wheel", "right_wheel", "gripper", "arm")
+                                 if st[r])
+                cv2.putText(img, text, (10, img.shape[0] - 14), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 4)
+                cv2.putText(img, text, (10, img.shape[0] - 14), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 0), 2)
             if recorder is not None:
                 cv2.circle(img, (img.shape[1] - 30, 30), 12, (0, 0, 255), -1)
                 cv2.putText(img, f"REC {recorder.steps} steps", (img.shape[1] - 230, 38),
@@ -137,6 +172,8 @@ def main() -> int:
             print(report(recorder.stop(), recorder.out_dir))
         for s in started:
             s.stop()
+        if motors:
+            motors.stop()
 
 
 if __name__ == "__main__":
