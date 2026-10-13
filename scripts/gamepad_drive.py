@@ -3,7 +3,7 @@ Drive the robot with the USB gamepad. THIS MOVES THE ROBOT: give it room, keep h
 
     D-pad up / down      both wheels forward / backward while held
     D-pad left / right   rotate counter-clockwise / clockwise on the spot while held
-    X / B                arm up / down: X raises it to --arm-up angle (-20, as shown in the live
+    X / B                arm up / down: X raises it to --arm-up angle (-13, as shown in the live
                          line), B lowers it back to where it started (two positions only)
     Y / A                gripper open / close by --grip-step degrees per press
     Ctrl-C               stop and quit (the motors go limp, so the arm drops)
@@ -57,7 +57,7 @@ def wheel_speeds(pad: dict, speed: int) -> tuple[int, int]:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--speed", type=int, default=30, help="wheel speed, 15..60")
-    ap.add_argument("--arm-up", type=int, default=-20,
+    ap.add_argument("--arm-up", type=int, default=-13,
                     help="arm angle X raises it to, as shown in the live line (- = up); "
                          "encoder degrees, which reset when the Build HAT powers up")
     ap.add_argument("--arm-speed", type=int, default=25,
