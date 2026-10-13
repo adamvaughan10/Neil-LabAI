@@ -4,6 +4,7 @@ Nothing moves: motors are only read (position, absolute position, speed), never 
 
     python scripts/stream_cameras.py                 # live window, both cameras side by side
     python scripts/stream_cameras.py --record 10     # no window: record 10 s synced, then exit
+    python scripts/stream_cameras.py --rec           # live window that starts recording right away
     python scripts/stream_cameras.py --fps 10        # record at 10 steps per second (default 15)
     python scripts/stream_cameras.py --no-external   # Pi camera only (or --no-pi)
     python scripts/stream_cameras.py --no-motors     # cameras only
@@ -67,6 +68,7 @@ def report(summary: dict, out_dir: Path) -> str:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--record", type=float, metavar="SECONDS", help="record for SECONDS without a window, then exit")
+    ap.add_argument("--rec", action="store_true", help="live window, already recording (r stops and saves)")
     ap.add_argument("--fps", type=float, default=config.RECORD_FPS, help="recording steps per second (default 15)")
     ap.add_argument("--no-videos", action="store_true", help="don't make mp4s when a recording stops")
     ap.add_argument("--no-pi", action="store_true")
@@ -134,6 +136,9 @@ def main() -> int:
 
         window = "Neil-LabAI cameras  (r: record, s: snapshot, q: quit)"
         cv2.namedWindow(window, cv2.WINDOW_NORMAL)
+        if args.rec:
+            recorder = new_recorder().start()
+            print(f"Recording at {args.fps:g} fps to {recorder.out_dir} ... (r stops and saves, q saves and quits)")
         while True:
             now = clock.now()
             img = np.hstack([panel(s, n, now) for n, s in streams.items()])
