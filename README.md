@@ -56,7 +56,7 @@ Then run any script. Add `--help` to see its options.
 |--------|------------------|--------------|
 | `python scripts\check_pi.py` | no | Checks SSH, OS, serial port, libraries, HAT voltage, what's on each port, and saves a camera still to `output/`. Run this first. |
 | `python scripts\record_video.py` | no | Records 5 s from the Pi camera (`--seconds` to change). |
-| `python scripts\stream_cameras.py` | no | Live window with the Pi camera and the external camera side by side. `r` records both, `s` saves a snapshot, `q` quits. `--record 10` records 10 s without a window. |
+| `python scripts\stream_cameras.py` | no | Live window with both cameras side by side. `r` starts/stops a **synced recording** (15 fps), `s` saves a snapshot, `q` quits. `--record 10` records 10 s without a window; `--fps` changes the rate. |
 | `python scripts\sequence_test.py` | **yes** | Forward 0.5 s, backward 0.5 s, then arm up 30° and back down. Prints how far each motor turned. |
 | `python scripts\arm_test.py` | **yes** | Lowers the arm 30° and raises it back while recording video. |
 | `python scripts\motor_test.py` | **yes** | Turns each port 30° and back, asking before each. |
@@ -73,6 +73,28 @@ the stream stops otherwise. Set `EXTERNAL_CAMERA_URL` if its address changes, an
 
 The Pi camera has no stream of its own: `stream_cameras.py` starts a small MJPEG server on the Pi
 (port 8765) for as long as it runs. Recordings from it are 640x480; `record_video.py` gives full 1296x972.
+
+### Synced recording (for VLA data)
+
+`stream_cameras.py` records through `neil_robot/recorder.py`. It ticks at a fixed rate (15 fps by
+default, `RECORD_FPS`) on a high-resolution clock (`neil_robot/clock.py`; Windows' `time.time()` only
+ticks every 4-16 ms). On each tick it takes the newest frame from each camera and writes it to disk
+immediately, so every step has one image per camera:
+
+```
+logs/session_<date>_<time>/
+  pi/000000.jpg ...  external/000000.jpg ...
+  steps.jsonl      one line per step: t, and per camera: file, frame number, capture ts, age_ms, new
+  info.json        rate, repeated-frame %, image age and camera skew statistics
+  pi.mp4  external.mp4  combined.mp4   made when the recording stops
+```
+
+15 fps is the highest rate where both cameras deliver a new frame on nearly every step (the external
+camera tops out around 26 fps and stalls now and then on Wi-Fi). `new: false` marks a step whose image
+repeats the previous one. Frame timestamps are arrival time minus each camera's delay
+(`PI_CAMERA_LATENCY_S`, `EXTERNAL_CAMERA_LATENCY_S`, both 0 until calibrated).
+
+Extra per-step data (motor encoders next) plugs in through `SyncRecorder(extras=...)`.
 
 ### Output
 

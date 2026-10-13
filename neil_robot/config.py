@@ -62,6 +62,13 @@ PI_STREAM_FPS = int(os.getenv("PI_STREAM_FPS", "30"))
 # External camera: a phone IP-camera app serving MJPEG (plain http, not https).
 EXTERNAL_CAMERA_URL = os.getenv("EXTERNAL_CAMERA_URL", "http://132.68.34.87:8080/stream.mjpg")
 EXTERNAL_CAMERA_ROTATION = int(os.getenv("EXTERNAL_CAMERA_ROTATION", "0"))  # clockwise: 0/90/180/270
+# Capture-to-arrival delay of each camera, subtracted from frame timestamps so frames
+# taken at the same moment get the same timestamp. 0 until calibrated.
+PI_CAMERA_LATENCY_S = float(os.getenv("PI_CAMERA_LATENCY_S", "0"))
+EXTERNAL_CAMERA_LATENCY_S = float(os.getenv("EXTERNAL_CAMERA_LATENCY_S", "0"))
+# Synced recording rate. 15 fps is the highest where both cameras deliver a new frame
+# on (nearly) every step: the external camera tops out around 26 fps, with jitter.
+RECORD_FPS = float(os.getenv("RECORD_FPS", "15"))
 STREAM_CONNECT_TIMEOUT = float(os.getenv("STREAM_CONNECT_TIMEOUT", "10"))
 
 _ROOT =Path(__file__).resolve().parent.parent

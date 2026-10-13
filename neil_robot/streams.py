@@ -2,12 +2,13 @@
 Live MJPEG streams from both cameras.
 
     with PiCameraStream() as pi, ExternalCameraStream() as ext:
-        frame = pi.latest()        # Frame(jpeg=bytes, ts=time.time(), index=n) or None
+        frame = pi.latest()        # Frame(jpeg=bytes, ts=clock.now(), index=n) or None
         pi.start_recording(); ...; frames = pi.stop_recording()
 
 Each stream reads in a background thread and keeps the newest frame. Frames
 are kept as the JPEG bytes the camera sent (no re-encoding), stamped with the
-laptop's clock on arrival, so the two cameras can be lined up in time.
+laptop's high-resolution clock on arrival (neil_robot.clock), minus the camera's
+known delay (latency_s), so the two cameras can be lined up in time.
 
 The Pi camera has no stream of its own: PiCameraStream uploads a small MJPEG
 HTTP server to the Pi, starts it over SSH, and reads it like the phone's.
@@ -24,7 +25,7 @@ from dataclasses import dataclass
 import cv2
 import numpy as np
 
-from neil_robot import config
+from neil_robot import clock, config
 from neil_robot.rpi_client import RPiClient
 from neil_robot.video import rotate
 
@@ -34,7 +35,7 @@ log = logging.getLogger(__name__)
 @dataclass(frozen=True)
 class Frame:
     jpeg: bytes
-    ts: float     # laptop time.time() when the frame arrived
+    ts: float     # clock.now() when the frame arrived, minus the stream's latency_s
     index: int    # count of frames received on this stream
 
     def decode(self, rotation: int = 0) -> np.ndarray:
@@ -47,6 +48,7 @@ class MjpegStream:
 
     name = "stream"
     rotation = 0  # applied by Frame.decode() callers, never to the stored JPEGs
+    latency_s = 0.0  # capture-to-arrival delay, subtracted from every timestamp
 
     def __init__(self, url: str):
         self.url = url
@@ -164,7 +166,7 @@ class MjpegStream:
 
     def _push(self, jpeg: bytes) -> None:
         self.count += 1
-        frame = Frame(jpeg, time.time(), self.count)
+        frame = Frame(jpeg, clock.now() - self.latency_s, self.count)
         self._latest = frame
         with self._lock:
             if self._recording is not None:
@@ -177,6 +179,7 @@ class ExternalCameraStream(MjpegStream):
     def __init__(self, url: str = config.EXTERNAL_CAMERA_URL, rotation: int = config.EXTERNAL_CAMERA_ROTATION):
         super().__init__(url)
         self.rotation = rotation
+        self.latency_s = config.EXTERNAL_CAMERA_LATENCY_S
 
 
 # Runs on the Pi. Hardware MJPEG encoder -> latest-frame buffer -> HTTP clients.
@@ -249,6 +252,7 @@ class PiCameraStream(MjpegStream):
     ):
         super().__init__(f"http://{config.RPI_HOST}:{port}/")
         self.args = (width, height, fps, port, 1 if config.CAMERA_ROTATION == 180 else 0)
+        self.latency_s = config.PI_CAMERA_LATENCY_S
         self._client = RPiClient()
         self._channel = None
 
