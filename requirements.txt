@@ -1,2 +1,4 @@
 # Host side (your laptop). The Pi uses its apt packages: python3-build-hat, python3-picamera2.
 paramiko>=3.4
+opencv-python>=4.9
+numpy

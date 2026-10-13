@@ -45,6 +45,7 @@ The Pi's address and user default to `132.68.34.107` / `rpi`. If the Pi gets a n
 
 ```powershell
 python scripts/check_pi.py      # read-only: SSH, OS, serial, libraries, HAT voltage, ports, camera still
+python scripts/record_video.py  # read-only: records 5 s from the Pi camera into logs/
 python scripts/motor_test.py    # MOVES motors: each port +30° and back, asks before each
 ```
 

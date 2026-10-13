@@ -97,6 +97,17 @@ class RPiClient:
             err = stderr.read().decode(errors="replace")
             return stdout.channel.recv_exit_status(), out, err
 
+    def fetch_file(self, remote_path: str, local_path, delete_remote: bool = False) -> None:
+        """Copy a file from the Pi to the laptop over SFTP."""
+        with self._lock:
+            sftp = self.connect().open_sftp()
+            try:
+                sftp.get(remote_path, str(local_path))
+                if delete_remote:
+                    sftp.remove(remote_path)
+            finally:
+                sftp.close()
+
     def run_python(self, script: str, params: dict | None = None, timeout: float = 60):
         """Run *script* on the Pi and return the object it passed to emit().
 

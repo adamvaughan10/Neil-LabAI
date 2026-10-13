@@ -6,6 +6,7 @@ Only move_motor() moves anything. Everything else is read-only.
 from __future__ import annotations
 
 import base64
+import time
 
 from neil_robot import config
 from neil_robot.rpi_client import RPiClient, get_client
@@ -89,6 +90,32 @@ finally:
 emit({"camera": cams[0].get("Model"), "jpeg_b64": base64.b64encode(buf.getvalue()).decode()})
 """
 
+# Records with the Pi's hardware MJPEG encoder: the file is the frames' JPEGs back to back.
+_RECORD_MJPEG = r"""
+import os, time
+from picamera2 import Picamera2
+from picamera2.encoders import MJPEGEncoder
+from picamera2.outputs import FileOutput
+cams = Picamera2.global_camera_info()
+if not cams:
+    raise RuntimeError("no camera detected")
+cam = Picamera2()
+try:
+    cam.configure(cam.create_video_configuration(
+        main={"size": (PARAMS["width"], PARAMS["height"])},
+        controls={"FrameRate": PARAMS["fps"]},
+    ))
+    cam.start_recording(MJPEGEncoder(), FileOutput(PARAMS["path"]))
+    t0 = time.monotonic()
+    time.sleep(PARAMS["seconds"])
+    cam.stop_recording()
+    elapsed = time.monotonic() - t0
+finally:
+    cam.close()
+emit({"camera": cams[0].get("Model"), "path": PARAMS["path"],
+      "bytes": os.path.getsize(PARAMS["path"]), "elapsed_s": elapsed})
+"""
+
 # Move by +degrees and back by -degrees, reporting positions after each leg.
 _MOVE_MOTOR = r"""
 import time
@@ -130,6 +157,23 @@ def capture_still(
     params = {"width": width, "height": height, "warmup": config.CAMERA_WARMUP_S}
     r = (client or get_client()).run_python(_CAPTURE_STILL, params, timeout=60)
     return r["camera"], base64.b64decode(r["jpeg_b64"])
+
+
+def record_video(
+    local_path,
+    seconds: float = 5.0,
+    width: int = config.VIDEO_WIDTH,
+    height: int = config.VIDEO_HEIGHT,
+    fps: int = config.VIDEO_FPS,
+    client: RPiClient | None = None,
+) -> dict:
+    """Record *seconds* of video on the Pi camera and copy the MJPEG file to *local_path*."""
+    client = client or get_client()
+    remote = f"/tmp/neil_clip_{int(time.time() * 1000)}.mjpeg"
+    params = {"path": remote, "seconds": seconds, "width": width, "height": height, "fps": fps}
+    info = client.run_python(_RECORD_MJPEG, params, timeout=seconds + 60)
+    client.fetch_file(remote, local_path, delete_remote=True)
+    return info
 
 
 def move_motor(

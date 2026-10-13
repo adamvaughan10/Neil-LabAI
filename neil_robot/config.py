@@ -27,4 +27,11 @@ CAMERA_WIDTH = int(os.getenv("CAMERA_WIDTH", "1296"))
 CAMERA_HEIGHT = int(os.getenv("CAMERA_HEIGHT", "972"))
 CAMERA_WARMUP_S = float(os.getenv("CAMERA_WARMUP_S", "1.0"))
 
-OUTPUT_DIR = Path(os.getenv("OUTPUT_DIR", Path(__file__).resolve().parent.parent / "output"))
+# 1296x972 is the sensor's full-view binned mode (up to 46 fps).
+VIDEO_WIDTH = int(os.getenv("VIDEO_WIDTH", "1296"))
+VIDEO_HEIGHT = int(os.getenv("VIDEO_HEIGHT", "972"))
+VIDEO_FPS = int(os.getenv("VIDEO_FPS", "30"))
+
+_ROOT = Path(__file__).resolve().parent.parent
+LOGS_DIR = Path(os.getenv("LOGS_DIR", _ROOT / "logs"))
+OUTPUT_DIR =Path(os.getenv("OUTPUT_DIR", Path(__file__).resolve().parent.parent / "output"))
