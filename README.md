@@ -56,6 +56,7 @@ Then run any script. Add `--help` to see its options.
 |--------|------------------|--------------|
 | `python scripts\check_pi.py` | no | Checks SSH, OS, serial port, libraries, HAT voltage, what's on each port, and saves a camera still to `output/`. Run this first. |
 | `python scripts\record_video.py` | no | Records 5 s from the Pi camera (`--seconds` to change). |
+| `python scripts\stream_cameras.py` | no | Live window with the Pi camera and the external camera side by side. `r` records both, `s` saves a snapshot, `q` quits. `--record 10` records 10 s without a window. |
 | `python scripts\sequence_test.py` | **yes** | Forward 0.5 s, backward 0.5 s, then arm up 30° and back down. Prints how far each motor turned. |
 | `python scripts\arm_test.py` | **yes** | Lowers the arm 30° and raises it back while recording video. |
 | `python scripts\motor_test.py` | **yes** | Turns each port 30° and back, asking before each. |
