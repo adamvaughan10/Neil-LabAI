@@ -62,6 +62,7 @@ Then run any script. Add `--help` to see its options.
 | `python scripts\motor_test.py` | **yes** | Turns each port 30° and back, asking before each. |
 | `python gamepad.py` | no | Prints the USB gamepad's D-pad and buttons live. |
 | `python scripts\gamepad_drive.py` | **yes** | Drives the robot from the gamepad: D-pad drives and rotates while held, X/B move the arm and Y/A the gripper a fixed angle per press. The Pi side is `pi/gamepad_server.py`. |
+| `python scripts\gamepad_drive.py --record` | **yes** | Same, and records the whole run as a synced recording (below) with the controller's target as `"action"` on every step. Ctrl-C stops and saves. |
 
 Before running anything that moves: lift the robot so the wheels spin freely (or give it about 30 cm of room)
 and keep hands clear of the arm.
@@ -102,6 +103,13 @@ second without driving them, and every step gets a `"motors"` entry:
 powered up), `abs_pos_deg` (-180..180) and `speed`, plus the reading's `age_ms`. `--no-motors`
 records cameras only. Only one program can use the Build HAT at a time: recording with motors
 fails with "HAT not found" while anything else (a gamepad driver, a motor test) has it open.
+
+**Recording while driving: `gamepad_drive.py --record`.** Same recording, but the motor readings come
+from the gamepad driver itself (`pi/gamepad_server.py`, 50 a second), and every step also gets
+`"action"`: the target the controller has set, in the same raw motor terms as `"motors"`
+(`left_wheel`/`right_wheel` `speed`, `arm`/`gripper` `pos_deg`), plus `"robot"`: the same target with
+the mounting sign flips applied (wheels + = forward, arm + = down, gripper + = open), as printed live.
+Wheel targets are speeds; arm and gripper targets are encoder angles, moved by one step per press.
 
 ### Output
 

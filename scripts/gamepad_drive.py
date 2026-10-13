@@ -9,10 +9,16 @@ Drive the robot with the USB gamepad. THIS MOVES THE ROBOT: give it room, keep h
 
     python scripts/gamepad_drive.py
     python scripts/gamepad_drive.py --speed 40 --grip-step 20
+    python scripts/gamepad_drive.py --record        also record VLA data until Ctrl-C
 
 The Pi side is pi/gamepad_server.py, a plain buildhat script that this sends over
 SSH and runs. Commands go only when a button changes. While running it shows a live
 line with the action (the target the controller sets) and the motors' measured values.
+
+--record records the whole run with neil_robot/recorder.py, like stream_cameras.py
+(see README, "Synced recording"): both cameras plus, on every step, "motors" (what
+the motors report) and "action" (the controller's target), into logs/session_<date>_<time>/.
+Motor readings come from pi/gamepad_server.py, since only one program can open the HAT.
 """
 import argparse
 import json
@@ -25,8 +31,11 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from gamepad import Gamepad  # noqa: E402
-from neil_robot import config  # noqa: E402
+from neil_robot import clock, config  # noqa: E402
+from neil_robot.motor_stream import ROLES  # noqa: E402
+from neil_robot.recorder import SyncRecorder  # noqa: E402
 from neil_robot.rpi_client import RPiClient  # noqa: E402
+from neil_robot.streams import ExternalCameraStream, PiCameraStream  # noqa: E402
 
 # Indexes in gamepad.axes / gamepad.buttons for this pad (see gamepad.py).
 AXIS_DPAD_X, AXIS_DPAD_Y = 2, 3   # left -1 / right +1, up -1 / down +1
@@ -51,6 +60,13 @@ def main() -> int:
     ap.add_argument("--reverse-delay", type=float, default=1.0,
                     help="seconds the other wheel waits while one wheel reverses")
     ap.add_argument("--grip-step", type=int, default=10, help="gripper degrees per press")
+    ap.add_argument("--record", action="store_true",
+                    help="record cameras, motors and the controller's target until Ctrl-C")
+    ap.add_argument("--fps", type=float, default=config.RECORD_FPS, help="recording steps per second (default 15)")
+    ap.add_argument("--no-external", action="store_true", help="record the Pi camera only")
+    ap.add_argument("--external-url", default=config.EXTERNAL_CAMERA_URL)
+    ap.add_argument("--external-rotation", type=int, choices=(0, 90, 180, 270),
+                    default=config.EXTERNAL_CAMERA_ROTATION)
     args = ap.parse_args()
     if not config.MOTOR_MIN_SPEED <= args.speed <= config.MOTOR_MAX_SPEED:
         ap.error(f"speed must be {config.MOTOR_MIN_SPEED}..{config.MOTOR_MAX_SPEED}")
@@ -58,11 +74,21 @@ def main() -> int:
     settings = {"left": config.PORT_LEFT_WHEEL, "right": config.PORT_RIGHT_WHEEL,
                 "arm": config.PORT_ARM, "grip": config.PORT_GRIPPER,
                 "arm_speed": config.ARM_TEST_SPEED, "grip_speed": 25,
-                "reverse_delay": args.reverse_delay, "state_hz": 10}
+                "reverse_delay": args.reverse_delay,
+                "state_hz": config.MOTOR_STREAM_HZ if args.record else 10}
     code = (ROOT / "pi" / "gamepad_server.py").read_text()
     # Motor degrees for one press, after the mounting sign flips.
     arm_down = config.ARM_MOTOR_SIGN_DOWN * args.arm_step
     grip_open = config.GRIPPER_MOTOR_SIGN_OPEN * args.grip_step
+
+    cameras = {}
+    if args.record:
+        cameras["pi"] = PiCameraStream()
+        if not args.no_external:
+            cameras["external"] = ExternalCameraStream(args.external_url, args.external_rotation)
+        for name, cam in cameras.items():
+            print(f"Connecting to {name} camera ({cam.url}) ...")
+            cam.start()
 
     pad = Gamepad()
     print(f"Connecting to {config.RPI_USER}@{config.RPI_HOST} ...")
@@ -89,6 +115,9 @@ def main() -> int:
                   "arm.pos": config.ARM_MOTOR_SIGN_DOWN * start["arm"],
                   "grip.pos": config.GRIPPER_MOTOR_SIGN_OPEN * start["grip"]}
         measured = {}
+        # The same target in raw motor terms, shaped like the recorder's "motors" entry.
+        target = {"drive": [0, 0], "arm": start["arm"], "grip": start["grip"], "ts": clock.now()}
+        latest = {}  # newest Pi state line: {"state", "ts", "seq"}
 
         short = {"left_wheel.vel": "L", "right_wheel.vel": "R", "arm.pos": "arm", "grip.pos": "grip"}
 
@@ -109,6 +138,7 @@ def main() -> int:
                 state = json.loads(line[len("state "):])
                 if "error" in state:
                     continue
+                latest.update(state=state, ts=clock.now(), seq=latest.get("seq", -1) + 1)
                 for name, (port, i, sign) in signs.items():
                     measured[name] = sign * state[port][i]
                 show()
@@ -120,6 +150,27 @@ def main() -> int:
             stdin.flush()
             show()
 
+        def motors_step(t: float) -> dict | None:  # recorder extra: what the motors report
+            if not latest:
+                return None
+            out = {"seq": latest["seq"], "ts": round(latest["ts"], 6), "age_ms": round((t - latest["ts"]) * 1000, 2)}
+            for port, role in ROLES.items():
+                speed, pos = latest["state"][port]
+                out[role] = {"port": port, "pos_deg": pos, "speed": speed}
+            return out
+
+        def action_step(t: float) -> dict:  # recorder extra: the controller's target, same terms
+            return {"ts": round(target["ts"], 6), "age_ms": round((t - target["ts"]) * 1000, 2),
+                    "left_wheel": {"speed": target["drive"][0]}, "right_wheel": {"speed": target["drive"][1]},
+                    "arm": {"pos_deg": target["arm"]}, "gripper": {"pos_deg": target["grip"]},
+                    "robot": dict(action)}  # the same, with sign flips applied (as printed)
+
+        recorder = None
+        if args.record:
+            recorder = SyncRecorder(cameras, fps=args.fps, extras={"motors": motors_step, "action": action_step})
+            recorder.start()
+            print(f"Recording at {args.fps:g} fps to {recorder.out_dir} until Ctrl-C ...")
+
         print("Ready. D-pad drives, X/B arm up/down, Y/A gripper open/close. Ctrl-C to quit.")
         print("L/R = wheel speed (+ forward), arm = angle (+ down), grip = angle (+ open)")
         last_drive, last_buttons = (0, 0), [0] * 12
@@ -130,6 +181,7 @@ def main() -> int:
                 drive = (config.LEFT_WHEEL_SIGN_FORWARD * left, config.RIGHT_WHEEL_SIGN_FORWARD * right)
                 if drive != last_drive:
                     action["left_wheel.vel"], action["right_wheel.vel"] = left, right
+                    target.update(drive=list(drive), ts=clock.now())
                     send({"drive": list(drive)})
                     last_drive = drive
                 pressed = [b and not was for b, was in zip(state["buttons"], last_buttons)]
@@ -139,12 +191,21 @@ def main() -> int:
                     if pressed[button]:
                         sign = config.ARM_MOTOR_SIGN_DOWN if part == "arm" else config.GRIPPER_MOTOR_SIGN_OPEN
                         action[f"{part}.pos"] += sign * motor_deg
+                        target[part] += motor_deg
+                        target["ts"] = clock.now()
                         send({part: motor_deg})
         except KeyboardInterrupt:
             print("\nStopping.")
         finally:
             pad.close()
             stdin.channel.shutdown_write()
+            if recorder is not None:
+                print("Saving the recording ...")
+                summary = recorder.stop()
+                print(f"Recorded {summary['steps']} steps at {summary['fps']:g} fps to {recorder.out_dir}"
+                      + (f" WRITE ERROR: {summary['writer_error']}" if summary["writer_error"] else ""))
+            for cam in cameras.values():
+                cam.stop()
     return 0
 
 
