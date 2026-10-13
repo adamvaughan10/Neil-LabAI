@@ -11,12 +11,16 @@ When one wheel now turns opposite to the direction it last turned (even if it ha
 stopped since) and the other wheel doesn't, the other wheel waits
 settings["reverse_delay"] seconds while the reversing wheel takes up its gear slack.
 E.g. forward, then left: the right wheel waits. Forward then back: no wait.
+If settings["state_hz"] is set, it also prints each motor's measured speed and
+angle that many times a second, one line each: state {"A": [speed, angle], ...}
+(same format as the motor-dashboard and episode-recorder branches).
 When stdin closes (Ctrl-C on the laptop, or SSH drops) every motor stops.
 """
 import json
 import os
 import select
 import sys
+import threading
 import time
 
 from buildhat import Motor
@@ -52,8 +56,22 @@ def drive(speeds):
             set_speed(wheel, speed)
 
 
+def report_state(period):
+    motors = {settings["left"]: left, settings["right"]: right,
+              settings["arm"]: arm, settings["grip"]: grip}
+    while True:
+        time.sleep(period)
+        try:
+            state = {port: m.get()[:2] for port, m in motors.items()}  # [speed, position]
+        except Exception as e:  # never let the readout stop the robot
+            state = {"error": repr(e)}
+        print("state " + json.dumps(state), flush=True)
+
+
 # Starting encoder angles, so the laptop can track the absolute target angle.
 print("ready " + json.dumps({"arm": arm.get_position(), "grip": grip.get_position()}), flush=True)
+if settings.get("state_hz"):
+    threading.Thread(target=report_state, args=(1 / settings["state_hz"],), daemon=True).start()
 
 stdin = os.fdopen(0, "rb", buffering=0)  # unbuffered, so select() sees every waiting line
 while True:

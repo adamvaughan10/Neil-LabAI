@@ -11,12 +11,14 @@ Drive the robot with the USB gamepad. THIS MOVES THE ROBOT: give it room, keep h
     python scripts/gamepad_drive.py --speed 40 --grip-step 20
 
 The Pi side is pi/gamepad_server.py, a plain buildhat script that this sends over
-SSH and runs. Commands go only when a button changes.
+SSH and runs. Commands go only when a button changes. While running it shows a live
+line with the action (the target the controller sets) and the motors' measured values.
 """
 import argparse
 import json
 import shlex
 import sys
+import threading
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -56,7 +58,7 @@ def main() -> int:
     settings = {"left": config.PORT_LEFT_WHEEL, "right": config.PORT_RIGHT_WHEEL,
                 "arm": config.PORT_ARM, "grip": config.PORT_GRIPPER,
                 "arm_speed": config.ARM_TEST_SPEED, "grip_speed": 25,
-                "reverse_delay": args.reverse_delay}
+                "reverse_delay": args.reverse_delay, "state_hz": 10}
     code = (ROOT / "pi" / "gamepad_server.py").read_text()
     # Motor degrees for one press, after the mounting sign flips.
     arm_down = config.ARM_MOTOR_SIGN_DOWN * args.arm_step
@@ -76,20 +78,45 @@ def main() -> int:
             print("The Pi script stopped before it was ready.")
             return 1
 
-        # The target the controller sets, in robot terms and the dataset's names: wheel
-        # speeds (+ = forward) and arm / gripper encoder angles (+ = down / open). The
-        # motors then move to meet it. Printed on every change.
-        target = {"left_wheel.vel": 0, "right_wheel.vel": 0,
+        # Robot terms and the dataset's names: wheel speeds + = forward, arm / gripper
+        # encoder angles + = down / open. `action` is the target the controller sets;
+        # `measured` is what the motors report back as they move to meet it.
+        signs = {"left_wheel.vel": (config.PORT_LEFT_WHEEL, 0, config.LEFT_WHEEL_SIGN_FORWARD),
+                 "right_wheel.vel": (config.PORT_RIGHT_WHEEL, 0, config.RIGHT_WHEEL_SIGN_FORWARD),
+                 "arm.pos": (config.PORT_ARM, 1, config.ARM_MOTOR_SIGN_DOWN),
+                 "grip.pos": (config.PORT_GRIPPER, 1, config.GRIPPER_MOTOR_SIGN_OPEN)}
+        action = {"left_wheel.vel": 0, "right_wheel.vel": 0,
                   "arm.pos": config.ARM_MOTOR_SIGN_DOWN * start["arm"],
                   "grip.pos": config.GRIPPER_MOTOR_SIGN_OPEN * start["grip"]}
+        measured = {}
+
+        short = {"left_wheel.vel": "L", "right_wheel.vel": "R", "arm.pos": "arm", "grip.pos": "grip"}
+
+        def show() -> None:  # one line, rewritten in place, short enough not to wrap
+            fmt = lambda d: " ".join(f"{short[k]} {d[k]:+4.0f}" if k in d else f"{short[k]}    ?" for k in action)
+            print(f"\raction {fmt(action)}  |  measured {fmt(measured)} ", end="", flush=True)
+
+        def read_pi() -> None:  # the Pi's state lines, 10 a second
+            for line in stdout:
+                if not line.startswith("state "):
+                    print("\nPi:", line, end="")
+                    continue
+                state = json.loads(line[len("state "):])
+                if "error" in state:
+                    continue
+                for name, (port, i, sign) in signs.items():
+                    measured[name] = sign * state[port][i]
+                show()
+
+        threading.Thread(target=read_pi, daemon=True).start()
 
         def send(cmd: dict) -> None:
             stdin.write(json.dumps(cmd) + "\n")
             stdin.flush()
-            print("target  " + "  ".join(f"{k} {v:+5.0f}" for k, v in target.items()))
+            show()
 
         print("Ready. D-pad drives, X/B arm up/down, Y/A gripper open/close. Ctrl-C to quit.")
-        print("start   " + "  ".join(f"{k} {v:+5.0f}" for k, v in target.items()))
+        print("L/R = wheel speed (+ forward), arm = angle (+ down), grip = angle (+ open)")
         last_drive, last_buttons = (0, 0), [0] * 12
         try:
             while True:
@@ -97,7 +124,7 @@ def main() -> int:
                 left, right = wheel_speeds(state, args.speed)
                 drive = (config.LEFT_WHEEL_SIGN_FORWARD * left, config.RIGHT_WHEEL_SIGN_FORWARD * right)
                 if drive != last_drive:
-                    target["left_wheel.vel"], target["right_wheel.vel"] = left, right
+                    action["left_wheel.vel"], action["right_wheel.vel"] = left, right
                     send({"drive": list(drive)})
                     last_drive = drive
                 pressed = [b and not was for b, was in zip(state["buttons"], last_buttons)]
@@ -106,7 +133,7 @@ def main() -> int:
                                                  (BTN_Y, "grip", grip_open), (BTN_A, "grip", -grip_open)):
                     if pressed[button]:
                         sign = config.ARM_MOTOR_SIGN_DOWN if part == "arm" else config.GRIPPER_MOTOR_SIGN_OPEN
-                        target[f"{part}.pos"] += sign * motor_deg
+                        action[f"{part}.pos"] += sign * motor_deg
                         send({part: motor_deg})
         except KeyboardInterrupt:
             print("\nStopping.")
