@@ -46,11 +46,13 @@ GRIPPER_MOTOR_SIGN_OPEN = -1
 # The D-pad is on/off, so each direction is one fixed speed (-100..100).
 PAD_DRIVE_SPEED = int(os.getenv("PAD_DRIVE_SPEED", "30"))
 PAD_TURN_SPEED = int(os.getenv("PAD_TURN_SPEED", "30"))
-PAD_ARM_SPEED = int(os.getenv("PAD_ARM_SPEED", "10"))
-PAD_GRIPPER_SPEED = int(os.getenv("PAD_GRIPPER_SPEED", "20"))
-# After closing, the gripper keeps squeezing at this fixed power (%) so it doesn't
-# drop what it holds. lego-robot-mcp carries objects at 40 (GRIPPER_HOLD_PWM 0.4).
-PAD_GRIPPER_HOLD = int(os.getenv("PAD_GRIPPER_HOLD", "30"))
+# Arm and gripper are position controlled: holding a button moves their target
+# angle at this many motor degrees per second.
+PAD_ARM_DEG_S = float(os.getenv("PAD_ARM_DEG_S", "40"))
+PAD_GRIPPER_DEG_S = float(os.getenv("PAD_GRIPPER_DEG_S", "90"))
+# How far the target may run ahead of the real angle. Against a stop or an object
+# the motor pushes in proportion to this gap, so it sets how hard the gripper squeezes.
+PAD_MAX_LEAD_DEG = float(os.getenv("PAD_MAX_LEAD_DEG", "15"))
 PAD_SEND_HZ = 20
 # The Pi stops every motor if it hears nothing for this long (laptop froze, SSH dropped).
 PAD_WATCHDOG_S = float(os.getenv("PAD_WATCHDOG_S", "0.5"))

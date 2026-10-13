@@ -8,13 +8,14 @@ Drive the robot with the USB gamepad. THIS MOVES THE ROBOT: give it room, keep h
     Ctrl-C               stop and quit
 
     python scripts/gamepad_drive.py
-    python scripts/gamepad_drive.py --drive-speed 40 --arm-speed 8
+    python scripts/gamepad_drive.py --drive-speed 40 --arm-deg-s 20
 
-When released, the wheels go limp, the arm holds where it is, and the gripper
-goes limp after opening or keeps squeezing gently after closing (--gripper-hold,
-0 turns that off). If the laptop stops sending for config.PAD_WATCHDOG_S, the Pi
-idles every motor by itself. On quit the motors go limp, so the arm drops if it
-is raised.
+The wheels are speed controlled and go limp when released. The arm and gripper
+are position controlled: holding a button moves their target angle, and on
+release they hold that angle, so the gripper keeps its grip on an object. If the
+laptop stops sending for config.PAD_WATCHDOG_S, the Pi stops the wheels and
+freezes the arm and gripper by itself. On quit the motors go limp, so the arm
+drops if it is raised.
 """
 import argparse
 import sys
@@ -37,8 +38,8 @@ def clamp(v: float, limit: int) -> int:
     return int(max(-limit, min(limit, v)))
 
 
-def pad_to_command(pad: dict, drive: int, turn: int, arm: int, grip: int) -> dict:
-    """Robot-terms speeds: wheels + = forward, arm + = down, grip + = open."""
+def pad_to_command(pad: dict, drive: int, turn: int, arm: float, grip: float) -> dict:
+    """Robot terms: wheel speeds + = forward; arm and grip in deg/s, + = down / open."""
     forward = -pad["axes"][AXIS_DPAD_Y]
     right = pad["axes"][AXIS_DPAD_X]  # + = rotate clockwise seen from above
     b = pad["buttons"]
@@ -55,16 +56,16 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--drive-speed", type=int, default=config.PAD_DRIVE_SPEED)
     ap.add_argument("--turn-speed", type=int, default=config.PAD_TURN_SPEED)
-    ap.add_argument("--arm-speed", type=int, default=config.PAD_ARM_SPEED)
-    ap.add_argument("--gripper-speed", type=int, default=config.PAD_GRIPPER_SPEED)
-    ap.add_argument("--gripper-hold", type=int, default=config.PAD_GRIPPER_HOLD,
-                    help="squeeze power (%%) after closing; 0 = go limp")
+    ap.add_argument("--arm-deg-s", type=float, default=config.PAD_ARM_DEG_S,
+                    help="how fast the arm moves, motor degrees per second")
+    ap.add_argument("--gripper-deg-s", type=float, default=config.PAD_GRIPPER_DEG_S,
+                    help="how fast the gripper moves, motor degrees per second")
     args = ap.parse_args()
-    if not 0 <= args.gripper_hold <= 60:
-        ap.error("gripper hold must be 0..60")
-    if not config.ARM_SPEED_MIN <= args.arm_speed <= config.ARM_SPEED_MAX:
-        ap.error(f"arm speed must be {config.ARM_SPEED_MIN}..{config.ARM_SPEED_MAX}")
-    for name in ("drive_speed", "turn_speed", "gripper_speed"):
+    if not 5 <= args.arm_deg_s <= 120:
+        ap.error("arm deg/s must be 5..120")
+    if not 10 <= args.gripper_deg_s <= 360:
+        ap.error("gripper deg/s must be 10..360")
+    for name in ("drive_speed", "turn_speed"):
         if not config.MOTOR_MIN_SPEED <= getattr(args, name) <= config.MOTOR_MAX_SPEED:
             ap.error(f"{name.replace('_', ' ')} must be {config.MOTOR_MIN_SPEED}..{config.MOTOR_MAX_SPEED}")
 
@@ -73,17 +74,13 @@ def main() -> int:
     period = 1 / config.PAD_SEND_HZ
     with RPiClient() as pi, LiveMotors(client=pi) as live:
         print("Ready. D-pad drives, X/B arm up/down, Y/A gripper open/close. Ctrl-C to quit.")
-        gripper_closed = False
         try:
             while True:
                 t0 = time.monotonic()
                 cmd = pad_to_command(pad.poll(), args.drive_speed, args.turn_speed,
-                                     args.arm_speed, args.gripper_speed)
-                if cmd["grip"]:
-                    gripper_closed = cmd["grip"] < 0
-                hold = -args.gripper_hold if gripper_closed else 0
-                live.send(**cmd, grip_hold=hold)
-                print("\r" + "  ".join(f"{k} {v:+4d}" for k, v in cmd.items()) + "   ", end="", flush=True)
+                                     args.arm_deg_s, args.gripper_deg_s)
+                live.send(**cmd)
+                print("\r" + "  ".join(f"{k} {v:+4.0f}" for k, v in cmd.items()) + "   ", end="", flush=True)
                 time.sleep(max(0.0, period - (time.monotonic() - t0)))
         except KeyboardInterrupt:
             print("\nStopping.")

@@ -209,47 +209,59 @@ emit({"steps": steps})
 """
 
 
-# Live control: runs each motor at the speed the laptop last sent, one JSON line
-# per command, e.g. {"A": 30, "B": -30, "C": 0, "D": 0, "pwm": {"C": -0.3}}.
-# A port at speed 0 idles as PARAMS["idle"] says: "coast" (limp) or "hold"
-# (position control at where it stopped, so the arm doesn't drop). Holding at
-# speed 0 in speed mode made the motors shake, so it isn't used. A "pwm" entry
-# instead drives an idle port with that fixed power (-1..1), no feedback loop:
-# used to keep the gripper squeezing an object.
-# If no line arrives for PARAMS["watchdog_s"], every port idles.
+# Live control. The laptop sends one JSON line per command, e.g.
+# {"A": 30, "B": -30, "C": 0, "D": -40}, and the Pi keeps applying the newest one.
+# Wheel ports (PARAMS["speed_ports"]) run in speed mode at that speed (-100..100)
+# and coast at 0. Position ports (PARAMS["position_ports"]: arm, gripper) take a
+# rate in motor degrees per second: the Pi moves a target angle at that rate and
+# the motor's position control follows it and holds it when the rate is 0, so
+# the arm doesn't sag. The target never runs more than PARAMS["max_lead_deg"]
+# ahead of the measured angle, so pushing into a stop or an object squeezes
+# firmly instead of winding up. (Holding speed 0 in speed mode made the motors
+# shake, which is why nothing idles that way.)
+# If no line arrives for PARAMS["watchdog_s"], wheels stop and targets freeze.
 # When stdin closes the motors coast and the script exits.
 _LIVE_MOTORS = r"""
 import os, select, sys, time
 from buildhat import Motor
-motors = {p: Motor(p) for p in PARAMS["ports"]}
-current = {p: None for p in motors}
-def hold(m):
-    # buildhat's own position-hold command (from Motor._run_positional_ramp), aimed at
-    # the current position. Written directly: its ramp form expects a Future per move.
-    rot = m.get_position() / 360
-    m._write(f"port {m.port}; select 0 ; selrate {m._interval}; "
-             f"pid {m.port} 0 1 s4 0.0027777778 0 5 0 .1 3 0.01; set {rot}\r")
+P = PARAMS
+wheels = {p: Motor(p) for p in P["speed_ports"]}
+posm = {p: Motor(p) for p in P["position_ports"]}
+speed = {p: None for p in wheels}
+rate = {p: 0.0 for p in posm}
+target = {}
+for p, m in posm.items():
+    # buildhat's own position-control command (from Motor._run_positional_ramp),
+    # written directly because its ramp form expects a Future per move. Units: rotations.
+    target[p] = m.get_position()
+    m._write(f"port {p}; select 0 ; selrate {m._interval}; "
+             f"pid {p} 0 1 s4 0.0027777778 0 5 0 .1 3 0.01; set {target[p] / 360}\r")
 def apply(cmd):
-    for p, m in motors.items():
-        speed = max(-100, min(100, int(cmd.get(p, 0))))
-        pwm = cmd.get("pwm", {}).get(p)
-        want = ("speed", speed) if speed else ("pwm", pwm) if pwm else ("idle",)
-        if want == current[p]:
+    for p, m in wheels.items():
+        s = max(-100, min(100, int(cmd.get(p, 0))))
+        if s != speed[p]:
+            m.stop()  # coast, and reset buildhat's run mode so start() reconfigures
+            if s:
+                m.start(s)
+            speed[p] = s
+    for p in posm:
+        rate[p] = float(cmd.get(p, 0))
+def step_targets(dt):
+    for p, m in posm.items():
+        if not rate[p]:
             continue
-        m.stop()  # coast, and reset buildhat's run mode so start() reconfigures
-        if want[0] == "speed":
-            m.start(speed)
-        elif want[0] == "pwm":
-            m.pwm(max(-1.0, min(1.0, pwm)))
-        elif PARAMS["idle"][p] == "hold":
-            hold(m)
-        current[p] = want
+        pos = m.get_position()
+        lead = P["max_lead_deg"]
+        target[p] = max(pos - lead, min(pos + lead, target[p] + rate[p] * dt))
+        m._write(f"port {p} ; set {target[p] / 360}\r")
 apply({})
 emit({"ready": True})
-fd, buf, last = sys.stdin.fileno(), b"", time.monotonic()
+fd, buf = sys.stdin.fileno(), b""
+last = prev = time.monotonic()
 try:
     while True:
         ready, _, _ = select.select([fd], [], [], 0.05)
+        now = time.monotonic()
         if ready:
             chunk = os.read(fd, 4096)
             if not chunk:
@@ -258,11 +270,13 @@ try:
             *lines, buf = buf.split(b"\n")
             if lines:
                 apply(_json.loads(lines[-1]))  # only the newest command matters
-                last = time.monotonic()
-        elif time.monotonic() - last > PARAMS["watchdog_s"]:
+                last = now
+        elif now - last > P["watchdog_s"]:
             apply({})
+        step_targets(now - prev)
+        prev = now
 finally:
-    for m in motors.values():
+    for m in list(wheels.values()) + list(posm.values()):
         m.stop()
 """
 
@@ -378,19 +392,20 @@ def move_motor(
 class LiveMotors:
     """Drive all four motors continuously from the laptop. This MOVES the robot.
 
-    Speeds are in robot terms (-100..100): wheels + = forward, arm + = down,
-    gripper + = open. The mounting sign flips are applied here. At speed 0 the
-    wheels and gripper go limp and the arm holds where it is; grip_hold (-100..100,
-    fixed power, - = close) keeps the gripper squeezing instead of going limp.
+    Robot terms, mounting sign flips applied here: wheels -100..100, + = forward,
+    limp at 0. Arm and gripper are degrees per second (arm + = down, gripper + = open):
+    the motor follows a moving target angle and holds it at 0, and the target stays
+    within config.PAD_MAX_LEAD_DEG of the real angle, so closing on an object squeezes
+    it without straining.
 
         with LiveMotors() as live:
-            live.send(left=30, right=30)  # keep calling it, or the Pi's watchdog stops the motors
+            live.send(left=30, right=30)  # keep calling it, or the Pi's watchdog stops the wheels
     """
 
     def __init__(self, client: RPiClient | None = None, watchdog_s: float = config.PAD_WATCHDOG_S):
-        idle = {config.PORT_LEFT_WHEEL: "coast", config.PORT_RIGHT_WHEEL: "coast",
-                config.PORT_ARM: "hold", config.PORT_GRIPPER: "coast"}
-        params = {"ports": list(idle), "idle": idle, "watchdog_s": watchdog_s}
+        params = {"speed_ports": [config.PORT_LEFT_WHEEL, config.PORT_RIGHT_WHEEL],
+                  "position_ports": [config.PORT_ARM, config.PORT_GRIPPER],
+                  "max_lead_deg": config.PAD_MAX_LEAD_DEG, "watchdog_s": watchdog_s}
         self._stdin, self._stdout = (client or get_client()).open_python(_LIVE_MOTORS, params)
         output = []
         for line in self._stdout:  # wait until the HAT is ready (it may load firmware first)
@@ -400,24 +415,26 @@ class LiveMotors:
         else:
             raise RuntimeError("Pi live-motor script exited before it was ready:\n" + "".join(output[-20:]))
 
-    def send(self, left: int = 0, right: int = 0, arm: int = 0, grip: int = 0, grip_hold: int = 0) -> None:
+    def send(self, left: int = 0, right: int = 0, arm: float = 0, grip: float = 0) -> None:
         cmd = {
             config.PORT_LEFT_WHEEL: config.LEFT_WHEEL_SIGN_FORWARD * left,
             config.PORT_RIGHT_WHEEL: config.RIGHT_WHEEL_SIGN_FORWARD * right,
             config.PORT_ARM: config.ARM_MOTOR_SIGN_DOWN * arm,
             config.PORT_GRIPPER: config.GRIPPER_MOTOR_SIGN_OPEN * grip,
         }
-        if grip_hold:
-            cmd["pwm"] = {config.PORT_GRIPPER: config.GRIPPER_MOTOR_SIGN_OPEN * grip_hold / 100}
-        self._stdin.write(json.dumps(cmd) + "\n")
-        self._stdin.flush()
+        try:
+            self._stdin.write(json.dumps(cmd) + "\n")
+            self._stdin.flush()
+        except OSError as exc:
+            pi_said = self._stdout.read().decode(errors="replace")[-2000:]
+            raise RuntimeError(f"Lost the Pi's live-motor script. It printed:\n{pi_said}") from exc
 
     def close(self) -> None:
         try:
             self.send()
             self._stdin.channel.shutdown_write()
             self._stdout.channel.recv_exit_status()
-        except OSError:
+        except (OSError, RuntimeError):
             pass
 
     def __enter__(self) -> "LiveMotors":
