@@ -111,6 +111,10 @@ terms, `seq` counts the controller's changes, `age_ms` is how long ago it last c
 speed controlled, so their action has `speed` and `pos_deg: null`; the arm and gripper are angle
 controlled (one step per press), so theirs has `pos_deg` (the target encoder angle) and `speed: null`.
 `abs_pos_deg` is always null in the action.
+Every step also gets `"hat_commands"`: the Build HAT calls the Pi actually made (`start` with `speed`,
+`stop`, `run_for_degrees` with `degrees` and `speed`), after the reverse delay and the arm's sag
+correction. Per motor it holds that motor's last call and its `age_ms`; `"new"` lists every call made
+since the previous step.
 
 ### Output
 

@@ -14,6 +14,10 @@ E.g. forward, then left: the right wheel waits. Forward then back: no wait.
 If settings["state_hz"] is set, it also prints each motor's measured speed and
 angle that many times a second, one line each: state {"A": [speed, angle], ...}
 (same format as the motor-dashboard and episode-recorder branches).
+Every Build HAT call it makes is also printed as it happens, one line each, e.g.
+    hat {"t": 1760356000.81, "port": "A", "call": "start", "speed": -30}
+    hat {"t": ..., "port": "D", "call": "run_for_degrees", "degrees": 26, "speed": 25}
+("stop" has neither speed nor degrees). The recorder saves these as "hat_commands".
 When stdin closes (Ctrl-C on the laptop, or SSH drops) every motor stops.
 """
 import json
@@ -32,16 +36,37 @@ arm = Motor(settings["arm"])
 grip = Motor(settings["grip"])
 arm.release = False  # hold the angle after each move instead of going limp
 grip.release = False
+port_of = {left: settings["left"], right: settings["right"], arm: settings["arm"], grip: settings["grip"]}
+print_lock = threading.Lock()
+
+
+def emit(kind, obj):
+    with print_lock:  # one whole line at a time: two threads print
+        sys.stdout.write(kind + " " + json.dumps(obj) + "\n")
+        sys.stdout.flush()
+
+
+def call(motor, name, **args):
+    """Make a Build HAT call and report it."""
+    if name == "start":
+        motor.start(args["speed"])
+    elif name == "stop":
+        motor.stop()
+    else:
+        motor.run_for_degrees(args["degrees"], speed=args["speed"], blocking=False)
+    emit("hat", {"t": time.time(), "port": port_of[motor], "call": name, **args})
+
+
 last_dir = {left: 0, right: 0}  # direction each wheel last turned: -1, +1, or 0 = never
 delayed = None  # (wheel, speed, when) waiting for the other wheel to reverse
 
 
 def set_speed(wheel, speed):
     if speed:
-        wheel.start(speed)
+        call(wheel, "start", speed=speed)
         last_dir[wheel] = 1 if speed > 0 else -1
     else:
-        wheel.stop()
+        call(wheel, "stop")
 
 
 def drive(speeds):
@@ -65,11 +90,11 @@ def report_state(period):
             state = {port: m.get() for port, m in motors.items()}  # [speed, position, absolute position]
         except Exception as e:  # never let the readout stop the robot
             state = {"error": repr(e)}
-        print("state " + json.dumps(state), flush=True)
+        emit("state", state)
 
 
 # Starting encoder angles, so the laptop can track the absolute target angle.
-print("ready " + json.dumps({"arm": arm.get_position(), "grip": grip.get_position()}), flush=True)
+emit("ready", {"arm": arm.get_position(), "grip": grip.get_position()})
 if settings.get("state_hz"):
     threading.Thread(target=report_state, args=(1 / settings["state_hz"],), daemon=True).start()
 
@@ -88,9 +113,9 @@ while True:
     if "drive" in cmd:
         drive({left: cmd["drive"][0], right: cmd["drive"][1]})
     if "arm" in cmd:
-        arm.run_for_degrees(cmd["arm"], speed=settings["arm_speed"], blocking=False)
+        call(arm, "run_for_degrees", degrees=cmd["arm"], speed=settings["arm_speed"])
     if "grip" in cmd:
-        grip.run_for_degrees(cmd["grip"], speed=settings["grip_speed"], blocking=False)
+        call(grip, "run_for_degrees", degrees=cmd["grip"], speed=settings["grip_speed"])
 
-left.stop()
-right.stop()
+call(left, "stop")
+call(right, "stop")

@@ -127,6 +127,7 @@ def main() -> int:
         # The same target in raw motor terms, shaped like the recorder's "motors" entry.
         target = {"drive": [0, 0], "arm": start["arm"], "grip": start["grip"], "ts": clock.now(), "seq": 0}
         latest = {}  # newest Pi state line: {"state", "ts", "seq"}
+        hat_calls = []  # every Build HAT call the Pi made, in order, stamped on arrival
 
         short = {"left_wheel.vel": "L", "right_wheel.vel": "R", "arm.pos": "arm", "grip.pos": "grip"}
 
@@ -141,6 +142,9 @@ def main() -> int:
 
         def read_pi() -> None:  # the Pi's state lines, 10 a second
             for line in stdout:
+                if line.startswith("hat "):
+                    hat_calls.append({**json.loads(line[len("hat "):]), "ts": clock.now()})
+                    continue
                 if not line.startswith("state "):
                     print("Pi:", line, end="")
                     continue
@@ -182,9 +186,32 @@ def main() -> int:
                              "speed": speeds.get(role)}
             return out
 
+        seen = [0]  # hat_calls already given to a step
+
+        def hat_step(t: float) -> dict | None:
+            """Recorder extra: the Build HAT calls the Pi actually made, "motors"-shaped.
+            Per motor, its last call (start / stop / run_for_degrees, with speed and
+            degrees, None where the call has none); "new" lists every call since the
+            previous step, so none is lost between steps."""
+            calls = hat_calls[:]  # appended to by read_pi; a copy is safe to read
+            new, seen[0] = calls[seen[0]:], len(calls)
+            if not calls:
+                return None
+            def entry(c):
+                return {"port": c["port"], "call": c["call"], "speed": c.get("speed"),
+                        "degrees": c.get("degrees"), "ts": round(c["ts"], 6), "pi_t": c["t"]}
+            out = {"seq": len(calls), "ts": round(calls[-1]["ts"], 6),
+                   "age_ms": round((t - calls[-1]["ts"]) * 1000, 2)}
+            for port, role in ROLES.items():
+                last = next((c for c in reversed(calls) if c["port"] == port), None)
+                out[role] = None if last is None else {**entry(last), "age_ms": round((t - last["ts"]) * 1000, 2)}
+            out["new"] = [entry(c) for c in new]
+            return out
+
         recorder = None
         if args.record:
-            recorder = SyncRecorder(cameras, fps=args.fps, extras={"motors": motors_step, "action": action_step})
+            recorder = SyncRecorder(cameras, fps=args.fps, extras={"motors": motors_step, "action": action_step,
+                                                                      "hat_commands": hat_step})
             recorder.start()
             print(f"Recording at {args.fps:g} fps to {recorder.out_dir} until Ctrl-C ...")
 
