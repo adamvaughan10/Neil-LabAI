@@ -22,6 +22,14 @@ MOTOR_TEST_SPEED = int(os.getenv("MOTOR_TEST_SPEED", "20"))
 MOTOR_MAX_DEGREES = 360
 MOTOR_MIN_SPEED, MOTOR_MAX_SPEED = 15, 60
 
+# ── arm (port D) ──────────────────────────────────────────────────────────────
+# As in lego-robot-mcp: the arm motor is mounted reversed, so a positive motor
+# turn raises the arm, and the arm runs slower than the other motors (5..15).
+ARM_MOTOR_SIGN_DOWN = -1
+ARM_SPEED_MIN, ARM_SPEED_MAX = 5, 15
+ARM_TEST_DEGREES = int(os.getenv("ARM_TEST_DEGREES", "30"))
+ARM_TEST_SPEED = int(os.getenv("ARM_TEST_SPEED", "10"))
+
 # ── camera (Pi Camera v1, OV5647) ─────────────────────────────────────────────
 CAMERA_WIDTH = int(os.getenv("CAMERA_WIDTH", "1296"))
 CAMERA_HEIGHT = int(os.getenv("CAMERA_HEIGHT", "972"))

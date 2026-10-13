@@ -144,6 +144,35 @@ emit({"port": PARAMS["port"], "start": p0, "after_move": p1, "after_return": p2,
       "moved": p1 - p0, "returned": None if p2 is None else p2 - p1})
 """
 
+# Lower the arm, pause, then raise it back by however far it actually went down
+# (not the requested amount, so it never drives into the top stop).
+# Positions are sampled throughout so the motion can be lined up with video.
+_ARM_DOWN_UP = r"""
+import time
+from buildhat import Motor
+arm = Motor(PARAMS["port"])
+sign = PARAMS["sign_down"]
+samples, t0 = [], time.monotonic()
+def sample(phase):
+    samples.append({"t": round(time.monotonic() - t0, 3), "phase": phase, "pos": arm.get_position()})
+try:
+    time.sleep(PARAMS["delay_s"])
+    sample("start")
+    arm.run_for_degrees(sign * PARAMS["degrees"], speed=PARAMS["speed"])
+    time.sleep(0.5)
+    sample("lowered")
+    went_down = (samples[-1]["pos"] - samples[0]["pos"]) * sign
+    if went_down > 0:
+        arm.run_for_degrees(-sign * went_down, speed=PARAMS["speed"])
+    time.sleep(0.5)
+    sample("raised")
+finally:
+    arm.stop()
+p0, p1, p2 = (s["pos"] for s in samples)
+emit({"samples": samples, "lowered_deg": (p1 - p0) * sign, "raised_deg": (p1 - p2) * sign,
+      "net_deg_from_start": (p2 - p0) * sign})
+"""
+
 
 # ── host-side API ─────────────────────────────────────────────────────────────
 
@@ -186,6 +215,25 @@ def record_video(
     info = client.run_python(_RECORD_MJPEG, params, timeout=seconds + 60)
     client.fetch_file(remote, local_path, delete_remote=True)
     return info
+
+
+def arm_down_up(
+    degrees: int = config.ARM_TEST_DEGREES,
+    speed: int = config.ARM_TEST_SPEED,
+    delay_s: float = 0.0,
+    client: RPiClient | None = None,
+) -> dict:
+    """Lower the arm by *degrees* and raise it back. This MOVES the arm.
+
+    Degrees in the result are positive = down.
+    """
+    if not 0 < degrees <= 90:
+        raise ValueError("degrees must be 1..90")
+    if not config.ARM_SPEED_MIN <= speed <= config.ARM_SPEED_MAX:
+        raise ValueError(f"arm speed must be {config.ARM_SPEED_MIN}..{config.ARM_SPEED_MAX}")
+    params = {"port": config.PORT_ARM, "degrees": degrees, "speed": speed, "delay_s": delay_s,
+              "sign_down": config.ARM_MOTOR_SIGN_DOWN}
+    return (client or get_client()).run_python(_ARM_DOWN_UP, params, timeout=60 + delay_s)
 
 
 def move_motor(
