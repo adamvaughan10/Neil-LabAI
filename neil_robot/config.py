@@ -22,6 +22,14 @@ MOTOR_TEST_SPEED = int(os.getenv("MOTOR_TEST_SPEED", "20"))
 MOTOR_MAX_DEGREES = 360
 MOTOR_MIN_SPEED, MOTOR_MAX_SPEED = 15, 60
 
+# ── wheels (ports A, B) ───────────────────────────────────────────────────────
+# As in lego-robot-mcp: the left motor is mounted reversed, so forward is
+# MotorPair(A, B).run_for_seconds(t, -speed, +speed).
+LEFT_WHEEL_SIGN_FORWARD = -1
+RIGHT_WHEEL_SIGN_FORWARD = 1
+DRIVE_TEST_SPEED = int(os.getenv("DRIVE_TEST_SPEED", "40"))
+DRIVE_TEST_SECONDS = float(os.getenv("DRIVE_TEST_SECONDS", "0.5"))
+
 # ── arm (port D) ──────────────────────────────────────────────────────────────
 # As in lego-robot-mcp: the arm motor is mounted reversed, so a positive motor
 # turn raises the arm, and the arm runs slower than the other motors (5..15).

@@ -173,6 +173,39 @@ emit({"samples": samples, "lowered_deg": (p1 - p0) * sign, "raised_deg": (p1 - p
       "net_deg_from_start": (p2 - p0) * sign})
 """
 
+# Drive forward, drive back, then raise the arm and lower it again.
+# The arm holds its position between moves (release=False) instead of going
+# limp, so gravity can't pull it past its target.
+_SEQUENCE = r"""
+import time
+from buildhat import Motor, MotorPair
+P = PARAMS
+pair = MotorPair(P["left"], P["right"])
+left, right = pair._leftmotor, pair._rightmotor  # don't create second Motor objects for these ports
+arm = Motor(P["arm"])
+arm.release = False
+steps, t0 = [], time.monotonic()
+def record(step):
+    steps.append({"t": round(time.monotonic() - t0, 3), "step": step,
+                  "left": left.get_position(), "right": right.get_position(), "arm": arm.get_position()})
+try:
+    record("start")
+    for name, direction in (("forward", 1), ("backward", -1)):
+        pair.run_for_seconds(P["drive_s"], direction * P["lsign"] * P["drive_speed"],
+                             direction * P["rsign"] * P["drive_speed"])
+        time.sleep(P["pause_s"])
+        record(name)
+    arm.run_for_degrees(-P["arm_sign_down"] * P["arm_deg"], speed=P["arm_speed"])
+    time.sleep(P["pause_s"])
+    record("arm_up")
+    arm.run_for_degrees(P["arm_sign_down"] * P["arm_deg"], speed=P["arm_speed"])
+    time.sleep(P["pause_s"])
+    record("arm_down")
+finally:
+    pair.stop()
+emit({"steps": steps})
+"""
+
 
 # ── host-side API ─────────────────────────────────────────────────────────────
 
@@ -234,6 +267,33 @@ def arm_down_up(
     params = {"port": config.PORT_ARM, "degrees": degrees, "speed": speed, "delay_s": delay_s,
               "sign_down": config.ARM_MOTOR_SIGN_DOWN}
     return (client or get_client()).run_python(_ARM_DOWN_UP, params, timeout=60 + delay_s)
+
+
+def drive_and_arm_sequence(
+    drive_s: float = config.DRIVE_TEST_SECONDS,
+    drive_speed: int = config.DRIVE_TEST_SPEED,
+    arm_deg: int = config.ARM_TEST_DEGREES,
+    arm_speed: int = config.ARM_TEST_SPEED,
+    pause_s: float = 0.7,
+    client: RPiClient | None = None,
+) -> dict:
+    """Forward for *drive_s*, backward for *drive_s*, then arm up *arm_deg* and back down.
+    This MOVES the robot. Returns encoder positions after each step."""
+    if not 0 < drive_s <= 3:
+        raise ValueError("drive_s must be within 0..3 s")
+    if not config.MOTOR_MIN_SPEED <= drive_speed <= config.MOTOR_MAX_SPEED:
+        raise ValueError(f"drive speed must be {config.MOTOR_MIN_SPEED}..{config.MOTOR_MAX_SPEED}")
+    if not 0 < arm_deg <= 90:
+        raise ValueError("arm degrees must be 1..90")
+    if not config.ARM_SPEED_MIN <= arm_speed <= config.ARM_SPEED_MAX:
+        raise ValueError(f"arm speed must be {config.ARM_SPEED_MIN}..{config.ARM_SPEED_MAX}")
+    params = {
+        "left": config.PORT_LEFT_WHEEL, "right": config.PORT_RIGHT_WHEEL, "arm": config.PORT_ARM,
+        "lsign": config.LEFT_WHEEL_SIGN_FORWARD, "rsign": config.RIGHT_WHEEL_SIGN_FORWARD,
+        "drive_s": drive_s, "drive_speed": drive_speed, "pause_s": pause_s,
+        "arm_deg": arm_deg, "arm_speed": arm_speed, "arm_sign_down": config.ARM_MOTOR_SIGN_DOWN,
+    }
+    return (client or get_client()).run_python(_SEQUENCE, params, timeout=60)
 
 
 def move_motor(
