@@ -111,10 +111,15 @@ terms, `seq` counts the controller's changes, `age_ms` is how long ago it last c
 speed controlled, so their action has `speed` and `pos_deg: null`; the arm and gripper are angle
 controlled (one step per press), so theirs has `pos_deg` (the target encoder angle) and `speed: null`.
 `abs_pos_deg` is always null in the action.
-Every step also gets `"hat_commands"`: the Build HAT calls the Pi actually made (`start` with `speed`,
-`stop`, `run_for_degrees` with `degrees` and `speed`), after the reverse delay and the arm's sag
-correction. Per motor it holds that motor's last call and its `age_ms`; `"new"` lists every call made
-since the previous step.
+Every step also gets `"hat_commands"`: the Build HAT calls the Pi actually made, after the reverse delay
+and the arm's sag correction, in the `"motors"` format plus `degrees` and `call`. Wheels: `speed` is the
+speed the HAT is running them at (0 after `stop`). Arm and gripper: `degrees` sums every
+`run_for_degrees` made since the previous step (0 when none). `"new"` lists each call with its time.
+
+**For VLA training:** `python scripts\session_to_episode.py logs\session_* --out episodes --action target`
+(or `--action hat`) turns sessions into the SmolVLA pipeline's episode folders (DATA-CONTRACT.md, 10 fps,
+robot terms). Both actions are kept in every line as `target` and `hat`; `--action` picks which one
+goes in `action`.
 
 ### Output
 

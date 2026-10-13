@@ -189,23 +189,30 @@ def main() -> int:
         seen = [0]  # hat_calls already given to a step
 
         def hat_step(t: float) -> dict | None:
-            """Recorder extra: the Build HAT calls the Pi actually made, "motors"-shaped.
-            Per motor, its last call (start / stop / run_for_degrees, with speed and
-            degrees, None where the call has none); "new" lists every call since the
-            previous step, so none is lost between steps."""
+            """Recorder extra: the Build HAT calls the Pi actually made, in the "motors"
+            format plus two keys. Per motor:
+              speed    wheels: the speed the HAT is running it at (0 after stop);
+                       arm / gripper: the speed of the last run_for_degrees
+              degrees  arm / gripper: degrees of every run_for_degrees made since the
+                       previous step, summed (0 when there was none); wheels: None
+              call     the last call: "start", "stop" or "run_for_degrees"
+            "new" lists every call made since the previous step, with its time."""
             calls = hat_calls[:]  # appended to by read_pi; a copy is safe to read
             new, seen[0] = calls[seen[0]:], len(calls)
             if not calls:
                 return None
-            def entry(c):
-                return {"port": c["port"], "call": c["call"], "speed": c.get("speed"),
-                        "degrees": c.get("degrees"), "ts": round(c["ts"], 6), "pi_t": c["t"]}
             out = {"seq": len(calls), "ts": round(calls[-1]["ts"], 6),
                    "age_ms": round((t - calls[-1]["ts"]) * 1000, 2)}
             for port, role in ROLES.items():
                 last = next((c for c in reversed(calls) if c["port"] == port), None)
-                out[role] = None if last is None else {**entry(last), "age_ms": round((t - last["ts"]) * 1000, 2)}
-            out["new"] = [entry(c) for c in new]
+                wheel = port in (config.PORT_LEFT_WHEEL, config.PORT_RIGHT_WHEEL)
+                out[role] = {"port": port, "pos_deg": None, "abs_pos_deg": None,
+                             "speed": (last or {}).get("speed", 0) if wheel else (last or {}).get("speed"),
+                             "degrees": None if wheel else sum(c["degrees"] for c in new if c["port"] == port),
+                             "call": last and last["call"],
+                             "age_ms": last and round((t - last["ts"]) * 1000, 2)}
+            out["new"] = [{"port": c["port"], "call": c["call"], "speed": c.get("speed"),
+                           "degrees": c.get("degrees"), "ts": round(c["ts"], 6)} for c in new]
             return out
 
         recorder = None
