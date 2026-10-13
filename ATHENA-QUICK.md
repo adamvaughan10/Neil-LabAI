@@ -49,7 +49,7 @@ Run these on your Mac, not on Athena. You do not need to log in first.
 | What | Command (on the Mac) |
 |---|---|
 | Copy a folder from Athena to your Mac | `rsync -av your.name@athena.technion.ac.il:/rg/belinkov_prj/qiu.qiqian/vla/outputs/neil_JOBID ./` |
-| Add a dataset from your Mac | `rsync -av data/xxx your.name@athena.technion.ac.il:/rg/belinkov_prj/qiu.qiqian/vla/data/` (put the dataset name here) |
+| Add a dataset from your Mac | `rsync -av data/kick_ball your.name@athena.technion.ac.il:/rg/belinkov_prj/qiu.qiqian/vla/data/` |
 | Add any other file | `rsync -av myfile your.name@athena.technion.ac.il:/rg/belinkov_prj/qiu.qiqian/vla/shared/` |
 
 rsync copies only new and changed files. If the copy stops, run the same command again.
@@ -87,12 +87,12 @@ The scripts are in our GitHub repo, in the folder `vla/athena/`. Change them on 
    ```
 2. Start a short test (200 steps, about 10 minutes):
    ```bash
-   sbatch --qos=2h_2g --time=00:30:00 train_neil.job 200 8 xxx
+   sbatch --qos=2h_2g --time=00:30:00 train_neil.job 200 8 kick_ball
    ```
-   Put the dataset name in place of `xxx`. The dataset must be in `data/`.
+   Our dataset is `kick_ball`. It must be in `data/kick_ball`.
 3. Start the full training (20000 steps, about 4 hours) only after the test works:
    ```bash
-   sbatch train_neil.job 20000 64 xxx
+   sbatch train_neil.job 20000 64 kick_ball
    ```
 4. `sbatch` prints `Submitted batch job 123456`. Write down this job number (JOBID).
 
