@@ -3,7 +3,8 @@ Drive the robot with the USB gamepad. THIS MOVES THE ROBOT: give it room, keep h
 
     D-pad up / down      both wheels forward / backward while held
     D-pad left / right   rotate counter-clockwise / clockwise on the spot while held
-    X / B                arm up / down by --arm-step degrees per press
+    X / B                arm up / down: X raises it --arm-raise degrees above where it started,
+                         B lowers it back (two positions only; more presses do nothing)
     Y / A                gripper open / close by --grip-step degrees per press
     Ctrl-C               stop and quit (the motors go limp, so the arm drops)
 
@@ -56,7 +57,8 @@ def wheel_speeds(pad: dict, speed: int) -> tuple[int, int]:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--speed", type=int, default=30, help="wheel speed, 15..60")
-    ap.add_argument("--arm-step", type=int, default=5, help="arm degrees per press")
+    ap.add_argument("--arm-raise", type=int, default=40,
+                    help="degrees X raises the arm above its starting (down) angle")
     ap.add_argument("--arm-speed", type=int, default=25,
                     help="arm motor speed for each step, 5..50 (at 10 the arm can't lift itself)")
     ap.add_argument("--reverse-delay", type=float, default=1.0,
@@ -82,7 +84,6 @@ def main() -> int:
                 "state_hz": config.MOTOR_STREAM_HZ if args.record else 10}
     code = (ROOT / "pi" / "gamepad_server.py").read_text()
     # Motor degrees for one press, after the mounting sign flips.
-    arm_down = config.ARM_MOTOR_SIGN_DOWN * args.arm_step
     grip_open = config.GRIPPER_MOTOR_SIGN_OPEN * args.grip_step
 
     cameras = {}
@@ -183,7 +184,7 @@ def main() -> int:
             recorder.start()
             print(f"Recording at {args.fps:g} fps to {recorder.out_dir} until Ctrl-C ...")
 
-        print("Ready. D-pad drives, X/B arm up/down, Y/A gripper open/close. Ctrl-C to quit.")
+        print("Ready. D-pad drives, X raises / B lowers the arm, Y/A gripper open/close. Ctrl-C to quit.")
         print("L/R = wheel speed (+ forward), arm = angle (+ down), grip = angle (+ open)")
         last_drive, last_buttons = (0, 0), [0] * 12
         try:
@@ -198,16 +199,23 @@ def main() -> int:
                     last_drive = drive
                 pressed = [b and not was for b, was in zip(state["buttons"], last_buttons)]
                 last_buttons = state["buttons"]
-                for button, part, motor_deg in ((BTN_X, "arm", -arm_down), (BTN_B, "arm", arm_down),
-                                                 (BTN_Y, "grip", grip_open), (BTN_A, "grip", -grip_open)):
+                # Arm: two positions, down (where it started) and raised. The command is the
+                # turn from where the arm really is to that position.
+                for button, raised in ((BTN_X, True), (BTN_B, False)):
+                    goal = start["arm"] + (-config.ARM_MOTOR_SIGN_DOWN * args.arm_raise if raised else 0)
+                    if pressed[button] and target["arm"] != goal:
+                        now = latest["state"][config.PORT_ARM][1] if latest else target["arm"]
+                        target.update(arm=goal, ts=clock.now(), seq=target["seq"] + 1)
+                        action["arm.pos"] = config.ARM_MOTOR_SIGN_DOWN * goal
+                        send({"arm": goal - now})
+                for button, part, motor_deg in ((BTN_Y, "grip", grip_open), (BTN_A, "grip", -grip_open)):
                     if pressed[button]:
-                        sign = config.ARM_MOTOR_SIGN_DOWN if part == "arm" else config.GRIPPER_MOTOR_SIGN_OPEN
+                        sign = config.GRIPPER_MOTOR_SIGN_OPEN
                         # The Pi turns the motor motor_deg from wherever it is when the move runs.
-                        # If the last move fell short (the arm sagging under its weight, the
-                        # gripper closing on an object), count from where the motor really is,
-                        # so the recorded target stays where the motor is actually headed.
-                        port = config.PORT_ARM if part == "arm" else config.PORT_GRIPPER
-                        now = latest["state"][port][1] if latest else target[part]
+                        # If the last move fell short (the gripper closing on an object), count
+                        # from where the motor really is, so the recorded target stays where the
+                        # motor is actually headed.
+                        now = latest["state"][config.PORT_GRIPPER][1] if latest else target[part]
                         if abs(target[part] - now) >= abs(motor_deg):
                             target[part] = now
                         target[part] += motor_deg
