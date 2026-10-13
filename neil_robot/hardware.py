@@ -209,22 +209,41 @@ emit({"steps": steps})
 """
 
 
-# Live control: holds each motor at the speed the laptop last sent, one JSON line
-# per command, e.g. {"A": 30, "B": -30, "C": 0, "D": 0}. Speed 0 holds the motor
-# still (speed control at 0) rather than letting it go limp, so the arm doesn't
-# drop. If no line arrives for PARAMS["watchdog_s"], every motor goes to 0.
+# Live control: runs each motor at the speed the laptop last sent, one JSON line
+# per command, e.g. {"A": 30, "B": -30, "C": 0, "D": 0, "pwm": {"C": -0.3}}.
+# A port at speed 0 idles as PARAMS["idle"] says: "coast" (limp) or "hold"
+# (position control at where it stopped, so the arm doesn't drop). Holding at
+# speed 0 in speed mode made the motors shake, so it isn't used. A "pwm" entry
+# instead drives an idle port with that fixed power (-1..1), no feedback loop:
+# used to keep the gripper squeezing an object.
+# If no line arrives for PARAMS["watchdog_s"], every port idles.
 # When stdin closes the motors coast and the script exits.
 _LIVE_MOTORS = r"""
 import os, select, sys, time
 from buildhat import Motor
 motors = {p: Motor(p) for p in PARAMS["ports"]}
 current = {p: None for p in motors}
+def hold(m):
+    # buildhat's own position-hold command (from Motor._run_positional_ramp), aimed at
+    # the current position. Written directly: its ramp form expects a Future per move.
+    rot = m.get_position() / 360
+    m._write(f"port {m.port}; select 0 ; selrate {m._interval}; "
+             f"pid {m.port} 0 1 s4 0.0027777778 0 5 0 .1 3 0.01; set {rot}\r")
 def apply(cmd):
     for p, m in motors.items():
         speed = max(-100, min(100, int(cmd.get(p, 0))))
-        if speed != current[p]:
+        pwm = cmd.get("pwm", {}).get(p)
+        want = ("speed", speed) if speed else ("pwm", pwm) if pwm else ("idle",)
+        if want == current[p]:
+            continue
+        m.stop()  # coast, and reset buildhat's run mode so start() reconfigures
+        if want[0] == "speed":
             m.start(speed)
-            current[p] = speed
+        elif want[0] == "pwm":
+            m.pwm(max(-1.0, min(1.0, pwm)))
+        elif PARAMS["idle"][p] == "hold":
+            hold(m)
+        current[p] = want
 apply({})
 emit({"ready": True})
 fd, buf, last = sys.stdin.fileno(), b"", time.monotonic()
@@ -360,15 +379,18 @@ class LiveMotors:
     """Drive all four motors continuously from the laptop. This MOVES the robot.
 
     Speeds are in robot terms (-100..100): wheels + = forward, arm + = down,
-    gripper + = open. The mounting sign flips are applied here.
+    gripper + = open. The mounting sign flips are applied here. At speed 0 the
+    wheels and gripper go limp and the arm holds where it is; grip_hold (-100..100,
+    fixed power, - = close) keeps the gripper squeezing instead of going limp.
 
         with LiveMotors() as live:
             live.send(left=30, right=30)  # keep calling it, or the Pi's watchdog stops the motors
     """
 
     def __init__(self, client: RPiClient | None = None, watchdog_s: float = config.PAD_WATCHDOG_S):
-        params = {"ports": [config.PORT_LEFT_WHEEL, config.PORT_RIGHT_WHEEL, config.PORT_ARM,
-                            config.PORT_GRIPPER], "watchdog_s": watchdog_s}
+        idle = {config.PORT_LEFT_WHEEL: "coast", config.PORT_RIGHT_WHEEL: "coast",
+                config.PORT_ARM: "hold", config.PORT_GRIPPER: "coast"}
+        params = {"ports": list(idle), "idle": idle, "watchdog_s": watchdog_s}
         self._stdin, self._stdout = (client or get_client()).open_python(_LIVE_MOTORS, params)
         output = []
         for line in self._stdout:  # wait until the HAT is ready (it may load firmware first)
@@ -378,13 +400,15 @@ class LiveMotors:
         else:
             raise RuntimeError("Pi live-motor script exited before it was ready:\n" + "".join(output[-20:]))
 
-    def send(self, left: int = 0, right: int = 0, arm: int = 0, grip: int = 0) -> None:
+    def send(self, left: int = 0, right: int = 0, arm: int = 0, grip: int = 0, grip_hold: int = 0) -> None:
         cmd = {
             config.PORT_LEFT_WHEEL: config.LEFT_WHEEL_SIGN_FORWARD * left,
             config.PORT_RIGHT_WHEEL: config.RIGHT_WHEEL_SIGN_FORWARD * right,
             config.PORT_ARM: config.ARM_MOTOR_SIGN_DOWN * arm,
             config.PORT_GRIPPER: config.GRIPPER_MOTOR_SIGN_OPEN * grip,
         }
+        if grip_hold:
+            cmd["pwm"] = {config.PORT_GRIPPER: config.GRIPPER_MOTOR_SIGN_OPEN * grip_hold / 100}
         self._stdin.write(json.dumps(cmd) + "\n")
         self._stdin.flush()
 

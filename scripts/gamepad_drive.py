@@ -10,9 +10,11 @@ Drive the robot with the USB gamepad. THIS MOVES THE ROBOT: give it room, keep h
     python scripts/gamepad_drive.py
     python scripts/gamepad_drive.py --drive-speed 40 --arm-speed 8
 
-Releasing everything holds the motors still. If the laptop stops sending for
-config.PAD_WATCHDOG_S, the Pi stops every motor by itself. On quit the motors
-go limp, so the arm drops if it is raised.
+When released, the wheels go limp, the arm holds where it is, and the gripper
+goes limp after opening or keeps squeezing gently after closing (--gripper-hold,
+0 turns that off). If the laptop stops sending for config.PAD_WATCHDOG_S, the Pi
+idles every motor by itself. On quit the motors go limp, so the arm drops if it
+is raised.
 """
 import argparse
 import sys
@@ -55,7 +57,11 @@ def main() -> int:
     ap.add_argument("--turn-speed", type=int, default=config.PAD_TURN_SPEED)
     ap.add_argument("--arm-speed", type=int, default=config.PAD_ARM_SPEED)
     ap.add_argument("--gripper-speed", type=int, default=config.PAD_GRIPPER_SPEED)
+    ap.add_argument("--gripper-hold", type=int, default=config.PAD_GRIPPER_HOLD,
+                    help="squeeze power (%%) after closing; 0 = go limp")
     args = ap.parse_args()
+    if not 0 <= args.gripper_hold <= 60:
+        ap.error("gripper hold must be 0..60")
     if not config.ARM_SPEED_MIN <= args.arm_speed <= config.ARM_SPEED_MAX:
         ap.error(f"arm speed must be {config.ARM_SPEED_MIN}..{config.ARM_SPEED_MAX}")
     for name in ("drive_speed", "turn_speed", "gripper_speed"):
@@ -67,12 +73,16 @@ def main() -> int:
     period = 1 / config.PAD_SEND_HZ
     with RPiClient() as pi, LiveMotors(client=pi) as live:
         print("Ready. D-pad drives, X/B arm up/down, Y/A gripper open/close. Ctrl-C to quit.")
+        gripper_closed = False
         try:
             while True:
                 t0 = time.monotonic()
                 cmd = pad_to_command(pad.poll(), args.drive_speed, args.turn_speed,
                                      args.arm_speed, args.gripper_speed)
-                live.send(**cmd)
+                if cmd["grip"]:
+                    gripper_closed = cmd["grip"] < 0
+                hold = -args.gripper_hold if gripper_closed else 0
+                live.send(**cmd, grip_hold=hold)
                 print("\r" + "  ".join(f"{k} {v:+4d}" for k, v in cmd.items()) + "   ", end="", flush=True)
                 time.sleep(max(0.0, period - (time.monotonic() - t0)))
         except KeyboardInterrupt:

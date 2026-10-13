@@ -48,6 +48,9 @@ PAD_DRIVE_SPEED = int(os.getenv("PAD_DRIVE_SPEED", "30"))
 PAD_TURN_SPEED = int(os.getenv("PAD_TURN_SPEED", "30"))
 PAD_ARM_SPEED = int(os.getenv("PAD_ARM_SPEED", "10"))
 PAD_GRIPPER_SPEED = int(os.getenv("PAD_GRIPPER_SPEED", "20"))
+# After closing, the gripper keeps squeezing at this fixed power (%) so it doesn't
+# drop what it holds. lego-robot-mcp carries objects at 40 (GRIPPER_HOLD_PWM 0.4).
+PAD_GRIPPER_HOLD = int(os.getenv("PAD_GRIPPER_HOLD", "30"))
 PAD_SEND_HZ = 20
 # The Pi stops every motor if it hears nothing for this long (laptop froze, SSH dropped).
 PAD_WATCHDOG_S = float(os.getenv("PAD_WATCHDOG_S", "0.5"))
