@@ -26,7 +26,9 @@ arm down / gripper open, the mounting sign flips applied):
 All three are kept in every line anyway, as "target", "hat" and "buttons", so any of them
 can be trained on later.
 
-state is the measured motors: wheel speeds, arm and gripper encoder angles (robot terms).
+state is the measured motors: wheel speeds (or angles), arm and gripper angles (robot terms).
+All angles are the motors' absolute angles where the session has them, so they mean the
+same arm/gripper/wheel position in every session, whenever the Build HAT was powered up.
 Sessions recorded at the pipeline's 10 fps (gamepad_drive.py --record's default) become
 one frame per step. Sessions at another rate are resampled: each frame takes the nearest
 recorded step (button presses and arm/gripper degrees from skipped steps are added to it).
@@ -96,21 +98,32 @@ def convert(session: Path, out: Path, action: str, task: str, success: bool, fps
     try:
         for i, (step, span) in enumerate(frame_rows(steps, fps)):
             m, a, h = step["motors"], step["action"], step.get("hat_commands")
+
+            def offset(role):
+                """Encoder angle -> the motor's absolute angle. The encoder counts from wherever
+                the motor was when the Build HAT powered up; the absolute angle is the shaft's
+                own, the same in every session (0 for sessions recorded without it)."""
+                apos = m[role].get("abs_pos_deg")
+                return 0 if apos is None else apos - m[role]["pos_deg"]
+
+            def angle(role, pos):
+                return robot(role, pos + offset(role))
+
             # Recorded with gamepad_drive.py --wheels angle: wheels are angle targets, like the gripper.
             wheel_angles = a["left_wheel"]["pos_deg"] is not None
             if wheel_angles:
-                wheels_state = [wrap(robot(r, m[r]["pos_deg"])) for r in ("left_wheel", "right_wheel")]
-                wheels_target = [wrap(robot(r, a[r]["pos_deg"])) for r in ("left_wheel", "right_wheel")]
+                wheels_state = [wrap(angle(r, m[r]["pos_deg"])) for r in ("left_wheel", "right_wheel")]
+                wheels_target = [wrap(angle(r, a[r]["pos_deg"])) for r in ("left_wheel", "right_wheel")]
                 wheels_hat = [span_degrees(span, r) for r in ("left_wheel", "right_wheel")]
             else:
                 wheels_state = [robot(r, m[r]["speed"]) for r in ("left_wheel", "right_wheel")]
                 wheels_target = [robot(r, a[r]["speed"]) for r in ("left_wheel", "right_wheel")]
                 wheels_hat = [robot(r, h[r]["speed"]) if h else 0 for r in ("left_wheel", "right_wheel")]
             state = {"left_speed": wheels_state[0], "right_speed": wheels_state[1],
-                     "arm_pos": robot("arm", m["arm"]["pos_deg"]),
-                     "grip_pos": robot("gripper", m["gripper"]["pos_deg"])}
+                     "arm_pos": angle("arm", m["arm"]["pos_deg"]),
+                     "grip_pos": angle("gripper", m["gripper"]["pos_deg"])}
             target = {"left": wheels_target[0], "right": wheels_target[1],
-                      "arm": robot("arm", a["arm"]["pos_deg"]), "grip": robot("gripper", a["gripper"]["pos_deg"])}
+                      "arm": angle("arm", a["arm"]["pos_deg"]), "grip": angle("gripper", a["gripper"]["pos_deg"])}
             hat = {"left": wheels_hat[0], "right": wheels_hat[1],
                    "arm": span_degrees(span, "arm"), "grip": span_degrees(span, "gripper")}
             # Buttons over the steps this frame stands for, so a press between two frames isn't
@@ -150,7 +163,7 @@ def convert(session: Path, out: Path, action: str, task: str, success: bool, fps
         "date": time.strftime("%Y-%m-%d", time.localtime(steps[0]["t"])),
         "source": session.name, "action": action, "fps": fps,
         "action_fields": BUTTON_FIELDS if action == "buttons" else ["left", "right", "arm", "grip"],
-        "units": {"state": "wheel speed -100..100 (+ forward), arm/gripper encoder degrees (+ down / + open)",
+        "units": {"state": "wheel speed -100..100 (+ forward), arm/gripper absolute angle, degrees (+ down / + open)",
                   "target": "controller target: wheel speeds; arm/gripper target angles, degrees",
                   "hat": "Build HAT calls: wheel speeds running; arm/gripper run_for_degrees degrees this frame",
                   "buttons": "[dpad_x, dpad_y, X, A, B, Y]: -1/0/1 D-pad (+ right / + up), 1 = pressed this frame",
