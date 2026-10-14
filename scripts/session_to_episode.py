@@ -56,6 +56,16 @@ def robot(role: str, v):
     return None if v is None else SIGN[role] * v
 
 
+def wrap(deg: float) -> float:
+    """An angle in (-180, 180]: a full turn later it reads the same again."""
+    return round(180 - (180 - deg) % 360, 1)
+
+
+def span_degrees(span: list[dict], role: str) -> float:
+    """Degrees of every run_for_degrees made on this motor during the frame, robot terms."""
+    return robot(role, sum((s.get("hat_commands") or {}).get(role, {}).get("degrees") or 0 for s in span))
+
+
 def frame_rows(steps: list[dict], fps: float) -> list[tuple[dict, list[dict]]]:
     """(chosen step, steps it stands for) for each output frame at fps."""
     if len(steps) > 1 and abs((len(steps) - 1) / (steps[-1]["t"] - steps[0]["t"]) - fps) < 0.05 * fps:
@@ -86,19 +96,23 @@ def convert(session: Path, out: Path, action: str, task: str, success: bool, fps
     try:
         for i, (step, span) in enumerate(frame_rows(steps, fps)):
             m, a, h = step["motors"], step["action"], step.get("hat_commands")
-            state = {"left_speed": robot("left_wheel", m["left_wheel"]["speed"]),
-                     "right_speed": robot("right_wheel", m["right_wheel"]["speed"]),
+            # Recorded with gamepad_drive.py --wheels angle: wheels are angle targets, like the gripper.
+            wheel_angles = a["left_wheel"]["pos_deg"] is not None
+            if wheel_angles:
+                wheels_state = [wrap(robot(r, m[r]["pos_deg"])) for r in ("left_wheel", "right_wheel")]
+                wheels_target = [wrap(robot(r, a[r]["pos_deg"])) for r in ("left_wheel", "right_wheel")]
+                wheels_hat = [span_degrees(span, r) for r in ("left_wheel", "right_wheel")]
+            else:
+                wheels_state = [robot(r, m[r]["speed"]) for r in ("left_wheel", "right_wheel")]
+                wheels_target = [robot(r, a[r]["speed"]) for r in ("left_wheel", "right_wheel")]
+                wheels_hat = [robot(r, h[r]["speed"]) if h else 0 for r in ("left_wheel", "right_wheel")]
+            state = {"left_speed": wheels_state[0], "right_speed": wheels_state[1],
                      "arm_pos": robot("arm", m["arm"]["pos_deg"]),
                      "grip_pos": robot("gripper", m["gripper"]["pos_deg"])}
-            target = {"left": robot("left_wheel", a["left_wheel"]["speed"]),
-                      "right": robot("right_wheel", a["right_wheel"]["speed"]),
+            target = {"left": wheels_target[0], "right": wheels_target[1],
                       "arm": robot("arm", a["arm"]["pos_deg"]), "grip": robot("gripper", a["gripper"]["pos_deg"])}
-            hat = {"left": robot("left_wheel", h["left_wheel"]["speed"]) if h else 0,
-                   "right": robot("right_wheel", h["right_wheel"]["speed"]) if h else 0,
-                   "arm": robot("arm", sum((s.get("hat_commands") or {}).get("arm", {}).get("degrees") or 0
-                                           for s in span)),
-                   "grip": robot("gripper", sum((s.get("hat_commands") or {}).get("gripper", {}).get("degrees") or 0
-                                                for s in span))}
+            hat = {"left": wheels_hat[0], "right": wheels_hat[1],
+                   "arm": span_degrees(span, "arm"), "grip": span_degrees(span, "gripper")}
             # Buttons over the steps this frame stands for, so a press between two frames isn't
             # lost: X/A/B/Y are 1 if pressed in any of them; the D-pad takes the latest direction
             # held (both axes together).
@@ -139,7 +153,9 @@ def convert(session: Path, out: Path, action: str, task: str, success: bool, fps
         "units": {"state": "wheel speed -100..100 (+ forward), arm/gripper encoder degrees (+ down / + open)",
                   "target": "controller target: wheel speeds; arm/gripper target angles, degrees",
                   "hat": "Build HAT calls: wheel speeds running; arm/gripper run_for_degrees degrees this frame",
-                  "buttons": "[dpad_x, dpad_y, X, A, B, Y]: -1/0/1 D-pad (+ right / + up), 1 = pressed this frame"},
+                  "buttons": "[dpad_x, dpad_y, X, A, B, Y]: -1/0/1 D-pad (+ right / + up), 1 = pressed this frame",
+                  "wheels": "angle: state/target left/right are wheel angles wrapped to -180..180 (+ forward), "
+                            "hat left/right are degrees turned this frame" if wheel_angles else "speed"},
     }, indent=2) + "\n")
     return folder
 

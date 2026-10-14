@@ -5,6 +5,9 @@ then writes one JSON command per line to its stdin whenever a button changes:
     {"drive": [left, right]}   wheel motor speeds, -100..100; [0, 0] stops them
     {"arm": degrees}           turn the arm motor by this many degrees, then hold
     {"grip": degrees}          turn the gripper motor by this many degrees, then hold
+    {"wheel_deg": [left, right]}  turn each wheel by this many degrees, like the gripper
+                               (scripts/gamepad_drive.py --wheels angle). Moves that arrive
+                               while a wheel is still turning are added up and run next.
 
 Speeds and degrees are raw motor values: the laptop applies the mounting sign flips.
 When one wheel now turns opposite to the direction it last turned (even if it has
@@ -46,20 +49,37 @@ def emit(kind, obj):
         sys.stdout.flush()
 
 
-def call(motor, name, **args):
-    """Make a Build HAT call and report it."""
+def call(motor, name, blocking=False, **args):
+    """Make a Build HAT call and report it (as it starts, for a blocking move)."""
+    emit("hat", {"t": time.time(), "port": port_of[motor], "call": name, **args})
     if name == "start":
         motor.start(args["speed"])
     elif name == "stop":
         motor.stop()
     else:
-        motor.run_for_degrees(args["degrees"], speed=args["speed"], blocking=False)
-    emit("hat", {"t": time.time(), "port": port_of[motor], "call": name, **args})
+        motor.run_for_degrees(args["degrees"], speed=args["speed"], blocking=blocking)
 
 
-last_dir = {left: 0, right: 0}
-running = {left: 0, right: 0}  # speed each wheel was last set to  # direction each wheel last turned: -1, +1, or 0 = never
+last_dir = {left: 0, right: 0}  # direction each wheel last turned: -1, +1, or 0 = never
+running = {left: 0, right: 0}  # speed each wheel was last set to
 delayed = None  # (wheel, speed, when) waiting for the other wheel to reverse
+pending = {left: 0, right: 0}  # wheel degrees asked for and not yet started (--wheels angle)
+pending_lock = threading.Lock()
+wake = {left: threading.Event(), right: threading.Event()}
+
+
+def wheel_mover(wheel):
+    """Runs one wheel's degree moves one after another, each the sum of what arrived
+    while the last was turning, so moves never pile up behind each other."""
+    while True:
+        wake[wheel].wait()
+        wake[wheel].clear()
+        while True:
+            with pending_lock:
+                degrees, pending[wheel] = pending[wheel], 0
+            if not degrees:
+                break
+            call(wheel, "run_for_degrees", blocking=True, degrees=degrees, speed=settings["wheel_speed"])
 
 
 def set_speed(wheel, speed):
@@ -108,7 +128,10 @@ def report_state(period):
 
 
 # Starting encoder angles, so the laptop can track the absolute target angle.
-emit("ready", {"arm": arm.get_position(), "grip": grip.get_position()})
+emit("ready", {"arm": arm.get_position(), "grip": grip.get_position(),
+               "left": left.get_position(), "right": right.get_position()})
+for w in (left, right):
+    threading.Thread(target=wheel_mover, args=(w,), daemon=True).start()
 if settings.get("state_hz"):
     threading.Thread(target=report_state, args=(1 / settings["state_hz"],), daemon=True).start()
 
@@ -126,6 +149,11 @@ while True:
     cmd = json.loads(line)
     if "drive" in cmd:
         drive({left: cmd["drive"][0], right: cmd["drive"][1]})
+    if "wheel_deg" in cmd:
+        for wheel, degrees in zip((left, right), cmd["wheel_deg"]):
+            with pending_lock:
+                pending[wheel] += degrees
+            wake[wheel].set()
     if "arm" in cmd:
         call(arm, "run_for_degrees", degrees=cmd["arm"], speed=settings["arm_speed"])
     if "grip" in cmd:
