@@ -8,7 +8,7 @@ Play recorded sessions in the browser, cycle through them, and see what the clas
 Opens http://127.0.0.1:8770. Both cameras play side by side from the saved frames (so they stay in
 step with steps.jsonl), with the arm/gripper readings under them. Each attempt shows the latest
 classifier verdict found under --results (default output/classifier/, newest run wins); the
-Classify button judges the current attempt on the spot (needs ANTHROPIC_API_KEY) and saves the
+Classify button judges the current attempt on the spot (API key if set, else your claude login) and saves the
 verdict to output/classifier/player/.
 
 Keys: space play/pause, left/right one step, shift+left/right one second, up/down or p/n previous/next attempt.
@@ -16,7 +16,6 @@ Keys: space play/pause, left/right one step, shift+left/right one second, up/dow
 import argparse
 import json
 import mimetypes
-import os
 import sys
 import threading
 import webbrowser
@@ -121,15 +120,12 @@ class Library:
             cap.release()
 
     def classify(self, i: int, model: str, effort: str) -> dict:
-        import anthropic
-        if not (os.getenv("ANTHROPIC_API_KEY") or os.getenv("ANTHROPIC_AUTH_TOKEN")):
-            raise RuntimeError("no ANTHROPIC_API_KEY: export it in the terminal, then restart the player")
         a = self.attempt(i)
         d = self.dirs[i]
         name = "__".join(d.resolve().parts[-3:]).replace(" ", "_")
         v = {"name": name, "path": str(d.resolve()), "kind": a.kind, "task": a.task,
              "duration_s": round(a.duration_s, 1), "label": a.label}
-        v.update(classify(anthropic.Anthropic(), a, model, effort))
+        v.update(classify(a, "auto", model, effort))
         out = ROOT / "output" / "classifier" / "player" / "attempts" / f"{name}.json"
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(json.dumps(v, indent=2))

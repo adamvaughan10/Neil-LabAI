@@ -6,11 +6,16 @@ An attempt is loaded from either layout the project produces:
 
 Frames are sampled evenly over the attempt from both cameras (always including the last one),
 sent to Claude with the arm/gripper encoder trace, and the answer comes back as a fixed JSON verdict.
+Claude is reached through the API (ANTHROPIC_API_KEY) or, without a key, the claude CLI and its login.
 """
 from __future__ import annotations
 
 import base64
 import json
+import os
+import shutil
+import subprocess
+import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -204,14 +209,40 @@ def _last(xs):
     return next((x for x in reversed(xs) if x is not None), None)
 
 
-def classify(client, a: Attempt, model: str = DEFAULT_MODEL, effort: str = "medium",
+def pick_backend(backend: str = "auto") -> str:
+    """ "api" needs ANTHROPIC_API_KEY; "claude-code" uses the claude CLI and whatever account it is logged in to."""
+    if backend != "auto":
+        return backend
+    if os.getenv("ANTHROPIC_API_KEY") or os.getenv("ANTHROPIC_AUTH_TOKEN"):
+        return "api"
+    if shutil.which("claude"):
+        return "claude-code"
+    raise RuntimeError("no ANTHROPIC_API_KEY and no claude CLI on PATH: set one up to classify")
+
+
+def classify(a: Attempt, backend: str = "auto", model: str = DEFAULT_MODEL, effort: str = "medium",
              n_frames: int = 8, max_w: int = 640) -> dict:
     """Ask Claude for a verdict on one attempt. Returns the verdict plus usage bookkeeping."""
-    response = client.beta.messages.create(
+    content = build_content(a, n_frames, max_w)
+    backend = pick_backend(backend)
+    verdict = _via_api(content, model, effort) if backend == "api" else _via_claude_code(content, model, effort)
+    verdict["backend"] = backend
+    return verdict
+
+
+_client = None
+
+
+def _via_api(content: list, model: str, effort: str) -> dict:
+    global _client
+    if _client is None:
+        import anthropic
+        _client = anthropic.Anthropic()
+    response = _client.beta.messages.create(
         model=model,
         max_tokens=16000,
         system=SYSTEM,
-        messages=[{"role": "user", "content": build_content(a, n_frames, max_w)}],
+        messages=[{"role": "user", "content": content}],
         output_config={"effort": effort, "format": {"type": "json_schema", "schema": VERDICT_SCHEMA}},
         # If a safety classifier ever declines a frame set, Anthropic re-runs it on its recommended fallback model.
         betas=["server-side-fallback-2026-07-01"],
@@ -223,4 +254,29 @@ def classify(client, a: Attempt, model: str = DEFAULT_MODEL, effort: str = "medi
     verdict = json.loads(text)
     verdict["model"] = response.model
     verdict["usage"] = {"input_tokens": response.usage.input_tokens, "output_tokens": response.usage.output_tokens}
+    return verdict
+
+
+def _via_claude_code(content: list, model: str, effort: str, timeout_s: float = 600) -> dict:
+    """One headless claude -p turn: no tools, no settings or MCP servers, frames passed inline as images."""
+    cmd = ["claude", "-p", "--verbose", "--input-format", "stream-json", "--output-format", "stream-json",
+           "--json-schema", json.dumps(VERDICT_SCHEMA), "--system-prompt", SYSTEM, "--tools", "",
+           "--model", model, "--effort", effort,
+           "--no-session-persistence", "--setting-sources", "", "--strict-mcp-config"]
+    msg = json.dumps({"type": "user", "message": {"role": "user", "content": content}})
+    p = subprocess.run(cmd, input=msg + "\n", capture_output=True, text=True, timeout=timeout_s,
+                       cwd=tempfile.gettempdir())  # outside the repo, so no CLAUDE.md is read
+    events = [json.loads(l) for l in p.stdout.splitlines() if l.startswith("{")]
+    result = next((e for e in reversed(events) if e.get("type") == "result"), None)
+    if result is None or result.get("is_error") or not result.get("structured_output"):
+        detail = (result or {}).get("result") or p.stderr.strip()[-300:] or f"exit code {p.returncode}"
+        raise RuntimeError(f"claude CLI: {detail}")
+    verdict = dict(result["structured_output"])
+    verdict["model"] = ", ".join(result.get("modelUsage") or {}) or model
+    u = result.get("usage") or {}
+    verdict["usage"] = {"input_tokens": sum(u.get(k, 0) for k in ("input_tokens", "cache_read_input_tokens",
+                                                                  "cache_creation_input_tokens")),
+                        "output_tokens": u.get("output_tokens", 0)}
+    if result.get("total_cost_usd") is not None:
+        verdict["usage"]["cost_usd"] = result["total_cost_usd"]
     return verdict

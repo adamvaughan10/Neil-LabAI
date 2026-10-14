@@ -133,9 +133,10 @@ with the policy's inputs and stops if they disagree.
 first to last) plus the arm/gripper encoder trace, and gets back a verdict: success, confidence,
 a failure category (`did_not_reach_cup`, `misaligned_approach`, `grasp_missed`, `grasp_slipped`, ...)
 and a one-line reason. It then counts the most common failures across all the attempts.
+It uses `ANTHROPIC_API_KEY` if one is set, and otherwise the `claude` CLI with whatever account
+it is logged in to (`--backend` picks one explicitly).
 
 ```bash
-export ANTHROPIC_API_KEY=...                                  # pip install anthropic
 python scripts/classify_attempts.py logs/                     # every session/rollout/episode under logs/
 python scripts/classify_attempts.py logs/run_20261014_153000 --task "pick up the cup"
 python scripts/classify_attempts.py logs/ --dry-run           # no API calls: contact sheets of what it would send

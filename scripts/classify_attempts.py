@@ -9,7 +9,7 @@ attempts or folders to search:
     python scripts/classify_attempts.py logs/ --task "pick up the cup" --frames 10
     python scripts/classify_attempts.py logs/ --dry-run                # no API calls: contact sheets only
 
-Needs ANTHROPIC_API_KEY in the environment (pip install anthropic). Writes to output/classifier/<date>_<time>/:
+Uses ANTHROPIC_API_KEY if set (pip install anthropic), otherwise the claude CLI and its login. Writes to output/classifier/<date>_<time>/:
     attempts/<attempt>.json   one verdict per attempt: success, confidence, failure_category, reason, ...
     summary.json, summary.md  success rate, failure categories by count, low-confidence attempts
     sheets/<attempt>.jpg      (--dry-run, or --sheets) the exact frames the model is shown
@@ -28,7 +28,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from neil_robot.attempt_classifier import (  # noqa: E402
-    DEFAULT_MODEL, FAILURE_CATEGORIES, classify, find_attempts, load_attempt, sample_indices)
+    DEFAULT_MODEL, FAILURE_CATEGORIES, classify, find_attempts, load_attempt, pick_backend, sample_indices)
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -87,7 +87,7 @@ def summarize(results: list[dict], low_conf: float) -> dict:
         "by_folder": {k: {"successes": s, "attempts": n} for k, (s, n) in sorted(groups.items())},
         "label_agreement": ({"labelled": len(labelled), "agree": sum(r["success"] == r["label"] for r in labelled)}
                             if labelled else None),
-        "tokens": {k: sum(r.get("usage", {}).get(k, 0) for r in judged) for k in ("input_tokens", "output_tokens")},
+        "tokens": {k: round(sum(r.get("usage", {}).get(k, 0) for r in judged), 4) for k in ("input_tokens", "output_tokens", "cost_usd")},
     }
 
 
@@ -126,6 +126,8 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("paths", nargs="+", type=Path, help="attempt folders, or folders to search for them")
     ap.add_argument("--task", help='task the attempts were for (default: from policy.json/episode.json, else "pick up the cup")')
+    ap.add_argument("--backend", default="auto", choices=["auto", "api", "claude-code"],
+                    help="api: ANTHROPIC_API_KEY; claude-code: the claude CLI's login (default: api if a key is set)")
     ap.add_argument("--model", default=DEFAULT_MODEL)
     ap.add_argument("--effort", default="medium", choices=["low", "medium", "high", "xhigh", "max"])
     ap.add_argument("--frames", type=int, default=8, help="frames sampled per camera, first to last (default 8)")
@@ -148,10 +150,9 @@ def main():
     out = args.out or ROOT / "output" / "classifier" / time.strftime("%Y%m%d_%H%M%S")
     print(f"{len(dirs)} attempts -> {out}")
 
-    client = None
     if not args.dry_run:
-        import anthropic
-        client = anthropic.Anthropic()
+        args.backend = pick_backend(args.backend)
+        print(f"Classifying with {args.model} via {'the API' if args.backend == 'api' else 'the claude CLI login'}")
 
     def run(d: Path) -> dict:
         name = attempt_name(d, args.paths)
@@ -162,7 +163,7 @@ def main():
             if args.dry_run or args.sheets:
                 contact_sheet(a, args.frames, out / "sheets" / f"{name}.jpg")
             if not args.dry_run:
-                r.update(classify(client, a, args.model, args.effort, args.frames, args.width))
+                r.update(classify(a, args.backend, args.model, args.effort, args.frames, args.width))
         except Exception as e:  # one bad attempt should not stop the batch
             r["error"] = f"{type(e).__name__}: {e}"
         (out / "attempts").mkdir(parents=True, exist_ok=True)
