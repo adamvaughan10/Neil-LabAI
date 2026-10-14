@@ -27,8 +27,10 @@ All three are kept in every line anyway, as "target", "hat" and "buttons", so an
 can be trained on later.
 
 state is the measured motors: wheel speeds (or angles), arm and gripper angles (robot terms).
-All angles are the motors' absolute angles where the session has them, so they mean the
-same arm/gripper/wheel position in every session, whenever the Build HAT was powered up.
+Arm and gripper angles are the motors' absolute angles where the session has them, so they
+mean the same position in every session, whenever the Build HAT was powered up. Wheel angles
+(--wheels angle sessions) are degrees turned since the episode's first frame, counting on
+past a full turn with no jump (--wheel-angles wrapped: the absolute angle, -180..180).
 Sessions recorded at the pipeline's 10 fps (gamepad_drive.py --record's default) become
 one frame per step. Sessions at another rate are resampled: each frame takes the nearest
 recorded step (button presses and arm/gripper degrees from skipped steps are added to it).
@@ -80,7 +82,8 @@ def frame_rows(steps: list[dict], fps: float) -> list[tuple[dict, list[dict]]]:
     return [(steps[p], span) for p, span in zip(picked, spans)]
 
 
-def convert(session: Path, out: Path, action: str, task: str, success: bool, fps: float) -> Path:
+def convert(session: Path, out: Path, action: str, task: str, success: bool, fps: float,
+            wheel_angles_as: str = "since-start") -> Path:
     info = json.loads((session / "info.json").read_text())
     steps = [json.loads(line) for line in (session / "steps.jsonl").read_text().splitlines() if line.strip()]
     steps = [s for s in steps if s.get("motors") and s.get("action") and all(s.get(c) for c in CAMERAS.values())]
@@ -108,6 +111,8 @@ def convert(session: Path, out: Path, action: str, task: str, success: bool, fps
         ref = diffs[len(diffs) // 2]  # unwrap around one reading, then take the median
         offsets[role] = ref + sorted((d - ref + 180) % 360 - 180 for d in diffs)[len(diffs) // 2]
 
+    start_pos = {r: steps[0]["motors"][r]["pos_deg"] for r in ("left_wheel", "right_wheel")}
+
     lines, writers = [], {}
     try:
         for i, (step, span) in enumerate(frame_rows(steps, fps)):
@@ -122,8 +127,12 @@ def convert(session: Path, out: Path, action: str, task: str, success: bool, fps
             # Recorded with gamepad_drive.py --wheels angle: wheels are angle targets, like the gripper.
             wheel_angles = a["left_wheel"]["pos_deg"] is not None
             if wheel_angles:
-                wheels_state = [wrap(angle(r, m[r]["pos_deg"])) for r in ("left_wheel", "right_wheel")]
-                wheels_target = [wrap(angle(r, a[r]["pos_deg"])) for r in ("left_wheel", "right_wheel")]
+                if wheel_angles_as == "wrapped":
+                    wheels_state = [wrap(angle(r, m[r]["pos_deg"])) for r in ("left_wheel", "right_wheel")]
+                    wheels_target = [wrap(angle(r, a[r]["pos_deg"])) for r in ("left_wheel", "right_wheel")]
+                else:  # degrees turned since the episode's first frame: counts on past a full turn, no jump
+                    wheels_state = [robot(r, m[r]["pos_deg"] - start_pos[r]) for r in ("left_wheel", "right_wheel")]
+                    wheels_target = [robot(r, a[r]["pos_deg"] - start_pos[r]) for r in ("left_wheel", "right_wheel")]
                 wheels_hat = [span_degrees(span, r) for r in ("left_wheel", "right_wheel")]
             else:
                 wheels_state = [robot(r, m[r]["speed"]) for r in ("left_wheel", "right_wheel")]
@@ -167,6 +176,13 @@ def convert(session: Path, out: Path, action: str, task: str, success: bool, fps
         for w, _ in writers.values():
             w.release()
 
+    if not wheel_angles:
+        wheel_units = "speed"
+    elif wheel_angles_as == "wrapped":
+        wheel_units = "angle: state/target left/right are absolute wheel angles wrapped to -180..180 (+ forward)"
+    else:
+        wheel_units = ("angle: state/target left/right are degrees turned since the episode's first frame "
+                       "(+ forward, not wrapped)")
     (folder / "frames.jsonl").write_text("".join(json.dumps(r) + "\n" for r in lines))
     (folder / "episode.json").write_text(json.dumps({
         "task": task, "success": success, "frames": len(lines),
@@ -177,8 +193,7 @@ def convert(session: Path, out: Path, action: str, task: str, success: bool, fps
                   "target": "controller target: wheel speeds; arm/gripper target angles, degrees",
                   "hat": "Build HAT calls: wheel speeds running; arm/gripper run_for_degrees degrees this frame",
                   "buttons": "[dpad_x, dpad_y, X, A, B, Y]: -1/0/1 D-pad (+ right / + up), 1 = pressed this frame",
-                  "wheels": "angle: state/target left/right are wheel angles wrapped to -180..180 (+ forward), "
-                            "hat left/right are degrees turned this frame" if wheel_angles else "speed"},
+                  "wheels": wheel_units},
     }, indent=2) + "\n")
     return folder
 
@@ -192,12 +207,15 @@ def main() -> int:
     ap.add_argument("--task", default=TASK, help="the instruction sentence, the same in every episode")
     ap.add_argument("--failed", action="store_true", help="mark these episodes success=false")
     ap.add_argument("--fps", type=float, default=10, help="the pipeline's frame rate")
+    ap.add_argument("--wheel-angles", choices=("since-start", "wrapped"), default="since-start",
+                    help="--wheels angle sessions: wheel angles as degrees turned since the episode started "
+                         "(default; no jump at a full turn) or the absolute angle wrapped to -180..180")
     args = ap.parse_args()
     for action in args.action:
         out = args.out / action if len(args.action) > 1 else args.out
         for session in args.sessions:
             try:
-                folder = convert(session, out, action, args.task, not args.failed, args.fps)
+                folder = convert(session, out, action, args.task, not args.failed, args.fps, args.wheel_angles)
                 print(f"{session.name} -> {folder}")
             except (OSError, ValueError, KeyError) as exc:
                 print(f"{session.name}: skipped for {action} ({exc})")
