@@ -63,6 +63,7 @@ Then run any script. Add `--help` to see its options.
 | `python gamepad.py` | no | Prints the USB gamepad's D-pad and buttons live. |
 | `python scripts\gamepad_drive.py` | **yes** | Drives the robot from the gamepad: D-pad drives and rotates while held, X/B move the arm and Y/A the gripper a fixed angle per press. The Pi side is `pi/gamepad_server.py`. |
 | `python scripts\gamepad_drive.py --record` | **yes** | Same, and records the whole run as a synced recording (below) with the controller's target as `"action"` on every step. Ctrl-C stops and saves. |
+| `python scripts\replay_session.py logs\session_<date>_<time>` | **yes** | Re-sends a recorded session's Build HAT calls at their recorded times (`pi/replay_server.py` times them on the Pi), then compares the motors' measured speed and angle with the recording and saves `report.json` under `<session>\replays\`. `--dry-run` only lists the calls. |
 
 Before running anything that moves: lift the robot so the wheels spin freely (or give it about 30 cm of room)
 and keep hands clear of the arm.
