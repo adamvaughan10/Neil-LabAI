@@ -146,6 +146,11 @@ episodes (`episodes/*/ep_*`, where it also checks itself against the recorded `s
 Results go to `output/classifier/<date>_<time>/`: one JSON per attempt in `attempts/`, and
 `summary.md` / `summary.json` with the success rate, failure counts and low-confidence attempts to check by hand.
 
+To watch the attempts, cycle through them and see each verdict, run `python scripts/session_player.py`
+(defaults to `logs/` and `episodes/`; pass other folders as arguments). It plays both cameras from the
+saved frames with the arm/gripper readings, marks the frames the classifier looked at, and has a
+Classify button for attempts that have no verdict yet.
+
 ### Output
 
 Each run saves to its own folder under `logs/` (not committed to git):
@@ -177,8 +182,8 @@ neil_robot/
   observation.py recorder step -> policy observation (the observation spec)
   policy_client.py   HTTP client for the policy server
   policy_runner.py   real-time loop: observations out, action chunks back, queue + logging
-  attempt_classifier.py  loads a recorded attempt and asks Claude whether it succeeded
   replay.py      a recorded session served as if it were the live robot
+  attempt_classifier.py  loads a recorded attempt and asks Claude whether it succeeded
 policy_server/   standalone policy server (LeRobot / SmolVLA, or --dummy), runs in the neil_vla env
 scripts/         the command-line tools above
 ```

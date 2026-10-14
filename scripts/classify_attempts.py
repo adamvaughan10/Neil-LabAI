@@ -69,7 +69,7 @@ def summarize(results: list[dict], low_conf: float) -> dict:
     fails = Counter(r["failure_category"] for r in judged if not r["success"])
     groups = defaultdict(lambda: [0, 0])
     for r in judged:
-        g = groups[str(Path(r["path"]).parent)]
+        g = groups[r["name"].rsplit("__", 1)[0].replace("__", "/")]
         g[0] += r["success"]
         g[1] += 1
     labelled = [r for r in judged if r.get("label") is not None]
@@ -155,7 +155,7 @@ def main():
 
     def run(d: Path) -> dict:
         name = attempt_name(d, args.paths)
-        r = {"name": name, "path": str(d)}
+        r = {"name": name, "path": str(d.resolve())}
         try:
             a = load_attempt(d, args.task)
             r.update(kind=a.kind, task=a.task, duration_s=round(a.duration_s, 1), label=a.label)
