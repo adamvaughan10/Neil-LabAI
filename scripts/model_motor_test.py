@@ -10,10 +10,8 @@ one second: put Neil on a block so its wheels are off the table, keep hands clea
 2. Turns the first action's values 0..3 into commands, in the pick_cup order
    [left, right, arm, grip], robot terms (+ = forward / arm down / gripper open):
      wheels        speed = value x --scale, capped to --cap
-     arm, gripper  a move of value x --deg-scale degrees, capped to --max-deg; with
-                   --absolute the value is a target angle (the pick_cup model's "target"
-                   action) and the move is target - current angle, capped the same way
-   The base model's values are scaled units around +-2: use --scale 20 --deg-scale 5.
+     arm, gripper  a move of value x --deg-scale degrees, capped to --max-deg
+   The base model's values are scaled units around +-2: use --scale 20 --deg-scale 50.
 3. Starts pi/gamepad_server.py on the Pi, sends all four at once, stops the wheels after
    --seconds, moves the arm and gripper back, and prints what the motors measured.
 
@@ -38,15 +36,15 @@ from neil_robot.rpi_client import RPiClient  # noqa: E402
 def model_values(args) -> list[float]:
     spec = ObservationSpec.load(args.spec)
     session = Path(args.replay)
-    row = json.loads((session / "steps.jsonl").read_text(encoding="utf-8").splitlines()[args.step])
+    row = json.loads((session / "steps.jsonl").read_text(encoding="utf-8").splitlines()[0])
     files = {row[s["camera"]]["file"]: (session / row[s["camera"]]["file"]).read_bytes()
              for s in spec.images.values()}
-    client = PolicyClient(args.server)
+    client = PolicyClient(DEFAULT_URL)
     try:
         info = client.wait_ready(wait_s=10)
         print(f"Model: {info['policy']} ({info['checkpoint']}) on {info['device']}, "
               f"{info['chunk_size']} actions x {info['action_dim']} values")
-        chunk = client.infer(spec.build(row, files, args.task))
+        chunk = client.infer(spec.build(row, files))
     finally:
         client.close()
     first = chunk.actions[0]
@@ -59,15 +57,11 @@ def model_values(args) -> list[float]:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--replay", required=True, metavar="SESSION_DIR", help="recorded session for the observation")
-    ap.add_argument("--step", type=int, default=0, help="which recorded step to send (default 0)")
     ap.add_argument("--spec", default="specs/pick_cup.json")
-    ap.add_argument("--task", help="language instruction (default: the spec's)")
-    ap.add_argument("--server", default=DEFAULT_URL)
     ap.add_argument("--scale", type=float, default=1.0, help="wheel speed = value x scale (default 1)")
     ap.add_argument("--cap", type=int, default=25, help="largest wheel speed, at most 40 (default 25)")
     ap.add_argument("--deg-scale", type=float, default=1.0, help="arm/gripper degrees = value x this (default 1)")
     ap.add_argument("--max-deg", type=int, default=15, help="largest arm/gripper move, at most 30 (default 15)")
-    ap.add_argument("--absolute", action="store_true", help="arm/gripper values are target angles")
     ap.add_argument("--seconds", type=float, default=1.0, help="how long the wheels run, at most 3 (default 1)")
     ap.add_argument("--dry", action="store_true", help="print the commands, don't connect to the Pi")
     args = ap.parse_args()
@@ -81,12 +75,10 @@ def main() -> int:
     clamp = lambda v, c: max(-c, min(c, round(v)))
     left, right = (clamp(v * args.scale, args.cap) for v in first[:2])
     print(f"Wheels: left {first[0]:+.3f} -> speed {left:+d}, right {first[1]:+.3f} -> speed {right:+d} (cap {args.cap})")
-    if args.dry and args.absolute:
-        print(f"Arm / gripper targets {first[2]:+.1f} / {first[3]:+.1f} deg (moves depend on where they are now)")
+    moves = {name: clamp(v * args.deg_scale, args.max_deg) for name, v in (("arm", first[2]), ("grip", first[3]))}
+    print(f"Arm {first[2]:+.3f} -> move {moves['arm']:+d} deg (+ = down), "
+          f"gripper {first[3]:+.3f} -> move {moves['grip']:+d} deg (+ = open), cap {args.max_deg}")
     if args.dry:
-        if not args.absolute:
-            for name, v in (("arm", first[2]), ("gripper", first[3])):
-                print(f"{name.capitalize()}: {v:+.3f} -> move {clamp(v * args.deg_scale, args.max_deg):+d} deg")
         print("--dry: not connecting to the Pi.")
         return 0
 
@@ -102,18 +94,11 @@ def main() -> int:
             f"python3 -u -c {shlex.quote(code)} {shlex.quote(json.dumps(settings))} 2>&1")
         for line in stdout:
             if line.startswith("ready "):
-                start = json.loads(line[6:])  # raw encoder angles
                 break
             print("Pi:", line, end="")
         else:
             print("The Pi script stopped before it was ready.")
             return 1
-
-        moves = {}  # robot-terms degrees
-        for name, v, sign in (("arm", first[2], config.ARM_MOTOR_SIGN_DOWN),
-                              ("grip", first[3], config.GRIPPER_MOTOR_SIGN_OPEN)):
-            moves[name] = clamp((v - sign * start[name]) if args.absolute else v * args.deg_scale, args.max_deg)
-        print(f"Arm move {moves['arm']:+d} deg (+ = down), gripper move {moves['grip']:+d} deg (+ = open), cap {args.max_deg}")
 
         def send(cmd: dict) -> None:
             stdin.write(json.dumps(cmd) + "\n")
