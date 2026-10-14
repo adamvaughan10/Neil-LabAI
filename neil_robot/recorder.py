@@ -29,6 +29,10 @@ loader can read the steps in order without gaps.
 Extra per-step data (e.g. motor encoders) can be added with *extras*:
 name -> callable(t) returning a JSON-serialisable dict, stored under that name.
 Extras must return immediately (read a cached value; never block on I/O).
+
+*on_step* is called on every tick with (row, files) after the row is built and
+before it is written, so a live consumer (e.g. the policy runner) sees exactly
+what is recorded. It may add keys to *row*. Like extras, it must not block.
 """
 from __future__ import annotations
 
@@ -57,12 +61,14 @@ class SyncRecorder:
         out_dir: Path | None = None,
         extras: dict[str, Callable[[float], dict]] | None = None,
         make_videos: bool = True,
+        on_step: Callable[[dict, dict[str, bytes]], None] | None = None,
     ):
         self.cameras = cameras
         self.fps = fps
         self.out_dir = out_dir or config.LOGS_DIR / f"session_{time.strftime('%Y%m%d_%H%M%S')}"
         self.extras = extras or {}
         self.make_videos = make_videos
+        self.on_step = on_step
         self.steps = 0
         self.t0: float | None = None
         self._stop = threading.Event()
@@ -155,6 +161,11 @@ class SyncRecorder:
                 if "seq" in value:
                     st["repeated"] += value["seq"] == st["last_seq"]
                     st["last_seq"] = value["seq"]
+            if self.on_step:
+                try:
+                    self.on_step(row, files)
+                except Exception as exc:  # noqa: BLE001
+                    row["on_step_error"] = repr(exc)
             self._queue.put((row, files))
             self.steps = k = k + 1
 

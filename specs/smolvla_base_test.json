@@ -1,0 +1,8 @@
+{
+  "_comment": "Pipeline test with lerobot/smolvla_base (trained on SO-100 arms, not Neil): the inputs are mapped only so the shapes fit, and the outputs mean nothing for Neil. camera3 is left out (run with --allow-missing-images); the state is padded from 4 to 6 values with zeros.",
+  "task": "pick up the cup",
+  "images": {"observation.images.camera1": {"camera": "pi", "rotation": 0},
+             "observation.images.camera2": {"camera": "external", "rotation": 0}},
+  "state": ["left_wheel.pos_deg", "right_wheel.pos_deg", "gripper.pos_deg", "arm.pos_deg", "const:0", "const:0"],
+  "action": ["out.0", "out.1", "out.2", "out.3", "out.4", "out.5"]
+}

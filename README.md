@@ -60,6 +60,7 @@ Then run any script. Add `--help` to see its options.
 | `python scripts\sequence_test.py` | **yes** | Forward 0.5 s, backward 0.5 s, then arm up 30° and back down. Prints how far each motor turned. |
 | `python scripts\arm_test.py` | **yes** | Lowers the arm 30° and raises it back while recording video. |
 | `python scripts\motor_test.py` | **yes** | Turns each port 30° and back, asking before each. |
+| `python scripts\run_policy.py` | no (dry run) | Runs a VLA policy in real time: every step's images and motor state go to the policy server, action chunks come back and are logged. `--replay <session>` runs it on a recording, without the robot. See below. |
 
 Before running anything that moves: lift the robot so the wheels spin freely (or give it about 30 cm of room)
 and keep hands clear of the arm.
@@ -101,6 +102,31 @@ powered up), `abs_pos_deg` (-180..180) and `speed`, plus the reading's `age_ms`.
 records cameras only. Only one program can use the Build HAT at a time: recording with motors
 fails with "HAT not found" while anything else (a gamepad driver, a motor test) has it open.
 
+### Running a VLA policy in real time
+
+The recorder's 15 Hz tick doubles as the control loop. At every step, `scripts/run_policy.py`
+takes the same images and motor readings the recorder saves, turns them into the policy's
+observation (`neil_robot/observation.py`), and sends them to the **policy server**
+(`policy_server/`, its own env, see its README) over HTTP. The server returns an *action
+chunk* (SmolVLA: 50 future actions), which is played out one action per step.
+
+- `--mode sync` (default): play the whole chunk, then ask again; the robot holds while waiting.
+- `--mode async --refill-at 10`: ask for the next chunk when 10 actions are left and keep
+  going meanwhile, skipping the actions that went stale in flight. Use this when inference is slow.
+
+Each run is also a recording, in `logs/run_<date>_<time>/`: the usual files, plus `"action"`
+and `"policy"` in every `steps.jsonl` line, `inference.jsonl` (one line per request: latency,
+skipped actions) and `policy.json` (server, spec and settings).
+
+**Dry run for now:** actions are logged, never sent to the motors. Driving them needs a
+Pi-side controller that owns the Build HAT and streams motor state at the same time.
+
+The **observation spec** says which camera feeds which policy image key and which motor
+values form the state vector. It must match the LeRobot dataset the policy was trained on.
+The default (both cameras, the four `pos_deg` values) is a placeholder; pass your own with
+`--spec spec.json` (format in `neil_robot/observation.py`). On startup the script compares it
+with the policy's inputs and stops if they disagree.
+
 ### Output
 
 Each run saves to its own folder under `logs/` (not committed to git):
@@ -128,6 +154,12 @@ neil_robot/
   hardware.py    Pi-side scripts and the functions that call them (motors, camera, status)
   streams.py     live MJPEG streams: Pi camera (server started on the Pi) and the external camera
   video.py       turns frames into video.mp4 + frames/
+  recorder.py    synced recording at a fixed rate; on_step lets a live consumer see every step
+  observation.py recorder step -> policy observation (the observation spec)
+  policy_client.py   HTTP client for the policy server
+  policy_runner.py   real-time loop: observations out, action chunks back, queue + logging
+  replay.py      a recorded session served as if it were the live robot
+policy_server/   standalone policy server (LeRobot / SmolVLA, or --dummy), runs in the neil_vla env
 scripts/         the command-line tools above
 ```
 
