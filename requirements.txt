@@ -2,3 +2,4 @@
 paramiko>=3.4
 opencv-python>=4.9
 numpy
+anthropic>=1.13  # scripts/classify_attempts.py

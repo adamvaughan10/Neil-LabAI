@@ -127,6 +127,25 @@ The default (both cameras, the four `pos_deg` values) is a placeholder; pass you
 `--spec spec.json` (format in `neil_robot/observation.py`). On startup the script compares it
 with the policy's inputs and stops if they disagree.
 
+### Judging attempts with a VLM
+
+`scripts/classify_attempts.py` shows Claude frames sampled through each attempt (both cameras,
+first to last) plus the arm/gripper encoder trace, and gets back a verdict: success, confidence,
+a failure category (`did_not_reach_cup`, `misaligned_approach`, `grasp_missed`, `grasp_slipped`, ...)
+and a one-line reason. It then counts the most common failures across all the attempts.
+
+```bash
+export ANTHROPIC_API_KEY=...                                  # pip install anthropic
+python scripts/classify_attempts.py logs/                     # every session/rollout/episode under logs/
+python scripts/classify_attempts.py logs/run_20261014_153000 --task "pick up the cup"
+python scripts/classify_attempts.py logs/ --dry-run           # no API calls: contact sheets of what it would send
+```
+
+It reads teleop sessions, policy rollouts (`logs/run_*`, task taken from `policy.json`) and converted
+episodes (`episodes/*/ep_*`, where it also checks itself against the recorded `success` label).
+Results go to `output/classifier/<date>_<time>/`: one JSON per attempt in `attempts/`, and
+`summary.md` / `summary.json` with the success rate, failure counts and low-confidence attempts to check by hand.
+
 ### Output
 
 Each run saves to its own folder under `logs/` (not committed to git):
@@ -158,6 +177,7 @@ neil_robot/
   observation.py recorder step -> policy observation (the observation spec)
   policy_client.py   HTTP client for the policy server
   policy_runner.py   real-time loop: observations out, action chunks back, queue + logging
+  attempt_classifier.py  loads a recorded attempt and asks Claude whether it succeeded
   replay.py      a recorded session served as if it were the live robot
 policy_server/   standalone policy server (LeRobot / SmolVLA, or --dummy), runs in the neil_vla env
 scripts/         the command-line tools above
