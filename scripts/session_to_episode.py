@@ -94,17 +94,27 @@ def convert(session: Path, out: Path, action: str, task: str, success: bool, fps
     folder = out / f"ep_{max(taken, default=-1) + 1:04d}"
     folder.mkdir()
 
+    # Encoder angle -> the motor's absolute angle. The encoder counts from wherever the motor
+    # was when the Build HAT powered up; the absolute angle is the shaft's own, the same in
+    # every session. The difference is fixed within a session but each reading of it is off
+    # by a degree or so, so take the typical one (0 for sessions recorded without it).
+    offsets = {}
+    for role in SIGN:
+        diffs = [s["motors"][role]["abs_pos_deg"] - s["motors"][role]["pos_deg"] for s in steps
+                 if s["motors"][role].get("abs_pos_deg") is not None]
+        if not diffs:
+            offsets[role] = 0
+            continue
+        ref = diffs[len(diffs) // 2]  # unwrap around one reading, then take the median
+        offsets[role] = ref + sorted((d - ref + 180) % 360 - 180 for d in diffs)[len(diffs) // 2]
+
     lines, writers = [], {}
     try:
         for i, (step, span) in enumerate(frame_rows(steps, fps)):
             m, a, h = step["motors"], step["action"], step.get("hat_commands")
 
             def offset(role):
-                """Encoder angle -> the motor's absolute angle. The encoder counts from wherever
-                the motor was when the Build HAT powered up; the absolute angle is the shaft's
-                own, the same in every session (0 for sessions recorded without it)."""
-                apos = m[role].get("abs_pos_deg")
-                return 0 if apos is None else apos - m[role]["pos_deg"]
+                return offsets[role]
 
             def angle(role, pos):
                 return robot(role, pos + offset(role))
