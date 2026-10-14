@@ -27,9 +27,10 @@ All three are kept in every line anyway, as "target", "hat" and "buttons", so an
 can be trained on later.
 
 state is the measured motors: wheel speeds, arm and gripper encoder angles (robot terms).
-Sessions are resampled to the pipeline's 10 fps (--fps): each frame takes the nearest
-recorded step, and arm/gripper degrees issued in the skipped steps are added to the frame
-that replaces them, so no move is lost.
+Sessions recorded at the pipeline's 10 fps (gamepad_drive.py --record's default) become
+one frame per step. Sessions at another rate are resampled: each frame takes the nearest
+recorded step (button presses and arm/gripper degrees from skipped steps are added to it).
+From 15 fps that gives frames alternately 67 and 133 ms apart, so record at 10 fps.
 """
 import argparse
 import json
@@ -48,7 +49,7 @@ SIGN = {"left_wheel": config.LEFT_WHEEL_SIGN_FORWARD, "right_wheel": config.RIGH
         "arm": config.ARM_MOTOR_SIGN_DOWN, "gripper": config.GRIPPER_MOTOR_SIGN_OPEN}
 CAMERAS = {"front": "pi", "top": "external"}  # pipeline name -> recorder camera
 BUTTON_FIELDS = ["dpad_x", "dpad_y", "x", "a", "b", "y"]  # action keys with --action buttons
-TASK = "kick the ball"  # must match neil_features.TASK in the pipeline
+TASK = "pick up the cup"  # must match neil_features.TASK in the pipeline
 
 
 def robot(role: str, v):
@@ -57,6 +58,8 @@ def robot(role: str, v):
 
 def frame_rows(steps: list[dict], fps: float) -> list[tuple[dict, list[dict]]]:
     """(chosen step, steps it stands for) for each output frame at fps."""
+    if len(steps) > 1 and abs((len(steps) - 1) / (steps[-1]["t"] - steps[0]["t"]) - fps) < 0.05 * fps:
+        return [(s, [s]) for s in steps]  # recorded at fps already: one frame per step
     t0, t1 = steps[0]["t"], steps[-1]["t"]
     times = [t0 + k / fps for k in range(int((t1 - t0) * fps) + 1)]
     ts = np.array([s["t"] for s in steps])
@@ -69,6 +72,9 @@ def convert(session: Path, out: Path, action: str, task: str, success: bool, fps
     info = json.loads((session / "info.json").read_text())
     steps = [json.loads(line) for line in (session / "steps.jsonl").read_text().splitlines() if line.strip()]
     steps = [s for s in steps if s.get("motors") and s.get("action") and all(s.get(c) for c in CAMERAS.values())]
+    if abs(info["fps"] - fps) > 0.05 * fps:
+        print(f"  {session.name} was recorded at {info['fps']:g} fps: resampling to {fps:g} gives uneven frame "
+              f"spacing; record at {fps:g} fps (gamepad_drive.py --record's default) instead")
     if not steps:
         raise ValueError("no step has motors, action and both cameras (recorded with gamepad_drive.py --record?)")
     out.mkdir(parents=True, exist_ok=True)

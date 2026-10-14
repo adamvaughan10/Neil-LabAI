@@ -70,7 +70,8 @@ def main() -> int:
     ap.add_argument("--grip-step", type=int, default=10, help="gripper degrees per press")
     ap.add_argument("--record", action="store_true",
                     help="record cameras, motors and the controller's target until Ctrl-C")
-    ap.add_argument("--fps", type=float, default=config.RECORD_FPS, help="recording steps per second (default 15)")
+    ap.add_argument("--fps", type=float, default=10,
+                    help="recording steps per second (default 10, the VLA pipeline's rate, so every step is a frame)")
     ap.add_argument("--no-external", action="store_true", help="record the Pi camera only")
     ap.add_argument("--external-url", default=config.EXTERNAL_CAMERA_URL)
     ap.add_argument("--external-rotation", type=int, choices=(0, 90, 180, 270),

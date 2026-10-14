@@ -69,7 +69,7 @@ and keep hands clear of the arm.
 
 ### External camera
 
-A phone IP-camera app serving MJPEG at `http://132.68.34.87:8080/stream.mjpg` (plain **http**; https fails).
+A phone IP-camera app serving MJPEG at `http://132.68.34.85:8080/stream.mjpg` (plain **http**; https fails).
 Keep the app open and in the foreground, with the phone unlocked and on the same Wi-Fi as the Pi:
 the stream stops otherwise. Set `EXTERNAL_CAMERA_URL` if its address changes, and
 `EXTERNAL_CAMERA_ROTATION` (0/90/180/270, clockwise) if its image comes out sideways.
