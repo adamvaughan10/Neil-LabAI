@@ -306,6 +306,9 @@ def main() -> int:
             recorder = SyncRecorder(cameras, fps=args.fps, extras={"motors": motors_step, "action": action_step,
                                                                       "hat_commands": hat_step,
                                                                       "gamepad": gamepad_step})
+            deadline = time.monotonic() + 10
+            while not latest and time.monotonic() < deadline:  # so step 0 already has the motors
+                time.sleep(0.05)
             recorder.start()
             print(f"Recording at {args.fps:g} fps to {recorder.out_dir} until Ctrl-C ...")
 
