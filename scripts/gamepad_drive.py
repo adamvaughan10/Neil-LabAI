@@ -8,8 +8,10 @@ Drive the robot with the USB gamepad. THIS MOVES THE ROBOT: give it room, keep h
                          With --wheels angle the wheels move like the gripper instead: while
                          the D-pad is held each wheel turns run_for_degrees steps, --wheel-deg-s
                          degrees a second, and its target angle is recorded, wrapping at a full turn
-    X / B                arm up / down: X raises it --arm-raise degrees (20) above where it was
-                         when the script started, B lowers it back there (two positions only)
+    X / B                arm up / down: B lowers it to its resting angle (--arm-down-abs), X
+                         raises it --arm-raise degrees (20) above that (two positions only).
+                         Uses the motor's absolute angle, so it knows where the arm is even
+                         if it starts up or the Build HAT kept counting from an earlier run
     Y / A                gripper open / close by --grip-step degrees per press
     Ctrl-C               stop and quit (the motors go limp, so the arm drops)
 
@@ -89,7 +91,10 @@ def main() -> int:
                     help="with --wheels angle: wheel degrees per second while the D-pad is held")
     ap.add_argument("--ramp-down", type=float, default=1.0, help="seconds for a wheel to slow from --speed to 0")
     ap.add_argument("--arm-raise", type=int, default=20,
-                    help="degrees X raises the arm above its angle at startup (start with the arm down)")
+                    help="degrees X raises the arm above its resting (down) angle")
+    ap.add_argument("--arm-down-abs", type=int, default=12,
+                    help="the arm motor's absolute angle (abs_pos_deg, -180..180) with the arm resting down; "
+                         "12 measured on 2026-10-13/14")
     ap.add_argument("--arm-sag", type=float, nargs=2, default=(7, 3), metavar=("UP", "DOWN"),
                     help="degrees the arm settles below its goal after a move up / down (gravity and "
                          "gear slack); commands aim that much higher to cancel it. Measured on 2026-10-13")
@@ -178,6 +183,14 @@ def main() -> int:
                 print(line, flush=True)
                 last_shown[0] = line
 
+        def arm_goals() -> tuple[int, int]:
+            """(down, up) as encoder angles. The encoder counts from wherever the arm was
+            when the Build HAT powered up, but the absolute angle is the shaft's own, so the
+            resting angle is found from it."""
+            _, pos, apos = latest["state"][config.PORT_ARM][:3]
+            down = pos - apos + args.arm_down_abs
+            return down, down - config.ARM_MOTOR_SIGN_DOWN * args.arm_raise
+
         def read_pi() -> None:  # the Pi's state lines, 10 a second
             for line in stdout:
                 if line.startswith("hat "):
@@ -190,6 +203,12 @@ def main() -> int:
                 if "error" in state:
                     continue
                 latest.update(state=state, ts=clock.now(), seq=latest.get("seq", -1) + 1)
+                if "arm_known" not in latest:  # first reading: is the arm up or down right now?
+                    down, up = arm_goals()
+                    pos = state[config.PORT_ARM][1]
+                    target["arm"] = up if abs(pos - up) < abs(pos - down) else down
+                    action["arm.pos"] = config.ARM_MOTOR_SIGN_DOWN * target["arm"]
+                    latest["arm_known"] = True
                 for name, (port, i, sign) in signs.items():
                     measured[name] = sign * state[port][i]
                 show()
@@ -337,13 +356,15 @@ def main() -> int:
                     last_drive = drive
                 pressed = [b and not was for b, was in zip(state["buttons"], last_buttons)]
                 last_buttons = state["buttons"]
-                # Arm: two positions, down (where it started) and raised (--arm-raise above). The command
+                # Arm: two positions, down (--arm-down-abs) and raised (--arm-raise above). The command
                 # is the turn from where the arm really is to that position, aimed --arm-sag
                 # higher because the arm settles that far below where it is sent. The recorded
                 # target is the goal itself.
                 for button, raised in ((BTN_X, True), (BTN_B, False)):
-                    goal = start["arm"] - config.ARM_MOTOR_SIGN_DOWN * args.arm_raise if raised else start["arm"]
-                    if pressed[button] and target["arm"] != goal:
+                    if not pressed[button] or not latest:
+                        continue
+                    goal = arm_goals()[1 if raised else 0]
+                    if target["arm"] != goal:
                         now = latest["state"][config.PORT_ARM][1] if latest else target["arm"]
                         target.update(arm=goal, ts=clock.now(), seq=target["seq"] + 1)
                         action["arm.pos"] = config.ARM_MOTOR_SIGN_DOWN * goal
