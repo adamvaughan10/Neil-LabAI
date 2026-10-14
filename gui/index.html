@@ -228,10 +228,9 @@ for (const k of ["wheels", "arm_grip", "wheel_cap", "arm_min", "arm_max", "grip_
 const poseOk = r => r && r.arm >= 0 && r.arm <= 6 && r.grip >= -25 && r.grip <= -10;
 $("start").onclick = async () => {
   const r = S && S.motors.robot;
-  if (driveMode && !poseOk(r) && !confirm(`Start pose is off (arm ${r && r.arm}, gripper ${r && r.grip}; want arm 0..6, gripper -25..-10). A closed gripper makes the model just hold. Start anyway?`)) return;
   if (driveMode) {
     const c = caps();
-    const msg = "Neil WILL MOVE.\n\n" +
+    const msg = "Neil WILL MOVE.\n\nFirst it moves the arm to 2 and opens the gripper to -15 (the recorded start pose), then the model drives.\n" +
       `Wheels: ${c.wheels ? "on, speed at most " + c.wheel_cap : "off"}\n` +
       `Arm + gripper: ${c.arm_grip ? `on, arm ${c.arm_min}..${c.arm_max}°, gripper ${c.grip_min}..${c.grip_max}°` : "off"}\n\n` +
       "Stay next to Neil, keep hands clear of the arm, and keep this page open (closing it stops Neil).\n" +
@@ -285,7 +284,7 @@ function render() {
   let hint = "";
   if (r.arm != null && !active) {
     hint = poseOk(r) ? `<span class="okc">Start pose OK (arm 0..6, gripper open -25..-10).</span>`
-      : `<span class="warn">Start pose off: put the arm at 0..6 and the gripper open at -25..-10, with the cup in front, not already at the gripper.</span>`;
+      : `<span class="warn">Arm/gripper not at the start pose (arm 0..6, gripper -25..-10); a drive run moves them there first. Put the cup in front, not already at the gripper.</span>`;
   }
   $("pose-hint").innerHTML = (hint ? hint + " " : "") + "Robot terms: + forward / arm down / gripper open.";
   $("connect").disabled = !!s.busy || active;

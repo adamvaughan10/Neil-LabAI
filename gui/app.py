@@ -65,6 +65,7 @@ BRIDGE_PI_PATH = "/tmp/neil_gui_pi_bridge.py"
 SERVER_SCRIPT = ROOT / "policy_server" / "server.py"
 FPS = 10  # the pick_cup data was recorded at 10 steps a second
 DEADMAN_S = 1.5
+START_ARM, START_GRIP = 2.0, -15.0  # typical start pose in the 50 recordings (robot terms)
 
 # Robot terms (+ forward / arm down / gripper open) = sign x raw motor value.
 SIGN = {"left": config.LEFT_WHEEL_SIGN_FORWARD, "right": config.RIGHT_WHEEL_SIGN_FORWARD,
@@ -572,12 +573,8 @@ class Controller:
             self.motor_status = self.cam_status["pi"] = "off"
             raise
         self.bridge, self.motors, self.motor_status, self.motor_kind = bridge, bridge, "on (DRIVING)", "bridge"
-        # pi_bridge.py's camera server, and 1 s of motor readings: the first one after it
-        # starts can be stale (gripper reads closed), and the model must not plan from it.
-        deadline = time.monotonic() + 3
-        while (bridge.latest() is None or bridge.latest().seq < 10) and time.monotonic() < deadline:
-            time.sleep(0.05)
-        time.sleep(max(0.0, 1.0 - 0.1 * (bridge.latest().seq if bridge.latest() else 0)))
+        self.motor_status = "on (DRIVING): warm-up"
+        self.warm_up(bridge)
         cam = MjpegStream(f"http://{config.RPI_HOST}:{config.PI_STREAM_PORT}/")
         cam.name, cam.latency_s = "pi", config.PI_CAMERA_LATENCY_S
         try:
@@ -585,6 +582,26 @@ class Controller:
             self.cam_status["pi"] = "on (via pi_bridge)"
         except Exception as exc:  # noqa: BLE001
             self.cam_status["pi"] = f"error: {exc}"
+
+    def warm_up(self, bridge: BridgeLink, timeout=5.0, steady=5, tol=1.0) -> None:
+        """As inference_kit/run_policy.py: move the arm and gripper to the recorded start pose and
+        wait until 5 readings in a row change by less than 1 degree. The first readings after
+        pi_bridge.py starts can be stale (gripper reads closed), and the model must not plan
+        from them: it then decides the cup is already held and never drives."""
+        cmd = {"left": 0, "right": 0, "arm_pos": START_ARM, "grip_pos": START_GRIP}
+        last, count, t_end = None, 0, time.monotonic() + timeout
+        while time.monotonic() < t_end:
+            bridge.set_command(cmd)
+            time.sleep(0.1)
+            st = bridge.latest()
+            r = robot_readings(st.as_step(clock.now())) if st else None
+            v = (r["arm"], r["grip"]) if r else None
+            count = count + 1 if last and v and max(abs(a - b) for a, b in zip(v, last)) < tol else 0
+            last = v
+            if count >= steady:
+                self.note(f"warm-up: settled at arm {v[0]:g}, gripper {v[1]:g}")
+                return
+        self.note(f"warm-up: readings did not settle in {timeout:g} s; starting anyway")
 
     def leave_drive(self) -> None:
         if self.bridge:
