@@ -6,9 +6,9 @@ then writes one JSON command per line to its stdin whenever a button changes:
     {"arm": degrees}           turn the arm motor by this many degrees, then hold
     {"grip": degrees}          turn the gripper motor by this many degrees, then hold
     {"wheel_deg": [left, right]}  turn each wheel by this many degrees, like the gripper
-                               (scripts/gamepad_drive.py --wheels angle). Both wheels start
-                               each move together; moves that arrive while the wheels are
-                               still turning are added up and run next.
+                               (scripts/gamepad_drive.py --wheels angle). The steps add up to a
+                               target angle per wheel; each move turns a wheel from where it
+                               really is to that target, both wheels starting together.
 
 Speeds and degrees are raw motor values: the laptop applies the mounting sign flips.
 When one wheel now turns opposite to the direction it last turned (even if it has
@@ -65,25 +65,33 @@ def call(motor, name, blocking=False, **args):
 last_dir = {left: 0, right: 0}  # direction each wheel last turned: -1, +1, or 0 = never
 running = {left: 0, right: 0}  # speed each wheel was last set to
 delayed = None  # (wheel, speed, when) waiting for the other wheel to reverse
-pending = {left: 0, right: 0}  # wheel degrees asked for and not yet started (--wheels angle)
+wheel_target = {}  # --wheels angle: encoder angle each wheel is being turned to (set at startup)
 pending_lock = threading.Lock()
+CATCH_UP = 3
 wake = threading.Event()
 
 
 def wheel_mover():
-    """Runs the wheels' degree moves, both wheels starting together each time (like
-    MotorPair.run_for_degrees). Each move is the sum of what arrived while the last one
-    was turning, so moves never pile up behind each other."""
+    """Turns the wheels toward their target angles, both wheels starting each move
+    together (like MotorPair.run_for_degrees). Each move goes from where the wheel
+    really is to its target, not just the newest step: on the floor a short move
+    falls a few degrees short, and adding up those shortfalls left the wheels at a
+    third of the distance asked for. After the last step it tries CATCH_UP more times."""
     while True:
         wake.wait()
         wake.clear()
-        while True:
+        tries = 0
+        while tries < CATCH_UP or wake.is_set():
+            if wake.is_set():
+                wake.clear()
+                tries = 0
             with pending_lock:
-                moves = {w: d for w, d in pending.items() if d}
-                for w in pending:
-                    pending[w] = 0
+                goals = dict(wheel_target)
+            moves = {w: round(goals[w] - w.get_position()) for w in goals}
+            moves = {w: d for w, d in moves.items() if abs(d) >= 2}
             if not moves:
                 break
+            tries += 1
             threads = [threading.Thread(target=call, args=(w, "run_for_degrees"),
                                         kwargs={"blocking": True, "degrees": d, "speed": settings["wheel_speed"]})
                        for w, d in moves.items()]
@@ -141,6 +149,7 @@ def report_state(period):
 # Starting encoder angles, so the laptop can track the absolute target angle.
 emit("ready", {"arm": arm.get_position(), "grip": grip.get_position(),
                "left": left.get_position(), "right": right.get_position()})
+wheel_target.update({left: left.get_position(), right: right.get_position()})
 threading.Thread(target=wheel_mover, daemon=True).start()
 if settings.get("state_hz"):
     threading.Thread(target=report_state, args=(1 / settings["state_hz"],), daemon=True).start()
@@ -162,7 +171,7 @@ while True:
     if "wheel_deg" in cmd:
         with pending_lock:
             for wheel, degrees in zip((left, right), cmd["wheel_deg"]):
-                pending[wheel] += degrees
+                wheel_target[wheel] += degrees
         wake.set()
     if "arm" in cmd:
         call(arm, "run_for_degrees", degrees=cmd["arm"], speed=settings["arm_speed"])

@@ -87,7 +87,7 @@ def main() -> int:
     ap.add_argument("--wheels", choices=("speed", "angle"), default="speed",
                     help="speed: the D-pad sets wheel speeds (ramped); angle: the D-pad turns the wheels "
                          "in degree steps like the gripper, and the action is their target angle")
-    ap.add_argument("--wheel-deg-s", type=float, default=100,
+    ap.add_argument("--wheel-deg-s", type=float, default=200,
                     help="with --wheels angle: wheel degrees per second while the D-pad is held")
     ap.add_argument("--ramp-down", type=float, default=1.0, help="seconds for a wheel to slow from --speed to 0")
     ap.add_argument("--arm-raise", type=int, default=20,
