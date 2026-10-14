@@ -86,7 +86,7 @@ class Library:
         return {"id": i, "name": self.dirs[i].name, "group": f"{parent.parent.name}/{parent.name}",
                 "path": str(self.dirs[i]), "kind": a.kind, "task": a.task,
                 "fps": a.fps, "n_steps": a.n_steps, "cameras": list(a.frames), "label": a.label,
-                "arm": a.arm, "grip": a.grip, "sampled": sample_indices(a.n_steps, 8),
+                "arm": a.arm, "grip": a.grip, "times": [round(a.t(k), 3) for k in range(a.n_steps)], "sampled": sample_indices(a.n_steps, 8),
                 "verdict": self.verdicts.get(str(self.dirs[i].resolve()))}
 
     def frame_jpeg(self, i: int, cam: str, step: int, width: int = 640) -> bytes | None:

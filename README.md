@@ -142,8 +142,8 @@ python scripts/classify_attempts.py logs/run_20261014_153000 --task "pick up the
 python scripts/classify_attempts.py logs/ --dry-run           # no API calls: contact sheets of what it would send
 ```
 
-It reads teleop sessions, policy rollouts (`logs/run_*`, task taken from `policy.json`) and converted
-episodes (`episodes/*/ep_*`, where it also checks itself against the recorded `success` label).
+It reads teleop sessions, policy rollouts (`logs/run_*`, task taken from `policy.json`, and the inference kit's
+`runs/run_*` with its `front/` and `top/` images) and converted episodes (`episodes/*/ep_*`, where it also checks itself against the recorded `success` label).
 Results go to `output/classifier/<date>_<time>/`: one JSON per attempt in `attempts/`, and
 `summary.md` / `summary.json` with the success rate, failure counts and low-confidence attempts to check by hand.
 

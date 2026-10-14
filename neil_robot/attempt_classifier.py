@@ -1,8 +1,9 @@
 """Judge a recorded attempt (teleop session, policy rollout or converted episode) with a VLM.
 
-An attempt is loaded from either layout the project produces:
+An attempt is loaded from any layout the project produces:
     logs/session_*/ or logs/run_*/   pi/ external/ steps.jsonl info.json [policy.json]
     episodes/<action>/ep_*/          episode.json frames.jsonl front.mp4 top.mp4
+    inference_kit/runs/run_*/        front/ top/ steps.jsonl (the policy's own inputs and actions)
 
 Frames are sampled evenly over the attempt from both cameras (always including the last one),
 sent to Claude with the arm/gripper encoder trace, and the answer comes back as a fixed JSON verdict.
@@ -82,10 +83,14 @@ class Attempt:
     arm: list = field(default_factory=list)      # per step, degrees (+ down)
     grip: list = field(default_factory=list)     # per step, degrees (+ open)
     label: bool | None = None      # recorded ground truth, if the episode has one
+    times: list = field(default_factory=list)    # per step, seconds since the first step (else step / fps)
+
+    def t(self, i: int) -> float:
+        return self.times[i] if i < len(self.times) else i / self.fps
 
     @property
     def duration_s(self) -> float:
-        return self.n_steps / self.fps if self.fps else 0.0
+        return self.t(self.n_steps - 1) + 1 / self.fps if self.n_steps else 0.0
 
 
 def find_attempts(root: Path) -> list[Path]:
@@ -102,7 +107,11 @@ def is_attempt(d: Path) -> bool:
 
 def load_attempt(d: Path, task: str | None = None) -> Attempt:
     d = Path(d)
-    return _load_episode(d, task) if (d / "episode.json").is_file() else _load_session(d, task)
+    if (d / "episode.json").is_file():
+        return _load_episode(d, task)
+    if (d / "front").is_dir() or (d / "top").is_dir():
+        return _load_kit_run(d, task)
+    return _load_session(d, task)
 
 
 def _read_jsonl(p: Path) -> list[dict]:
@@ -115,6 +124,7 @@ def _load_session(d: Path, task: str | None) -> Attempt:
     policy = json.loads((d / "policy.json").read_text()) if (d / "policy.json").is_file() else None
     task = task or (policy or {}).get("task") or "pick up the cup"
     a = Attempt(d, "rollout" if policy is not None else "session", task, float(info.get("fps") or 10), len(rows))
+    a.times = [r["t_rel"] for r in rows] if rows and all("t_rel" in r for r in rows) else []
     for cam, name in (("external", "top"), ("pi", "front")):
         files = [(r.get(cam) or {}).get("file") for r in rows]
         if any(files):
@@ -124,6 +134,25 @@ def _load_session(d: Path, task: str | None) -> Attempt:
         # Raw encoder degrees are flipped relative to the converted episodes' convention (+ down / + open).
         a.arm.append(_neg((m.get("arm") or {}).get("pos_deg")))
         a.grip.append(_neg((m.get("gripper") or {}).get("pos_deg")))
+    return a
+
+
+def _load_kit_run(d: Path, task: str | None) -> Attempt:
+    """inference_kit/runs/run_*: front/ and top/ hold the images the policy saw, one per step;
+    steps.jsonl has {"i", "t", "state": [left, right, arm, grip], "action": [...]}, state in episode units."""
+    rows = _read_jsonl(d / "steps.jsonl")
+    a = Attempt(d, "rollout", task or "pick up the cup", 10.0, len(rows))
+    t0 = rows[0]["t"] if rows and "t" in rows[0] else None
+    if t0 is not None:
+        a.times = [r.get("t", t0) - t0 for r in rows]
+    for name in ("top", "front"):
+        if (d / name).is_dir():
+            files = [f"{name}/{r.get('i', k):06d}.jpg" for k, r in enumerate(rows)]
+            a.frames[name] = lambda i, files=files: _imread(d, files, i)
+    for r in rows:
+        s = r.get("state") or [None] * 4
+        a.arm.append(s[2] if len(s) > 2 else None)
+        a.grip.append(s[3] if len(s) > 3 else None)
     return a
 
 
@@ -181,10 +210,12 @@ def build_content(a: Attempt, n_frames: int = 8, max_w: int = 640) -> list[dict]
     """The user turn: task, encoder trace, then each sampled moment with its camera frames."""
     idx = sample_indices(a.n_steps, n_frames)
     trace = "\n".join(
-        f"  t={i / a.fps:5.1f}s  arm={_fmt(a.arm[i])}  gripper={_fmt(a.grip[i])}" for i in idx if i < len(a.arm)
+        f"  t={a.t(i):5.1f}s  arm={_fmt(a.arm[i])}  gripper={_fmt(a.grip[i])}" for i in idx if i < len(a.arm)
     )
     content = [{"type": "text", "text": (
-        f'Task: "{a.task}"\nAttempt: {a.duration_s:.1f} s, {a.n_steps} steps at {a.fps:g} fps.\n'
+        f'Task: "{a.task}"\nAttempt: {a.duration_s:.1f} s, {a.n_steps} steps'
+        + (" (a policy rollout: the robot may pause while the model plans its next moves)" if a.kind == "rollout" else "")
+        + ".\n"
         f"Arm and gripper encoder degrees (arm + = lowered, gripper + = opened) at the sampled frames:\n{trace}\n"
         f"Final: arm={_fmt(_last(a.arm))} gripper={_fmt(_last(a.grip))}\n\nFrames follow in time order."
     )}]
@@ -194,7 +225,7 @@ def build_content(a: Attempt, n_frames: int = 8, max_w: int = 640) -> list[dict]
             if img is None:
                 continue
             last = " (last frame)" if i == a.n_steps - 1 else ""
-            content.append({"type": "text", "text": f"t={i / a.fps:.1f}s {cam} camera{last}:"})
+            content.append({"type": "text", "text": f"t={a.t(i):.1f}s {cam} camera{last}:"})
             content.append({"type": "image", "source": {"type": "base64", "media_type": "image/jpeg",
                                                         "data": _jpeg_b64(img, max_w)}})
     content.append({"type": "text", "text": f'Did this attempt succeed at "{a.task}"? Answer with the JSON verdict.'})

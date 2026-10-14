@@ -117,6 +117,8 @@ const $ = id => document.getElementById(id);
 let all = [], shown = [], filter = "all", cur = null, step = 0, playing = false, timer = null, imgs = {};
 
 const cls = v => !v ? "none" : v.success ? "ok" : "bad";
+const tAt = i => cur.times && cur.times.length > i ? cur.times[i] : i / cur.fps;
+const stepAt = sec => { let best = 0; for (let i = 0; i < cur.n_steps; i++) if (Math.abs(tAt(i) - sec) < Math.abs(tAt(best) - sec)) best = i; return best; };
 const verdictText = v => !v ? "Not classified" : v.success ? "Success" : "Failure";
 
 async function loadList(keepId) {
@@ -159,7 +161,7 @@ async function open(id) {
   document.querySelectorAll(".item").forEach(e => e.classList.toggle("sel", +e.dataset.id === id));
   document.querySelector(`.item[data-id="${id}"]`)?.scrollIntoView({ block: "nearest" });
   $("title").textContent = cur.name;
-  $("sub").textContent = `${cur.group} · ${cur.kind} · ${(cur.n_steps / cur.fps).toFixed(1)} s · ${cur.n_steps} steps @ ${cur.fps} fps · "${cur.task}"`;
+  $("sub").textContent = `${cur.group} · ${cur.kind} · ${tAt(cur.n_steps - 1).toFixed(1)} s · ${cur.n_steps} steps · "${cur.task}"`;
   const cams = $("cams"); cams.innerHTML = ""; imgs = {};
   for (const c of cur.cameras) {
     const d = document.createElement("div"); d.className = "cam " + c;
@@ -186,7 +188,7 @@ function preload() {   // warm the browser cache so playback is smooth
 function drawTicks() {
   document.querySelectorAll(".tick").forEach(t => t.remove());
   const n = Math.max(1, cur.n_steps - 1), v = cur.verdict;
-  const key = v && typeof v.key_frame_s === "number" ? Math.min(n, Math.round(v.key_frame_s * cur.fps)) : null;
+  const key = v && typeof v.key_frame_s === "number" ? stepAt(v.key_frame_s) : null;
   for (const s of cur.sampled) addTick(s, n, false);
   if (key !== null) addTick(key, n, true);
 }
@@ -201,7 +203,7 @@ function show(i) {
   step = Math.max(0, Math.min(cur.n_steps - 1, i));
   for (const c of cur.cameras) imgs[c].src = `/frame/${cur.id}/${c}/${step}.jpg`;
   $("scrub").value = step;
-  $("time").textContent = `${(step / cur.fps).toFixed(1)} / ${((cur.n_steps - 1) / cur.fps).toFixed(1)} s · step ${step}`;
+  $("time").textContent = `${tAt(step).toFixed(1)} / ${tAt(cur.n_steps - 1).toFixed(1)} s · step ${step}`;
   const f = v => v === null || v === undefined ? "–" : v;
   $("readout").textContent = `arm ${f(cur.arm[step])}° (+ lowered)   gripper ${f(cur.grip[step])}° (+ opened)`;
 }
@@ -227,7 +229,7 @@ function renderVerdict() {
       </dl>
       <p class="reason">${esc(v.reason)}</p>
       <button class="b" id="classify" style="margin-top:10px">Classify again</button><div class="err" id="err"></div>`;
-    $("jump").onclick = e => { e.preventDefault(); pause(); show(Math.round(v.key_frame_s * cur.fps)); };
+    $("jump").onclick = e => { e.preventDefault(); pause(); show(stepAt(v.key_frame_s)); };
   }
   $("classify").onclick = classifyNow;
 }
