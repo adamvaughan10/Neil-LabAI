@@ -3,6 +3,8 @@ Drive the robot with the USB gamepad. THIS MOVES THE ROBOT: give it room, keep h
 
     D-pad up / down      both wheels forward / backward while held
     D-pad left / right   rotate counter-clockwise / clockwise on the spot while held
+                         (wheel speed ramps up over --ramp-up s while held and back down over
+                         --ramp-down s after release; --ramp-up 0 --ramp-down 0 = instant on/off)
     X / B                arm up / down: X raises it to --arm-up angle (-20, as shown in the live
                          line), B lowers it back to where it started (two positions only)
     Y / A                gripper open / close by --grip-step degrees per press
@@ -13,7 +15,7 @@ Drive the robot with the USB gamepad. THIS MOVES THE ROBOT: give it room, keep h
     python scripts/gamepad_drive.py --record        also record VLA data until Ctrl-C
 
 The Pi side is pi/gamepad_server.py, a plain buildhat script that this sends over
-SSH and runs. Commands go only when a button changes. While running it shows a live
+SSH and runs. Commands go when a button changes, and while a wheel's speed is ramping. While running it shows a live
 line with the action (the target the controller sets) and the motors' measured values.
 
 --record records the whole run with neil_robot/recorder.py, like stream_cameras.py
@@ -26,6 +28,7 @@ import json
 import shlex
 import sys
 import threading
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -54,9 +57,24 @@ def wheel_speeds(pad: dict, speed: int) -> tuple[int, int]:
     return int(forward * speed), int(forward * speed)
 
 
+def ramp(current: float, goal: int, dt: float, speed: int, up_s: float, down_s: float) -> float:
+    """One wheel's speed moved from current toward goal over dt seconds. It rises at
+    speed / up_s per second and falls at speed / down_s per second, so it never jumps;
+    to reverse, it first slows to 0. 0 seconds means instant."""
+    if goal * current < 0:
+        goal = 0  # reversing: slow to a stop first
+    rate_s = down_s if abs(goal) < abs(current) else up_s
+    if rate_s <= 0:
+        return float(goal)
+    step = speed / rate_s * dt
+    return min(goal, current + step) if goal > current else max(goal, current - step)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--speed", type=int, default=30, help="wheel speed, 15..60")
+    ap.add_argument("--ramp-up", type=float, default=1.0, help="seconds for a wheel to reach --speed while held")
+    ap.add_argument("--ramp-down", type=float, default=1.0, help="seconds for a wheel to slow from --speed to 0")
     ap.add_argument("--arm-up", type=int, default=-20,
                     help="arm angle X raises it to, as shown in the live line (- = up); "
                          "encoder degrees, which reset when the Build HAT powers up")
@@ -252,9 +270,12 @@ def main() -> int:
         print("Ready. D-pad drives, X raises / B lowers the arm, Y/A gripper open/close. Ctrl-C to quit.")
         print("L/R = wheel speed (+ forward), arm = angle (+ down), grip = angle (+ open)")
         last_drive, last_buttons = (0, 0), [0] * 12
+        speeds, last_t = [0.0, 0.0], time.monotonic()  # ramped robot-terms wheel speeds
         try:
             while True:
-                state = pad.wait()
+                state = pad.wait(timeout_ms=50)  # wakes at least 20 times a second for the ramp
+                now_t = time.monotonic()
+                dt, last_t = now_t - last_t, now_t
                 with pad_lock:  # remember everything pressed until the recorder's next step
                     pad_now[0] = state
                     for i, b in enumerate((BTN_X, BTN_A, BTN_B, BTN_Y)):
@@ -265,7 +286,9 @@ def main() -> int:
                     if state["buttons"] != last_buttons or state["axes"] != pad_prev[0]["axes"]:
                         pad_seen.update(ts=clock.now(), seq=pad_seen["seq"] + 1)
                     pad_prev[0] = state
-                left, right = wheel_speeds(state, args.speed)
+                goals = wheel_speeds(state, args.speed)
+                speeds = [ramp(c, g, dt, args.speed, args.ramp_up, args.ramp_down) for c, g in zip(speeds, goals)]
+                left, right = (round(v) for v in speeds)
                 drive = (config.LEFT_WHEEL_SIGN_FORWARD * left, config.RIGHT_WHEEL_SIGN_FORWARD * right)
                 if drive != last_drive:
                     action["left_wheel.vel"], action["right_wheel.vel"] = left, right

@@ -57,11 +57,15 @@ def call(motor, name, **args):
     emit("hat", {"t": time.time(), "port": port_of[motor], "call": name, **args})
 
 
-last_dir = {left: 0, right: 0}  # direction each wheel last turned: -1, +1, or 0 = never
+last_dir = {left: 0, right: 0}
+running = {left: 0, right: 0}  # speed each wheel was last set to  # direction each wheel last turned: -1, +1, or 0 = never
 delayed = None  # (wheel, speed, when) waiting for the other wheel to reverse
 
 
 def set_speed(wheel, speed):
+    if speed == running[wheel]:
+        return  # already at that speed: no Build HAT call
+    running[wheel] = speed
     if speed:
         call(wheel, "start", speed=speed)
         last_dir[wheel] = 1 if speed > 0 else -1
@@ -71,6 +75,16 @@ def set_speed(wheel, speed):
 
 def drive(speeds):
     global delayed
+    if delayed:
+        wheel, speed, when = delayed
+        if speeds[wheel] * speed > 0:
+            # Still waiting for the other wheel to reverse (a ramping laptop sends a new
+            # speed many times a second): keep waiting, with the newest speed.
+            delayed = (wheel, speeds[wheel], when)
+            for other, s in speeds.items():
+                if other is not wheel:
+                    set_speed(other, s)
+            return
     delayed = None
     reversing = [w for w, s in speeds.items() if s * last_dir[w] < 0]
     for wheel, speed in speeds.items():
