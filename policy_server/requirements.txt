@@ -1,6 +1,5 @@
-# Policy server env (neil_vla). Match the lerobot version used for training:
-# Athena trains with 0.6.1 (INFERENCE-GUIDE.md). This server was tested with 0.4.4 + smolvla_base.
-lerobot[smolvla]
+# Policy server env (neil_vla, Python 3.12). Same lerobot version as Athena's training (INFERENCE-GUIDE.md).
+lerobot[smolvla,dataset]==0.6.1
 numpy
 opencv-python-headless
 # Windows Smart App Control blocks pyarrow 26's DLLs on this laptop; 21 loads fine.

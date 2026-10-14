@@ -12,7 +12,7 @@ laptop now and on an Athena GPU node later.
 A separate env, because torch + lerobot are large and the robot env doesn't need them:
 
 ```powershell
-conda create -n neil_vla python=3.11
+conda create -n neil_vla python=3.12
 conda activate neil_vla
 pip install -r policy_server\requirements.txt
 ```
@@ -32,8 +32,8 @@ python scripts\run_policy.py --replay logs\session_20261013_144751   # no robot 
 
 `--checkpoint` takes the `pretrained_model` folder an Athena training job writes
 (`outputs/neil_JOBID/checkpoints/last/pretrained_model`), or a Hub id such as
-`lerobot/smolvla_base`. Install the same lerobot version the policy was trained with
-(Athena: 0.6.1, see INFERENCE-GUIDE.md): the checkpoint layout changed between versions.
+`lerobot/smolvla_base`. lerobot is pinned to 0.6.1, the version Athena trains with
+(INFERENCE-GUIDE.md); it needs Python 3.12. A checkpoint from another version may not load.
 
 ## Athena (GPU, later)
 
