@@ -160,6 +160,8 @@
         <div><label>Chunks</label><select id="rmode"><option value="async">async (keep moving)</option><option value="sync">sync (pause each chunk)</option></select></div>
         <div><label>Stop after (s, empty = never)</label><input id="seconds" type="number" value="30" min="1"></div>
       </div>
+      <label>Replan every N actions (10 = every 1 s; empty = the whole 50-action chunk)</label>
+      <input id="apc" type="number" value="10" min="1" max="50">
       <label>Caps (applied to every command; also in dry run)</label>
       <div class="caps">
         <div><label><input type="checkbox" id="c-wheels" checked> wheels</label></div>
@@ -223,7 +225,10 @@ for (const k of ["wheels", "arm_grip", "wheel_cap", "arm_min", "arm_max", "grip_
   $("c-" + k).oninput = () => { capsDirty = true; };
 }
 
+const poseOk = r => r && r.arm >= 0 && r.arm <= 6 && r.grip >= -25 && r.grip <= -10;
 $("start").onclick = async () => {
+  const r = S && S.motors.robot;
+  if (driveMode && !poseOk(r) && !confirm(`Start pose is off (arm ${r && r.arm}, gripper ${r && r.grip}; want arm 0..6, gripper -25..-10). A closed gripper makes the model just hold. Start anyway?`)) return;
   if (driveMode) {
     const c = caps();
     const msg = "Neil WILL MOVE.\n\n" +
@@ -233,7 +238,7 @@ $("start").onclick = async () => {
       "Space or Esc = emergency stop.\n\nStart?";
     if (!confirm(msg)) return;
   }
-  await api("/api/run/start", {drive: driveMode, task: $("task").value, spec: $("spec").value, mode: $("rmode").value,
+  await api("/api/run/start", {drive: driveMode, task: $("task").value, spec: $("spec").value, mode: $("rmode").value, actions_per_chunk: $("apc").value,
                               seconds: $("seconds").value, caps: caps()});
 };
 
@@ -279,9 +284,8 @@ function render() {
     .map(([k, n]) => `<div><div class="v">${fmt(r[k], 0)}</div><div class="n">${n}</div></div>`).join("");
   let hint = "";
   if (r.arm != null && !active) {
-    const armOk = r.arm >= -5 && r.arm <= 8, gripOk = r.grip >= -14 && r.grip <= -8;
-    hint = armOk && gripOk ? `<span class="okc">Start pose matches the recordings.</span>`
-      : `<span class="warn">Recordings started with arm -5..8 and gripper -14..-8.</span>`;
+    hint = poseOk(r) ? `<span class="okc">Start pose OK (arm 0..6, gripper open -25..-10).</span>`
+      : `<span class="warn">Start pose off: put the arm at 0..6 and the gripper open at -25..-10, with the cup in front, not already at the gripper.</span>`;
   }
   $("pose-hint").innerHTML = (hint ? hint + " " : "") + "Robot terms: + forward / arm down / gripper open.";
   $("connect").disabled = !!s.busy || active;

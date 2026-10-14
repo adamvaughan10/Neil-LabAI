@@ -313,11 +313,13 @@ def check_spec(spec: ObservationSpec, info: dict) -> tuple[list[str], list[str]]
 
 class Run:
     def __init__(self, ctl: "Controller", spec_path: str, task: str, mode: str, drive: bool,
-                 seconds: float | None, refill_at: int):
+                 seconds: float | None, refill_at: int, actions_per_chunk: int | None = None):
         self.ctl, self.drive, self.mode, self.seconds = ctl, drive, mode, seconds
         self.spec_path, self.spec = spec_path, ObservationSpec.load(ROOT / spec_path)
         self.task = task.strip() or self.spec.task
-        self.refill_at = refill_at
+        self.actions_per_chunk = actions_per_chunk
+        # async: ask again when half of the used actions are left
+        self.refill_at = min(refill_at, actions_per_chunk // 2) if actions_per_chunk else refill_at
         self.status, self.error, self.warnings = "starting", None, []
         self.estopped, self.stop_reason = False, None
         self._entered_drive = False
@@ -380,10 +382,11 @@ class Run:
             self.out_dir.mkdir(parents=True, exist_ok=True)
             (self.out_dir / "policy.json").write_text(json.dumps(
                 {"server": ctl.model.url, "server_info": info, "spec_file": self.spec_path, "spec": self.spec.to_dict(),
-                 "task": self.task, "mode": self.mode, "refill_at": self.refill_at, "dry_run": not self.drive,
+                 "task": self.task, "mode": self.mode, "refill_at": self.refill_at,
+                 "actions_per_chunk": self.actions_per_chunk, "dry_run": not self.drive,
                  "caps": ctl.caps, "replay": ctl.replay}, indent=2))
             self.runner = PolicyRunner(self.client, self.spec, mode=self.mode, refill_at=self.refill_at,
-                                       task=self.task, execute=self.execute)
+                                       actions_per_chunk=self.actions_per_chunk, task=self.task, execute=self.execute)
             rec = SyncRecorder(cams, fps=FPS, out_dir=self.out_dir, extras={"motors": motor_step},
                                     make_videos=False, on_step=self.on_step)
             self.runner.start(self.out_dir)
@@ -647,7 +650,7 @@ class Controller:
             self.set_caps(body["caps"])
         seconds = float(body["seconds"]) if body.get("seconds") else None
         self.run = Run(self, body["spec"], body.get("task", ""), body.get("mode", "async"), bool(body.get("drive")),
-                       seconds, int(body.get("refill_at", 10)))
+                       seconds, int(body.get("refill_at", 10)), int(body.get("actions_per_chunk") or 0) or None)
 
     def snapshot(self) -> dict:
         self.last_poll = time.monotonic()
