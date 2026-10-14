@@ -6,8 +6,9 @@ then writes one JSON command per line to its stdin whenever a button changes:
     {"arm": degrees}           turn the arm motor by this many degrees, then hold
     {"grip": degrees}          turn the gripper motor by this many degrees, then hold
     {"wheel_deg": [left, right]}  turn each wheel by this many degrees, like the gripper
-                               (scripts/gamepad_drive.py --wheels angle). Moves that arrive
-                               while a wheel is still turning are added up and run next.
+                               (scripts/gamepad_drive.py --wheels angle). Both wheels start
+                               each move together; moves that arrive while the wheels are
+                               still turning are added up and run next.
 
 Speeds and degrees are raw motor values: the laptop applies the mounting sign flips.
 When one wheel now turns opposite to the direction it last turned (even if it has
@@ -39,6 +40,7 @@ arm = Motor(settings["arm"])
 grip = Motor(settings["grip"])
 arm.release = False  # hold the angle after each move instead of going limp
 grip.release = False
+left.release = right.release = False  # degree moves: no 0.2 s pause and coast after each step
 port_of = {left: settings["left"], right: settings["right"], arm: settings["arm"], grip: settings["grip"]}
 print_lock = threading.Lock()
 
@@ -65,21 +67,30 @@ running = {left: 0, right: 0}  # speed each wheel was last set to
 delayed = None  # (wheel, speed, when) waiting for the other wheel to reverse
 pending = {left: 0, right: 0}  # wheel degrees asked for and not yet started (--wheels angle)
 pending_lock = threading.Lock()
-wake = {left: threading.Event(), right: threading.Event()}
+wake = threading.Event()
 
 
-def wheel_mover(wheel):
-    """Runs one wheel's degree moves one after another, each the sum of what arrived
-    while the last was turning, so moves never pile up behind each other."""
+def wheel_mover():
+    """Runs the wheels' degree moves, both wheels starting together each time (like
+    MotorPair.run_for_degrees). Each move is the sum of what arrived while the last one
+    was turning, so moves never pile up behind each other."""
     while True:
-        wake[wheel].wait()
-        wake[wheel].clear()
+        wake.wait()
+        wake.clear()
         while True:
             with pending_lock:
-                degrees, pending[wheel] = pending[wheel], 0
-            if not degrees:
+                moves = {w: d for w, d in pending.items() if d}
+                for w in pending:
+                    pending[w] = 0
+            if not moves:
                 break
-            call(wheel, "run_for_degrees", blocking=True, degrees=degrees, speed=settings["wheel_speed"])
+            threads = [threading.Thread(target=call, args=(w, "run_for_degrees"),
+                                        kwargs={"blocking": True, "degrees": d, "speed": settings["wheel_speed"]})
+                       for w, d in moves.items()]
+            for th in threads:
+                th.start()
+            for th in threads:
+                th.join()
 
 
 def set_speed(wheel, speed):
@@ -130,8 +141,7 @@ def report_state(period):
 # Starting encoder angles, so the laptop can track the absolute target angle.
 emit("ready", {"arm": arm.get_position(), "grip": grip.get_position(),
                "left": left.get_position(), "right": right.get_position()})
-for w in (left, right):
-    threading.Thread(target=wheel_mover, args=(w,), daemon=True).start()
+threading.Thread(target=wheel_mover, daemon=True).start()
 if settings.get("state_hz"):
     threading.Thread(target=report_state, args=(1 / settings["state_hz"],), daemon=True).start()
 
@@ -150,10 +160,10 @@ while True:
     if "drive" in cmd:
         drive({left: cmd["drive"][0], right: cmd["drive"][1]})
     if "wheel_deg" in cmd:
-        for wheel, degrees in zip((left, right), cmd["wheel_deg"]):
-            with pending_lock:
+        with pending_lock:
+            for wheel, degrees in zip((left, right), cmd["wheel_deg"]):
                 pending[wheel] += degrees
-            wake[wheel].set()
+        wake.set()
     if "arm" in cmd:
         call(arm, "run_for_degrees", degrees=cmd["arm"], speed=settings["arm_speed"])
     if "grip" in cmd:
