@@ -572,7 +572,12 @@ class Controller:
             self.motor_status = self.cam_status["pi"] = "off"
             raise
         self.bridge, self.motors, self.motor_status, self.motor_kind = bridge, bridge, "on (DRIVING)", "bridge"
-        time.sleep(1.0)  # pi_bridge.py's camera server
+        # pi_bridge.py's camera server, and 1 s of motor readings: the first one after it
+        # starts can be stale (gripper reads closed), and the model must not plan from it.
+        deadline = time.monotonic() + 3
+        while (bridge.latest() is None or bridge.latest().seq < 10) and time.monotonic() < deadline:
+            time.sleep(0.05)
+        time.sleep(max(0.0, 1.0 - 0.1 * (bridge.latest().seq if bridge.latest() else 0)))
         cam = MjpegStream(f"http://{config.RPI_HOST}:{config.PI_STREAM_PORT}/")
         cam.name, cam.latency_s = "pi", config.PI_CAMERA_LATENCY_S
         try:
