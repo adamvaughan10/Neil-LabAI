@@ -370,6 +370,9 @@ async function init() {
   opts = await api("/api/options");
   $("ckpt").innerHTML = opts.checkpoints.map(c => `<option value="${esc(c.value)}">${esc(c.label)}</option>`).join("");
   $("spec").innerHTML = opts.specs.map(s => `<option ${s === opts.default_spec ? "selected" : ""}>${esc(s)}</option>`).join("");
+  // picking a model picks the spec made for it (its v1 or delta action mode)
+  $("ckpt").onchange = () => { const sp = opts.spec_for[$("ckpt").value]; if (sp) $("spec").value = sp; };
+  $("ckpt").onchange();
   $("task").value = opts.task;
   $("legend").innerHTML = NAMES.map((n, i) => `<span><i style="background:${COLORS[i]}"></i>${n}</span>`).join("") +
     `<span>last 10 s of actions (model units)</span>`;

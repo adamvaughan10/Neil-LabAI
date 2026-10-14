@@ -4,5 +4,8 @@
   "images": {"observation.images.camera1": {"camera": "pi", "rotation": 0},
              "observation.images.camera2": {"camera": "external", "rotation": 0}},
   "state": ["-left_wheel.speed", "right_wheel.speed", "-arm.pos_deg", "-gripper.pos_deg"],
-  "action": ["left", "right", "arm_pos", "grip_pos"]
+  "action": ["left", "right", "arm_pos", "grip_pos"],
+  "action_mode": "v1",
+  "start_pose": [2, -15],
+  "checkpoint": "inference_kit/model"
 }

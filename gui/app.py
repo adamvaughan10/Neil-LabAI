@@ -13,6 +13,11 @@ and runs the model at 10 steps a second, like scripts/run_policy.py:
            motors and serves the front camera. Each action is capped here (wheel speed,
            arm and gripper target ranges) and again by pi_bridge.py, then sent.
 
+The spec says how actions become commands ("action_mode"): v1 models give wheel speeds;
+delta models (models/handoff_pick_cup_pos2) give wheel degrees still to turn, sent as
+pi_bridge.py's left_deg/right_deg, with arm and gripper targets on the abs_pos_deg scale.
+Picking a model picks the spec made for it (the spec's "checkpoint").
+
 Stopping a drive run, the emergency stop, closing the page (no poll for 1.5 s) or losing
 SSH all stop the wheels; pi_bridge.py also stops them 0.5 s after its last command.
 Only one program can hold Neil's motors and Pi camera: stop the gamepad, the recorder
@@ -66,6 +71,9 @@ SERVER_SCRIPT = ROOT / "policy_server" / "server.py"
 FPS = 10  # the pick_cup data was recorded at 10 steps a second
 DEADMAN_S = 1.5
 START_ARM, START_GRIP = 2.0, -15.0  # typical start pose in the 50 recordings (robot terms)
+# Delta models: state/action arm = -(abs_pos_deg - ARM_ABS0), gripper = -(abs_pos_deg - GRIP_ABS0);
+# wheel moves under DELTA_DEADBAND degrees count as 0 (see inference_kit/neil_io.py).
+ARM_ABS0, GRIP_ABS0, DELTA_DEADBAND = 14, -93, 3.0
 
 # Robot terms (+ forward / arm down / gripper open) = sign x raw motor value.
 SIGN = {"left": config.LEFT_WHEEL_SIGN_FORWARD, "right": config.RIGHT_WHEEL_SIGN_FORWARD,
@@ -171,10 +179,14 @@ class BridgeLink:
                     break
         s = json.loads(line)
         raw = lambda role, v: SIGN[role] * v  # noqa: E731  (signs are +-1: their own inverse)
-        motors = {PORT["left"]: {"speed": raw("left", s["left_speed"]), "pos": None, "apos": None},
-                  PORT["right"]: {"speed": raw("right", s["right_speed"]), "pos": None, "apos": None},
-                  PORT["arm"]: {"speed": None, "pos": raw("arm", s["arm_pos"]), "apos": None},
-                  PORT["grip"]: {"speed": None, "pos": raw("grip", s["grip_pos"]), "apos": None}}
+        opt = lambda role, v: None if v is None else raw(role, v)  # noqa: E731
+        # arm_abs / grip_abs are raw abs_pos_deg already (pi_bridge.py adds them for delta models)
+        motors = {PORT["left"]: {"speed": raw("left", s["left_speed"]), "pos": opt("left", s.get("left_deg")),
+                                 "apos": None},
+                  PORT["right"]: {"speed": raw("right", s["right_speed"]), "pos": opt("right", s.get("right_deg")),
+                                  "apos": None},
+                  PORT["arm"]: {"speed": None, "pos": raw("arm", s["arm_pos"]), "apos": s.get("arm_abs")},
+                  PORT["grip"]: {"speed": None, "pos": raw("grip", s["grip_pos"]), "apos": s.get("grip_abs")}}
         self._seq += 1
         self._latest = MotorState(clock.now(), s["t"], self._seq, motors, {})
 
@@ -348,7 +360,7 @@ class Run:
         self.history.append(self.action[:4] if self.action else None)
 
     def execute(self, values: list[float]) -> None:
-        cmd = self.ctl.command_for(values)
+        cmd = self.ctl.command_for(values, self.spec)
         self._cmd_this_step = cmd
         if self.drive and not self.estopped and self.ctl.bridge:
             self.ctl.bridge.set_command(cmd)
@@ -363,7 +375,7 @@ class Run:
                 raise RuntimeError("; ".join(problems))
             if self.drive:
                 self._entered_drive = True  # set first: a half-started bridge is stopped too
-                ctl.enter_drive()
+                ctl.enter_drive(self.spec)
             if self._stop_evt.is_set():
                 raise RuntimeError("stopped while starting")
             cams = {}
@@ -475,6 +487,7 @@ class Controller:
         self.model = ModelServer()
         self.run: Run | None = None
         self.caps = dict(DEFAULT_CAPS)
+        self._seq = 0
         self.last_poll = time.monotonic()
         self.messages: deque = deque(maxlen=30)
         self.lock = threading.RLock()
@@ -558,7 +571,7 @@ class Controller:
 
     # drive mode: pi_bridge.py holds the motors and the Pi camera
 
-    def enter_drive(self) -> None:
+    def enter_drive(self, spec: ObservationSpec) -> None:
         if self.replay:
             raise RuntimeError("drive is off while replaying a recording")
         if not BRIDGE_SRC.exists():
@@ -574,7 +587,7 @@ class Controller:
             raise
         self.bridge, self.motors, self.motor_status, self.motor_kind = bridge, bridge, "on (DRIVING)", "bridge"
         self.motor_status = "on (DRIVING): warm-up"
-        self.warm_up(bridge)
+        self.warm_up(bridge, spec)
         cam = MjpegStream(f"http://{config.RPI_HOST}:{config.PI_STREAM_PORT}/")
         cam.name, cam.latency_s = "pi", config.PI_CAMERA_LATENCY_S
         try:
@@ -583,12 +596,14 @@ class Controller:
         except Exception as exc:  # noqa: BLE001
             self.cam_status["pi"] = f"error: {exc}"
 
-    def warm_up(self, bridge: BridgeLink, timeout=5.0, steady=5, tol=1.0) -> None:
+    def warm_up(self, bridge: BridgeLink, spec: ObservationSpec, timeout=5.0, steady=5, tol=1.0) -> None:
         """As inference_kit/run_policy.py: move the arm and gripper to the recorded start pose and
         wait until 5 readings in a row change by less than 1 degree. The first readings after
         pi_bridge.py starts can be stale (gripper reads closed), and the model must not plan
         from them: it then decides the cup is already held and never drives."""
-        cmd = {"left": 0, "right": 0, "arm_pos": START_ARM, "grip_pos": START_GRIP}
+        arm, grip = spec.start_pose or (START_ARM, START_GRIP)
+        cmd = {"left": 0, "right": 0, "arm_abs": ARM_ABS0 - arm, "grip_abs": GRIP_ABS0 - grip} \
+            if spec.action_mode == "delta" else {"left": 0, "right": 0, "arm_pos": arm, "grip_pos": grip}
         last, count, t_end = None, 0, time.monotonic() + timeout
         while time.monotonic() < t_end:
             bridge.set_command(cmd)
@@ -635,11 +650,24 @@ class Controller:
                 self.note(f"the page stopped polling for {DEADMAN_S:g} s")
                 self.estop()
 
-    def command_for(self, values: list[float]) -> dict:
+    def command_for(self, values: list[float], spec: ObservationSpec | None = None) -> dict:
         """One action -> the pi_bridge.py command, within the page's caps."""
         c = self.caps
         clamp = lambda v, lo, hi: max(lo, min(hi, v))  # noqa: E731
         cap = c["wheel_cap"]
+        if spec is not None and spec.action_mode == "delta":
+            lo, hi = spec.action_range or ([float("-inf")] * 4, [float("inf")] * 4)
+            v = [clamp(x, a, b) for x, a, b in zip(values[:4], lo, hi)]
+            self._seq += 1  # pi_bridge.py moves the wheel target once per seq, however often it is resent
+            cmd = {"seq": self._seq, "wheel_cap": cap}
+            if c["wheels"]:
+                cmd["left_deg"], cmd["right_deg"] = (0.0 if abs(d) < DELTA_DEADBAND else round(d, 1) for d in v[:2])
+            else:
+                cmd["left"] = cmd["right"] = 0
+            if c["arm_grip"]:
+                cmd["arm_abs"] = round(ARM_ABS0 - clamp(v[2], c["arm_min"], c["arm_max"]), 1)
+                cmd["grip_abs"] = round(GRIP_ABS0 - clamp(v[3], c["grip_min"], c["grip_max"]), 1)
+            return cmd
         cmd = {"left": int(clamp(round(values[0]), -cap, cap)) if c["wheels"] else 0,
                "right": int(clamp(round(values[1]), -cap, cap)) if c["wheels"] else 0}
         if c["arm_grip"]:
@@ -703,8 +731,17 @@ def options() -> dict:
     ckpts += [{"value": "lerobot/smolvla_base", "label": "smolvla_base (untrained for Neil)"},
               {"value": "dummy", "label": "dummy (no model, holds still)"}]
     specs = sorted(str(p.relative_to(ROOT)) for p in (ROOT / "specs").glob("*.json"))
+    spec_for = {}  # checkpoint -> the spec made for it
+    for sp in specs:
+        try:
+            ck = json.loads((ROOT / sp).read_text()).get("checkpoint")
+        except ValueError:
+            continue
+        if ck:
+            spec_for[ck] = sp
     default_spec = "specs/pick_cup_kit.json" if "specs/pick_cup_kit.json" in specs else specs[0]
-    return {"checkpoints": ckpts, "specs": specs, "default_spec": default_spec, "task": "pick up the cup",
+    return {"checkpoints": ckpts, "specs": specs, "default_spec": default_spec, "spec_for": spec_for,
+            "task": "pick up the cup",
             "vla_python": vla_python(), "external_url": config.EXTERNAL_CAMERA_URL, "pi": config.RPI_HOST,
             "default_caps": DEFAULT_CAPS}
 
