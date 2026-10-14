@@ -21,6 +21,8 @@ recorder stores each camera's JPEGs exactly as sent. "state" and "action" name
 motor fields from the step's "motors" entry as "<role>.<field>"; "action" only
 labels the policy's output dimensions in the logs. A state entry "const:<number>"
 sends that fixed number, e.g. to pad the state for a policy trained on another robot.
+A leading "-" negates a motor value ("-left_wheel.speed"), to apply the mounting sign
+flips that session_to_episode.py applies when it makes the training data.
 
 Images go out as the camera's own JPEG bytes: nothing is decoded or re-encoded here.
 """
@@ -86,11 +88,12 @@ class ObservationSpec:
             if name.startswith("const:"):
                 state.append(float(name[6:]))
                 continue
-            role, fld = name.split(".", 1)
+            sign = -1.0 if name.startswith("-") else 1.0
+            role, fld = name.lstrip("-").split(".", 1)
             value = (motors.get(role) or {}).get(fld)
             if value is None:
                 raise ObservationError(f"no motor value {name!r}")
-            state.append(float(value))
+            state.append(sign * float(value))
         return {
             "step": row["step"], "t": row["t"], "task": task or self.task,
             "images": images, "state": state, "state_names": list(self.state),
