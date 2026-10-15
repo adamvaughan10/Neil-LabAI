@@ -51,7 +51,7 @@ sys.path.insert(0, str(ROOT))
 _LAB_KEY = Path.home() / ".ssh" / "id_ed25519_labpi"
 if not os.getenv("RPI_SSH_KEY") and _LAB_KEY.exists():
     os.environ["RPI_SSH_KEY"] = str(_LAB_KEY)
-os.environ.setdefault("EXTERNAL_CAMERA_URL", "http://132.68.34.85:8080/stream.mjpg")
+os.environ.setdefault("EXTERNAL_CAMERA_URL", "http://132.68.34.44:8080/stream.mjpg")
 
 from neil_robot import clock, config  # noqa: E402
 from neil_robot.motor_stream import MotorState, MotorStateStream  # noqa: E402
