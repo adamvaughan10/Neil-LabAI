@@ -14,7 +14,9 @@
     const grip = open < 0 ? -1 : e.sig.grip.findIndex((g, i) => i > open && g !== null && g < -45);
     return { d: drive >= 0 ? drive / n : 0.15, g: grip >= 0 ? grip / n : 0.75 };
   }
-  const EPS = D.episodes.map((e, i) => ({ ...e, no: i + 1, ph: phases(e) }));
+  const VERDICT = {};
+  for (const l of (window.LAB_DATA?.labels || [])) if (l.demo) VERDICT[l.demo] = l;
+  const EPS = D.episodes.map((e, i) => ({ ...e, no: i + 1, ph: phases(e), v: VERDICT[e.id] || null }));
   const SAY = ["Finding the cup", "Driving to the cup", "Grabbing the cup", "Got it!"];
   function phaseAt(ph, f) {   // f: 0..1 through the demo
     if (f < ph.d) return 0;
@@ -24,13 +26,18 @@
   }
 
   // ---------- State ----------
-  const S = { demos: 97, goal: 100, rate: 64, version: 3, rates: [0, 40, 64], storyOn: false };
+  const S = { demos: 97, goal: 100, rate: 60, version: 3, rates: [0, 40, 60], measured: [false, false, true, false], storyOn: false };
 
   // ---------- Pages ----------
   const VIEWS = ["loop", "flow", "data", "brain", "impact"];
+  const LAB_VIEWS = ["ops", "runs", "labels", "models"];
   const pill = $("#tabPill");
   function movePill() { const on = $(".tab.on"); pill.style.left = on.offsetLeft + "px"; pill.style.width = on.offsetWidth + "px"; }
   function show(v) {
+    const lab = LAB_VIEWS.includes(v);
+    if (lab && S.storyOn) stopStory();
+    document.body.classList.toggle("lab", lab);
+    $$("#modeSwitch button").forEach(b => b.classList.toggle("on", b.dataset.mode === (lab ? "lab" : "pitch")));
     $$(".tab").forEach(t => t.classList.toggle("on", t.dataset.view === v));
     $$(".view").forEach(s => s.classList.toggle("on", s.id === "v-" + v));
     movePill();
@@ -38,7 +45,19 @@
     if (v === "flow") requestAnimationFrame(layoutBack);
     if (v === "data") renderGrid();
     if (v === "brain") drawChart(true);
+    requestAnimationFrame(moveModeKnob);
+    window.LAB?.shown(v);
   }
+  const lastView = { pitch: "loop", lab: "ops" };
+  function moveModeKnob() {
+    const on = $("#modeSwitch button.on"), k = $("#modeKnob");
+    if (on) { k.style.left = on.offsetLeft + "px"; k.style.width = on.offsetWidth + "px"; }
+  }
+  $$("#modeSwitch button").forEach(b => b.onclick = () => {
+    const cur = $(".tab.on")?.dataset.view;
+    if (cur) lastView[LAB_VIEWS.includes(cur) ? "lab" : "pitch"] = cur;
+    show(lastView[b.dataset.mode]);
+  });
   $$(".tab").forEach(t => t.onclick = () => show(t.dataset.view));
   addEventListener("resize", () => { movePill(); layoutPath(); layoutBack(); });
   requestAnimationFrame(movePill);
@@ -131,6 +150,7 @@
   }
   function refresh() {
     count($("#nDemos"), S.demos); count($("#nData"), S.demos);
+    $("#nJudged").textContent = EPS.filter(e => e.v).length;
     const st = $("#statDemos"); st.classList.remove("bump"); void st.offsetWidth; st.classList.add("bump");
     $("#tVal").textContent = `${S.demos} / ${S.goal} demos`;
     $("#tBar").style.width = Math.min(100, (S.demos / S.goal) * 100) + "%";
@@ -145,7 +165,7 @@
   async function upgrade() {
     $("#tLbl").textContent = "Training now";
     for (let p = 0; p <= 100; p += 5) { $("#tBar").style.width = p + "%"; $("#tVal").textContent = p + "%"; await sleep(90); }
-    S.version = 4; S.rates = [0, 40, 64, 81]; S.rate = 81;
+    S.version = 4; S.rates = [0, 40, 60, 81]; S.rate = 81;
     count($("#rate"), 81, "%", 1400);
     drawChart(false);
     S.goal = 200;
@@ -167,7 +187,7 @@
       c.className = "card";
       c.style.animationDelay = Math.min(n, 30) * 22 + "ms";
       c.innerHTML = `<img loading="lazy" src="assets/eps/${e.id}/t05.jpg" alt="">
-        <div class="ok"><svg><use href="#i-check"/></svg></div>
+        ${e.v ? `<div class="ok${e.v.success ? "" : " no"}"><svg><use href="#i-${e.v.success ? "check" : "x"}"/></svg></div>` : `<div class="ok wait" title="Not judged yet">…</div>`}
         <div class="tag">Demo ${e.no}</div><div class="bar"><b></b></div>`;
       const im = $("img", c), bar = $(".bar b", c);
       c.onpointermove = ev => {
@@ -183,7 +203,9 @@
   // ---------- Demo viewer ----------
   let mTimer = null;
   function openDemo(e) {
-    $("#mTitle").textContent = `Demo ${e.no} · approved`;
+    $("#mTitle").textContent = e.v ? `Demo ${e.no} · ${e.v.success ? "picked up" : "missed"} · ${Math.round(e.v.confidence * 100)}% sure` : `Demo ${e.no} · not judged yet`;
+    $("#modal").classList.toggle("unjudged", !e.v);
+    $("#mNotes").innerHTML = e.v ? `<b>Claude's notes</b>${e.v.reason.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]))}` : "<b>Claude's notes</b>Waiting in the queue. Claude has not watched this demo yet.";
     let k = 0;
     const frame = () => {
       $("#mTop").src = `assets/eps/${e.id}/t${pad(k, 2)}.jpg`;
@@ -208,7 +230,7 @@
       d += ` C${x0 + m},${y0} ${x1 - m},${y1} ${x1},${y1}`;
     }
     const last = pts[pts.length - 1];
-    const names = ["Version 1", "Version 2", "Version 3", S.version >= 4 ? "Version 4" : "Tonight"];
+    const names = ["Base", "Version 1", "Version 2", S.version >= 4 ? "Version 3" : "Tonight"];
     let s = `<defs>
       <linearGradient id="cl" x1="0" x2="1"><stop offset="0" stop-color="#ff9fd0"/><stop offset=".6" stop-color="#e0218a"/><stop offset="1" stop-color="#6c6be0"/></linearGradient>
       <linearGradient id="ca" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#ff5fae" stop-opacity=".35"/><stop offset="1" stop-color="#ff5fae" stop-opacity="0"/></linearGradient>
@@ -222,7 +244,8 @@
     pts.forEach(([x, y], i) => {
       const top = i === pts.length - 1;
       s += `<circle cx="${x}" cy="${y}" r="${top ? 26 : 18}" fill="#fff" stroke="${top ? "#e0218a" : "#ff9fd0"}" stroke-width="${top ? 9 : 7}"/>
-        <text x="${x}" y="${y - (top ? 50 : 40)}" text-anchor="middle" font-size="${top ? 54 : 38}" font-weight="900" letter-spacing="-2" fill="${top ? "#e0218a" : "#1b2a59"}">${S.rates[i]}%</text>`;
+        <text x="${x}" y="${y - (top ? 50 : 40)}" text-anchor="middle" font-size="${top ? 54 : 38}" font-weight="900" letter-spacing="-2" fill="${top ? "#e0218a" : "#1b2a59"}">${S.rates[i]}%</text>
+        ${S.measured[i] ? `<text x="${x}" y="${y + (top ? 62 : 52)}" text-anchor="middle" font-size="19" font-weight="900" fill="#5b8030">measured · 3 of 5</text>` : ""}`;
     });
     names.forEach((t, i) => s += `<text x="${xs(i)}" y="${B + 62}" text-anchor="middle" font-size="24" font-weight="800" fill="${i === 3 && S.version < 4 ? "#6c6be0" : "#56608a"}">${t}</text>`);
     $("#chart").innerHTML = s;
@@ -285,7 +308,7 @@
       await beat("Today, the training log says it worked. The robot says no.", 6000, () => { show("flow"); flowMode("today"); });
       await beat("LoopVLA gives these steps to AI agents, and closes the loop.", 6500, () => flowMode("loop"));
       await beat(`${S.demos} demos. Not one filmed by hand.`, 5000, () => { closeDemo(); show("data"); });
-      await beat("Each demo comes with its own AI notes.", 5000, () => openDemo(EPS[60]));
+      await beat("Each demo comes with its own AI notes.", 5000, () => openDemo(EPS.find(e => e.v) || EPS[0]));
       await beat("At 100 demos, the robot trains itself overnight.", 5500, () => {
         closeDemo(); show("brain");
         S.demos = Math.max(S.demos, S.goal); refresh(); upgrade();
@@ -309,14 +332,18 @@
 
   addEventListener("keydown", e => {
     if (e.key === "Escape") { closeDemo(); if (S.storyOn) stopStory(); }
+    if (/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
     if ("12345".includes(e.key) && e.key.length === 1) show(VIEWS[+e.key - 1]);
-    if (e.code === "Space") { e.preventDefault(); S.storyOn ? stopStory() : startStory(); }
+    if ("6789".includes(e.key) && e.key.length === 1) show(LAB_VIEWS[+e.key - 6]);
+    if (e.code === "Space" && !document.body.classList.contains("lab")) { e.preventDefault(); S.storyOn ? stopStory() : startStory(); }
   });
+
+  window.LOOP = { S, EPS, show, refresh, upgrade, openDemo, LAB_VIEWS };
 
   // ---------- Start ----------
   refresh(); layoutPath(); drawChart(false);
   const h = location.hash.slice(1);
-  if (VIEWS.includes(h)) show(h);
+  if (VIEWS.includes(h) || LAB_VIEWS.includes(h)) show(h);
   if (h === "flow-loop") { show("flow"); setTimeout(() => flowMode("loop"), 50); }
   const q = new URLSearchParams(location.search);
   if (q.has("demo")) { show("data"); openDemo(EPS[+q.get("demo")]); }
