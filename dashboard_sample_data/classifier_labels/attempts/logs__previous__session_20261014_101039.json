@@ -1,0 +1,21 @@
+{
+  "name": "logs__previous__session_20261014_101039",
+  "path": "Neil LabAI-recorder/logs/previous/session_20261014_101039",
+  "kind": "session",
+  "task": "pick up the cup",
+  "duration_s": 25.9,
+  "label": null,
+  "success": false,
+  "confidence": 0.93,
+  "failure_category": "did_not_reach_cup",
+  "reason": "No front-camera frame shows the cup. The robot turned around the room, then drove up against a cable reel. In the last frame (25.8 s) the reel fills the view, and the gripper stayed at -58\u00b0 the whole time, so it never closed on anything.",
+  "cup_final_state": "out_of_view",
+  "key_frame_s": 25.8,
+  "model": "claude-opus-5-5",
+  "usage": {
+    "input_tokens": 5896,
+    "output_tokens": 336,
+    "cost_usd": 0.0430224
+  },
+  "backend": "claude-code"
+}

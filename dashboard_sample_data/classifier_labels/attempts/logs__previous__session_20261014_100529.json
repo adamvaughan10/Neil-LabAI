@@ -1,0 +1,21 @@
+{
+  "name": "logs__previous__session_20261014_100529",
+  "path": "Neil LabAI-recorder/logs/previous/session_20261014_100529",
+  "kind": "session",
+  "task": "pick up the cup",
+  "duration_s": 14.2,
+  "label": null,
+  "success": false,
+  "confidence": 0.95,
+  "failure_category": "did_not_reach_cup",
+  "reason": "No cup is visible in any front-camera frame. The robot turned around (blurry frames at 6\u20138 s) and ended at 14.1 s facing an empty table with nothing between the jaws. The gripper encoder barely moved (-54 to -50), so it never closed on anything.",
+  "cup_final_state": "out_of_view",
+  "key_frame_s": 14.1,
+  "model": "claude-opus-5-5",
+  "usage": {
+    "input_tokens": 5903,
+    "output_tokens": 581,
+    "cost_usd": 0.0479784
+  },
+  "backend": "claude-code"
+}

@@ -1,0 +1,21 @@
+{
+  "name": "logs__previous__session_20261013_154547",
+  "path": "Neil LabAI-recorder/logs/previous/session_20261013_154547",
+  "kind": "session",
+  "task": "pick up the cup",
+  "duration_s": 24.7,
+  "label": null,
+  "success": false,
+  "confidence": 0.97,
+  "failure_category": "did_not_reach_cup",
+  "reason": "The top camera shows the robot staying in the top-right corner for the whole run while the cup sits untouched on the far left. Arm and gripper encoders stay at -6/-39 throughout, and in the front view the cup is still far away at 24.7 s.",
+  "cup_final_state": "out_of_view",
+  "key_frame_s": 24.7,
+  "model": "claude-opus-5-5",
+  "usage": {
+    "input_tokens": 8417,
+    "output_tokens": 653,
+    "cost_usd": 0.06953039999999999
+  },
+  "backend": "claude-code"
+}

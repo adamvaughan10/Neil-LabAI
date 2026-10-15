@@ -1,0 +1,21 @@
+{
+  "name": "logs__all_sessions__fourth_position__session_20261014_112805",
+  "path": "Neil LabAI-recorder/logs/all sessions/fourth position/session_20261014_112805",
+  "kind": "session",
+  "task": "pick up the cup",
+  "duration_s": 13.7,
+  "label": null,
+  "success": true,
+  "confidence": 0.88,
+  "failure_category": "none",
+  "reason": "The cup was between the jaws by 9.7s and the gripper closed at 11.7s (-12 to -50 degrees). At 13.6s the arm was raised (-21 degrees) and the cup is tilted and lifted in the jaws, filling the front camera with the magenta gripper below it.",
+  "cup_final_state": "held_lifted",
+  "key_frame_s": 13.6,
+  "model": "claude-opus-5-5",
+  "usage": {
+    "input_tokens": 8412,
+    "output_tokens": 527,
+    "cost_usd": 0.0669704
+  },
+  "backend": "claude-code"
+}

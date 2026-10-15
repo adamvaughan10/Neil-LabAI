@@ -1,0 +1,15 @@
+{
+  "model": "handoff_pick_cup_pos2",
+  "policy": "../models/handoff_pick_cup_pos2/pretrained_model",
+  "action_mode": "delta",
+  "task": "pick up the cup",
+  "device": "mps",
+  "seconds": 30.0,
+  "replan": 10,
+  "pause": 0,
+  "ramp": 0,
+  "smooth": 1,
+  "deadband": 3.0,
+  "replay": null,
+  "no_record": false
+}

@@ -1,0 +1,21 @@
+{
+  "name": "logs__previous__session_20261013_151210",
+  "path": "Neil LabAI-recorder/logs/previous/session_20261013_151210",
+  "kind": "session",
+  "task": "pick up the cup",
+  "duration_s": 6.9,
+  "label": null,
+  "success": false,
+  "confidence": 0.96,
+  "failure_category": "did_not_reach_cup",
+  "reason": "The robot turned and drove a little until a white cup was centered in the front view (from t=3.9s on), but at t=6.9s the cup is still some distance away and no gripper parts show. The arm (-2\u00b0) and gripper (-60\u00b0) encoders never changed, so there was no grasp.",
+  "cup_final_state": "upright_free",
+  "key_frame_s": 6.9,
+  "model": "claude-opus-5-5",
+  "usage": {
+    "input_tokens": 8418,
+    "output_tokens": 395,
+    "cost_usd": 0.0643784
+  },
+  "backend": "claude-code"
+}

@@ -1,0 +1,21 @@
+{
+  "name": "logs__previous__session_20261013_151942",
+  "path": "Neil LabAI-recorder/logs/previous/session_20261013_151942",
+  "kind": "session",
+  "task": "pick up the cup",
+  "duration_s": 8.7,
+  "label": null,
+  "success": false,
+  "confidence": 0.97,
+  "failure_category": "did_not_reach_cup",
+  "reason": "The front camera shows the same distant view of the upright cup from 0.0s to 8.6s, so the robot never drove toward it. Only the arm moved (lowered at 6.1s, then raised again), and the gripper stayed at about -37\u00b0 with nothing in it.",
+  "cup_final_state": "upright_free",
+  "key_frame_s": 8.6,
+  "model": "claude-opus-5-5",
+  "usage": {
+    "input_tokens": 8415,
+    "output_tokens": 408,
+    "cost_usd": 0.0646144
+  },
+  "backend": "claude-code"
+}

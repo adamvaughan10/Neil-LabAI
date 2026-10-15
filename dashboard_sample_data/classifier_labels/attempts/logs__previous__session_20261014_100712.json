@@ -1,0 +1,21 @@
+{
+  "name": "logs__previous__session_20261014_100712",
+  "path": "Neil LabAI-recorder/logs/previous/session_20261014_100712",
+  "kind": "session",
+  "task": "pick up the cup",
+  "duration_s": 8.2,
+  "label": null,
+  "success": false,
+  "confidence": 0.95,
+  "failure_category": "did_not_reach_cup",
+  "reason": "No cup appears in any front-camera frame. From 2.3 to 4.7 s the robot is pressed against a cable reel, then it tilts and turns (5.8 to 8.1 s) and ends up facing the room. The encoders never change (arm=4, gripper=-44), so the gripper did not move.",
+  "cup_final_state": "out_of_view",
+  "key_frame_s": 8.1,
+  "model": "claude-opus-5-5",
+  "usage": {
+    "input_tokens": 5900,
+    "output_tokens": 366,
+    "cost_usd": 0.043654399999999996
+  },
+  "backend": "claude-code"
+}

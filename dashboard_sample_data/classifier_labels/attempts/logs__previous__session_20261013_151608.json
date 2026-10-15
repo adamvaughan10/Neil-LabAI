@@ -1,0 +1,21 @@
+{
+  "name": "logs__previous__session_20261013_151608",
+  "path": "Neil LabAI-recorder/logs/previous/session_20261013_151608",
+  "kind": "session",
+  "task": "pick up the cup",
+  "duration_s": 14.5,
+  "label": null,
+  "success": false,
+  "confidence": 0.97,
+  "failure_category": "did_not_reach_cup",
+  "reason": "The front camera shows the cup at the same small, distant size from 0 to 14.4 s, so the robot never drove toward it. Only the gripper jaws come into view at the bottom of the frame (from 10.3 s). At 14.4 s the gripper is partly open (-38\u00b0) and nothing is in it.",
+  "cup_final_state": "upright_free",
+  "key_frame_s": 14.4,
+  "model": "claude-opus-5-5",
+  "usage": {
+    "input_tokens": 8411,
+    "output_tokens": 402,
+    "cost_usd": 0.0644624
+  },
+  "backend": "claude-code"
+}

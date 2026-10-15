@@ -1,0 +1,21 @@
+{
+  "name": "logs__all_sessions__first_position__session_20261014_110859",
+  "path": "Neil LabAI-recorder/logs/all sessions/first position/session_20261014_110859",
+  "kind": "session",
+  "task": "pick up the cup",
+  "duration_s": 6.0,
+  "label": null,
+  "success": true,
+  "confidence": 0.88,
+  "failure_category": "none",
+  "reason": "Gripper closed around the cup by 3.4s (encoder -51) and the arm raised to -19 by 5.9s. In the last frames the cup is tilted up in the jaws (top view) and fills the front view with the magenta gripper at the bottom.",
+  "cup_final_state": "held_lifted",
+  "key_frame_s": 5.9,
+  "model": "claude-opus-5-5",
+  "usage": {
+    "input_tokens": 8414,
+    "output_tokens": 614,
+    "cost_usd": 0.06872639999999999
+  },
+  "backend": "claude-code"
+}

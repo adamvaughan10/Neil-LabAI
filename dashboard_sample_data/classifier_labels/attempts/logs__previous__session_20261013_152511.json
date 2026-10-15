@@ -1,0 +1,21 @@
+{
+  "name": "logs__previous__session_20261013_152511",
+  "path": "Neil LabAI-recorder/logs/previous/session_20261013_152511",
+  "kind": "session",
+  "task": "pick up the cup",
+  "duration_s": 4.6,
+  "label": null,
+  "success": false,
+  "confidence": 0.97,
+  "failure_category": "did_not_reach_cup",
+  "reason": "From 0.0 s to 4.5 s the front view doesn't change: the cup stays small and far away, and the gripper tips at the bottom never get near it. The top view shows the cup unmoved and the robot staying at the right edge. The arm and gripper encoders stay flat.",
+  "cup_final_state": "upright_free",
+  "key_frame_s": 4.5,
+  "model": "claude-opus-5-5",
+  "usage": {
+    "input_tokens": 8421,
+    "output_tokens": 537,
+    "cost_usd": 0.06724240000000001
+  },
+  "backend": "claude-code"
+}

@@ -1,0 +1,21 @@
+{
+  "name": "logs__previous__session_20261014_100731",
+  "path": "Neil LabAI-recorder/logs/previous/session_20261014_100731",
+  "kind": "session",
+  "task": "pick up the cup",
+  "duration_s": 19.0,
+  "label": null,
+  "success": false,
+  "confidence": 0.93,
+  "failure_category": "did_not_reach_cup",
+  "reason": "The cup never shows up in any front-camera frame. The robot turned away (around 10.8s) and came back to an empty view of the table. In the last frame (18.9s) there is no cup in the gripper, even though the gripper moved slightly at the end. The arm stayed at about 3\u20135\u00b0 the whole time. No top-camera frames were provided.",
+  "cup_final_state": "out_of_view",
+  "key_frame_s": 18.9,
+  "model": "claude-opus-5-5",
+  "usage": {
+    "input_tokens": 5900,
+    "output_tokens": 415,
+    "cost_usd": 0.0446344
+  },
+  "backend": "claude-code"
+}

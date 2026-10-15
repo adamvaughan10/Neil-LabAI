@@ -1,0 +1,23 @@
+{
+  "task": "pick up the cup",
+  "success": true,
+  "frames": 110,
+  "date": "2026-10-14",
+  "source": "session_20261014_155935",
+  "action": "target",
+  "fps": 10,
+  "action_fields": [
+    "left",
+    "right",
+    "arm",
+    "grip"
+  ],
+  "units": {
+    "state": "wheel speed -100..100 (+ forward), arm/gripper absolute angle, degrees (+ down / + open)",
+    "target": "controller target: wheel speeds; arm/gripper target angles, degrees",
+    "hat": "Build HAT calls: wheel speeds running; arm/gripper run_for_degrees degrees this frame",
+    "buttons": "[dpad_x, dpad_y, X, A, B, Y]: -1/0/1 D-pad (+ right / + up), 1 = pressed this frame",
+    "wheels": "angle: state/target left/right are degrees turned since the episode's first frame (+ forward, not wrapped)"
+  },
+  "position": "first_spot"
+}

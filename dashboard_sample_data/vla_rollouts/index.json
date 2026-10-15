@@ -1,0 +1,132 @@
+[
+  {
+    "id": "run_20261015_094722",
+    "model": "handoff_pick_cup_pos2",
+    "action_mode": "delta",
+    "task": "pick up the cup",
+    "steps": 0,
+    "duration_s": 0,
+    "fps": null,
+    "success": null,
+    "outcome": "aborted",
+    "note": "Stopped before the first step; no frames recorded.",
+    "outcome_source": "inferred from final frames, not a recorded label",
+    "final_state": null,
+    "path": "vla_rollouts/run_20261015_094722"
+  },
+  {
+    "id": "run_20261015_094836",
+    "model": "handoff_pick_cup_pos2",
+    "action_mode": "delta",
+    "task": "pick up the cup",
+    "steps": 0,
+    "duration_s": 0,
+    "fps": null,
+    "success": null,
+    "outcome": "aborted",
+    "note": "Stopped before the first step; no frames recorded.",
+    "outcome_source": "inferred from final frames, not a recorded label",
+    "final_state": null,
+    "path": "vla_rollouts/run_20261015_094836"
+  },
+  {
+    "id": "run_20261015_094929",
+    "model": "handoff_pick_cup_pos2",
+    "action_mode": "delta",
+    "task": "pick up the cup",
+    "steps": 161,
+    "duration_s": 30.0,
+    "fps": 5.34,
+    "success": true,
+    "outcome": "grasped",
+    "note": "Drove to the cup and closed the gripper on it; cup held in the jaws at the end.",
+    "outcome_source": "inferred from final frames, not a recorded label",
+    "final_state": [
+      0.0,
+      0.0,
+      -25.0,
+      -60.0
+    ],
+    "path": "vla_rollouts/run_20261015_094929"
+  },
+  {
+    "id": "run_20261015_095041",
+    "model": "handoff_pick_cup_pos2",
+    "action_mode": "delta",
+    "task": "pick up the cup",
+    "steps": 165,
+    "duration_s": 29.6,
+    "fps": 5.55,
+    "success": true,
+    "outcome": "grasped",
+    "note": "Drove to the cup and closed the gripper on it; cup held in the jaws at the end.",
+    "outcome_source": "inferred from final frames, not a recorded label",
+    "final_state": [
+      0.0,
+      -1.0,
+      -17.0,
+      -61.0
+    ],
+    "path": "vla_rollouts/run_20261015_095041"
+  },
+  {
+    "id": "run_20261015_095736",
+    "model": "handoff_pick_cup_pos2",
+    "action_mode": "delta",
+    "task": "pick up the cup",
+    "steps": 115,
+    "duration_s": 25.3,
+    "fps": 4.51,
+    "success": false,
+    "outcome": "missed_cup",
+    "note": "Drove past the cup and off the table area; picked up by hand.",
+    "outcome_source": "inferred from final frames, not a recorded label",
+    "final_state": [
+      10.0,
+      7.0,
+      7.0,
+      -24.0
+    ],
+    "path": "vla_rollouts/run_20261015_095736"
+  },
+  {
+    "id": "run_20261015_095842",
+    "model": "handoff_pick_cup_pos2",
+    "action_mode": "delta",
+    "task": "pick up the cup",
+    "steps": 50,
+    "duration_s": 10.3,
+    "fps": 4.76,
+    "success": false,
+    "outcome": "missed_cup",
+    "note": "Drove past the cup to the edge of the table; stopped early.",
+    "outcome_source": "inferred from final frames, not a recorded label",
+    "final_state": [
+      8.0,
+      0.0,
+      8.0,
+      -16.0
+    ],
+    "path": "vla_rollouts/run_20261015_095842"
+  },
+  {
+    "id": "run_20261015_095947",
+    "model": "handoff_pick_cup_pos2",
+    "action_mode": "delta",
+    "task": "pick up the cup",
+    "steps": 141,
+    "duration_s": 29.4,
+    "fps": 4.76,
+    "success": true,
+    "outcome": "grasped",
+    "note": "Drove to the cup and closed the gripper on it; cup at the gripper at the end.",
+    "outcome_source": "inferred from final frames, not a recorded label",
+    "final_state": [
+      0.0,
+      0.0,
+      -19.0,
+      -58.0
+    ],
+    "path": "vla_rollouts/run_20261015_095947"
+  }
+]

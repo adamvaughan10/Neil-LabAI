@@ -1,0 +1,21 @@
+{
+  "name": "logs__previous__session_20261014_100955",
+  "path": "Neil LabAI-recorder/logs/previous/session_20261014_100955",
+  "kind": "session",
+  "task": "pick up the cup",
+  "duration_s": 14.0,
+  "label": null,
+  "success": false,
+  "confidence": 0.93,
+  "failure_category": "did_not_reach_cup",
+  "reason": "No cup is ever on the table in front of the robot; from 0\u20132 s a hand holds a clear object, and from 4\u20136 s the robot seems to have been picked up by hand. At 13.9 s the front view shows only an empty table, the gripper is nearly closed (-62) and nothing is held.",
+  "cup_final_state": "out_of_view",
+  "key_frame_s": 13.9,
+  "model": "claude-opus-5-5",
+  "usage": {
+    "input_tokens": 5896,
+    "output_tokens": 426,
+    "cost_usd": 0.0448224
+  },
+  "backend": "claude-code"
+}

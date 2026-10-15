@@ -1,0 +1,21 @@
+{
+  "name": "logs__all_sessions__fifth_position__session_20261014_113900",
+  "path": "Neil LabAI-recorder/logs/all sessions/fifth position/session_20261014_113900",
+  "kind": "session",
+  "task": "pick up the cup",
+  "duration_s": 16.2,
+  "label": null,
+  "success": true,
+  "confidence": 0.85,
+  "failure_category": "none",
+  "reason": "By 13.8s the cup is between the jaws. The gripper then closes (-23 to -57) and the arm rises (4 to -12). At 16.1s the top camera shows the cup gripped and tilted up, and the front camera is filled by the cup with magenta gripper parts at the bottom.",
+  "cup_final_state": "held_lifted",
+  "key_frame_s": 16.1,
+  "model": "claude-opus-5-5",
+  "usage": {
+    "input_tokens": 8410,
+    "output_tokens": 747,
+    "cost_usd": 0.0713544
+  },
+  "backend": "claude-code"
+}

@@ -1,0 +1,21 @@
+{
+  "name": "logs__all_sessions__fourth_position__session_20261014_113102",
+  "path": "Neil LabAI-recorder/logs/all sessions/fourth position/session_20261014_113102",
+  "kind": "session",
+  "task": "pick up the cup",
+  "duration_s": 15.2,
+  "label": null,
+  "success": true,
+  "confidence": 0.85,
+  "failure_category": "none",
+  "reason": "Robot reached the cup by 10.8s with the cup between the jaws, closed the gripper at 12.9s (-10 to -50), and at 15.1s the top view shows the jaws wrapped around the cup while the arm rose to -12 and the front view shows the cup held close.",
+  "cup_final_state": "held_lifted",
+  "key_frame_s": 15.1,
+  "model": "claude-opus-5-5",
+  "usage": {
+    "input_tokens": 8422,
+    "output_tokens": 697,
+    "cost_usd": 0.0704504
+  },
+  "backend": "claude-code"
+}

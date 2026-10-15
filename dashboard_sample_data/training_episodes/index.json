@@ -1,0 +1,47 @@
+[
+  {
+    "id": "1_first_spot_ep_0003",
+    "task": "pick up the cup",
+    "success": true,
+    "frames": 110,
+    "fps": 10,
+    "date": "2026-10-14",
+    "path": "training_episodes/1_first_spot_ep_0003"
+  },
+  {
+    "id": "2_second_ep_0014",
+    "task": "pick up the cup",
+    "success": true,
+    "frames": 82,
+    "fps": 10,
+    "date": "2026-10-14",
+    "path": "training_episodes/2_second_ep_0014"
+  },
+  {
+    "id": "3_third_ep_0018",
+    "task": "pick up the cup",
+    "success": true,
+    "frames": 83,
+    "fps": 10,
+    "date": "2026-10-14",
+    "path": "training_episodes/3_third_ep_0018"
+  },
+  {
+    "id": "4_fourth_ep_0030",
+    "task": "pick up the cup",
+    "success": true,
+    "frames": 95,
+    "fps": 10,
+    "date": "2026-10-14",
+    "path": "training_episodes/4_fourth_ep_0030"
+  },
+  {
+    "id": "5_fifth_ep_0040",
+    "task": "pick up the cup",
+    "success": true,
+    "frames": 81,
+    "fps": 10,
+    "date": "2026-10-14",
+    "path": "training_episodes/5_fifth_ep_0040"
+  }
+]

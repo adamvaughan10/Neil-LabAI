@@ -1,0 +1,65 @@
+{
+  "when": "2026-10-14 13:08",
+  "model": "claude-opus-5-5",
+  "effort": "medium",
+  "frames": 8,
+  "task": null,
+  "attempts": 71,
+  "judged": 71,
+  "errors": [],
+  "successes": 53,
+  "success_rate": 0.746,
+  "lifted": 53,
+  "failure_categories": [
+    {
+      "category": "did_not_reach_cup",
+      "count": 18,
+      "meaning": "the robot never got the gripper to the cup"
+    }
+  ],
+  "mean_confidence": 0.895,
+  "low_confidence": [],
+  "by_folder": {
+    "episodes/buttons": {
+      "successes": 1,
+      "attempts": 1
+    },
+    "episodes/target": {
+      "successes": 1,
+      "attempts": 1
+    },
+    "logs/all_sessions/fifth_position": {
+      "successes": 10,
+      "attempts": 10
+    },
+    "logs/all_sessions/first_position": {
+      "successes": 10,
+      "attempts": 10
+    },
+    "logs/all_sessions/fourth_position": {
+      "successes": 10,
+      "attempts": 10
+    },
+    "logs/all_sessions/second_position": {
+      "successes": 10,
+      "attempts": 10
+    },
+    "logs/all_sessions/third_position": {
+      "successes": 10,
+      "attempts": 10
+    },
+    "logs/previous": {
+      "successes": 1,
+      "attempts": 19
+    }
+  },
+  "label_agreement": {
+    "labelled": 2,
+    "agree": 2
+  },
+  "tokens": {
+    "input_tokens": 577243,
+    "output_tokens": 35269,
+    "cost_usd": 4.4001
+  }
+}
