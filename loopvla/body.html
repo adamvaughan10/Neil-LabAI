@@ -1,0 +1,1278 @@
+<title>LoopVLA · Neil Lab</title>
+<style>
+/* Layout: control-room board. Header, the loop as a 4-stage strip with a return lane, then live rollout + VLM feed, then three summary panels. Single dark theme on purpose: built for a projector. */
+:root {
+  color-scheme: dark;
+  --bg: #0e1218;
+  --panel: #151b23;
+  --panel-2: #1b222c;
+  --line: #27303d;
+  --fg: #e7ebf1;
+  --muted: #8d98a9;
+  --faint: #5b6575;
+  --accent: #f5b82e;      /* LEGO yellow: the loop itself */
+  --ok: #3ccf8a;
+  --bad: #ff6b5e;
+  --info: #62b8ff;
+  --s-left: #62b8ff;      /* left wheel */
+  --s-right: #a493ff;     /* right wheel */
+  --s-arm: #f5b82e;       /* arm */
+  --s-grip: #e8569c;      /* gripper (magenta, like Neil's gripper) */
+  --display: "Archivo", "Arial Narrow", system-ui, sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --r: 10px;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { background: var(--bg); color: var(--fg); }
+body { font-family: var(--body); font-size: 14px; line-height: 1.45; margin: 0; }
+.wrap { max-width: 1720px; margin: 0 auto; padding-inline: 24px; padding-block: 18px 28px; display: grid; gap: 16px; }
+.num { font-family: var(--display); font-variant-numeric: tabular-nums; font-stretch: 80%; }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; min-width: 0; }
+.panel h2 { font-family: var(--display); font-stretch: 90%; font-weight: 650; font-size: 16px; margin: 0; letter-spacing: .01em; }
+.panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+.pill { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 11px; letter-spacing: .04em; text-transform: uppercase;
+  padding: 3px 9px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
+.pill.ok { color: var(--ok); } .pill.bad { color: var(--bad); } .pill.info { color: var(--info); } .pill.acc { color: var(--accent); } .pill.mute { color: var(--muted); }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.live .dot { animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .25; } }
+
+/* Header */
+header { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; padding-bottom: 4px; }
+.brand { display: flex; align-items: baseline; gap: 12px; }
+.brand b { font-family: var(--display); font-weight: 800; font-size: 30px; font-stretch: 75%; letter-spacing: -.01em; }
+.brand b span { color: var(--accent); }
+.brand small { color: var(--muted); font-size: 13px; }
+.hdr-meta { display: flex; gap: 22px; margin-left: auto; align-items: center; flex-wrap: wrap; }
+.hdr-meta div { display: grid; gap: 1px; }
+.hdr-meta strong { font-weight: 500; font-size: 13px; }
+
+/* The loop */
+.loop { display: grid; gap: 0; }
+.stages { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 28px; position: relative; }
+.stage { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px 16px; position: relative; display: grid; gap: 8px; align-content: start; transition: border-color .4s, box-shadow .4s; }
+.stage + .stage::before { content: ""; position: absolute; left: -24px; top: 50%; width: 20px; height: 2px; background: var(--accent); opacity: .7; }
+.stage + .stage::after { content: ""; position: absolute; left: -9px; top: calc(50% - 4px); border: 5px solid transparent; border-left-color: var(--accent); opacity: .7; }
+.stage.hot { border-color: color-mix(in srgb, var(--accent) 70%, var(--line)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent), 0 8px 30px -12px color-mix(in srgb, var(--accent) 45%, transparent); }
+.stage-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.stage-name { display: flex; gap: 8px; align-items: baseline; }
+.stage-name .eyebrow { color: var(--accent); }
+.stage-name h3 { margin: 0; font-family: var(--display); font-stretch: 90%; font-size: 17px; font-weight: 650; }
+.big { font-size: 38px; font-weight: 700; line-height: 1; letter-spacing: -.01em; }
+.big small { font-size: 18px; color: var(--muted); font-weight: 500; }
+.stage p { margin: 0; color: var(--muted); font-size: 13px; }
+.bar { height: 6px; border-radius: 3px; background: var(--panel-2); overflow: hidden; border: 1px solid var(--line); }
+.bar > i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .5s ease; }
+.bar.ok > i { background: var(--ok); }
+.return { margin: 10px 14px 0; height: 26px; border: 2px solid color-mix(in srgb, var(--accent) 55%, transparent); border-top: 0; border-radius: 0 0 14px 14px; position: relative; }
+.return::before { content: ""; position: absolute; left: -7px; top: -6px; border: 6px solid transparent; border-bottom-color: color-mix(in srgb, var(--accent) 80%, transparent); }
+.return span { position: absolute; left: 50%; bottom: -10px; transform: translateX(-50%); background: var(--bg); padding: 0 12px; font-family: var(--mono); font-size: 12px; color: var(--muted); white-space: nowrap; }
+.return span b { color: var(--fg); font-weight: 500; }
+
+/* Live rollout + feed */
+.main { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 16px; }
+.cams { display: grid; grid-template-columns: 4fr 3fr; gap: 10px; }
+.cam { position: relative; background: #000; border-radius: 8px; overflow: hidden; aspect-ratio: 4 / 3; border: 1px solid var(--line); }
+.cam.top { aspect-ratio: auto; }
+.cam video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cam .tag { position: absolute; left: 8px; top: 8px; font-family: var(--mono); font-size: 11px; background: rgb(0 0 0 / .6); color: #fff; padding: 2px 7px; border-radius: 4px; }
+.cam .rec { position: absolute; right: 8px; top: 8px; color: var(--bad); font-family: var(--mono); font-size: 11px; display: flex; gap: 5px; align-items: center; background: rgb(0 0 0 / .6); padding: 2px 7px; border-radius: 4px; }
+.side { display: grid; grid-template-rows: auto 1fr; gap: 10px; }
+.verdict { position: absolute; inset: auto 8px 8px 8px; background: rgb(14 18 24 / .92); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; display: grid; gap: 4px; transform: translateY(8px); opacity: 0; transition: .35s; }
+.verdict.show { transform: none; opacity: 1; }
+.tele { display: grid; gap: 8px; margin-top: 12px; }
+.tele-row { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 12px; align-items: center; }
+.tele-row canvas { width: 100%; height: 74px; display: block; }
+.legend { display: grid; gap: 3px; font-size: 12px; }
+.legend div { display: flex; justify-content: space-between; gap: 8px; }
+.legend i { display: inline-block; width: 10px; height: 3px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
+.runmeta { display: flex; gap: 18px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+.runmeta b { color: var(--fg); font-weight: 500; }
+
+.feed { display: grid; gap: 8px; align-content: start; overflow: hidden; }
+.item { border: 1px solid var(--line); background: var(--panel-2); border-radius: 8px; padding: 10px 12px; display: grid; gap: 5px; animation: slidein .45s ease; }
+@keyframes slidein { from { opacity: 0; transform: translateY(-10px); } }
+.item-top { display: flex; align-items: center; gap: 10px; }
+.item-top .where { font-weight: 600; font-size: 13px; }
+.item-top .time { color: var(--muted); font-size: 12px; }
+.item-top .conf { margin-left: auto; display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+.meter { width: 46px; height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--fg); }
+.item .why { color: var(--muted); font-size: 12.5px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.item.judging .why { color: var(--info); }
+.typing span { animation: pulse 1s infinite; } .typing span:nth-child(2) { animation-delay: .2s; } .typing span:nth-child(3) { animation-delay: .4s; }
+
+/* Bottom row */
+.bottom { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.versions { display: grid; gap: 10px; }
+.ver { display: grid; grid-template-columns: 44px minmax(0, 1fr) 54px; gap: 10px; align-items: center; }
+.ver .vname { font-family: var(--mono); font-size: 12px; color: var(--muted); grid-column: 2 / 4; margin-top: -6px; display: flex; gap: 8px; align-items: center; }
+.ver .vbar { height: 18px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+.ver .vbar i { display: block; height: 100%; background: var(--faint); transition: width .8s ease; }
+.ver.prod .vbar i { background: var(--accent); }
+.ver.training .vbar i { background: repeating-linear-gradient(45deg, var(--line) 0 6px, var(--panel-2) 6px 12px); width: 100% !important; }
+.ver .vlbl { font-family: var(--display); font-weight: 700; font-size: 18px; font-stretch: 80%; }
+.ver .vrate { text-align: right; font-size: 18px; font-weight: 700; }
+.fails { display: grid; gap: 12px; }
+.fail { display: grid; gap: 5px; }
+.fail-top { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; }
+.fail-top b { font-weight: 500; }
+.fail .bar > i { background: var(--bad); }
+.stats { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 18px; }
+.stat { display: grid; gap: 2px; }
+.stat .num { font-size: 28px; font-weight: 700; line-height: 1.05; }
+.stat p { margin: 0; font-size: 12px; color: var(--muted); }
+
+footer { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; align-items: center; color: var(--faint); font-size: 12px; }
+.controls { display: flex; gap: 6px; }
+.controls button { font: 500 12px var(--mono); color: var(--muted); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+.controls button:hover { color: var(--fg); border-color: var(--faint); }
+.controls button[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+@media (max-width: 1100px) {
+  .stages { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stage:nth-child(3)::before, .stage:nth-child(3)::after { display: none; }
+  .main, .bottom { grid-template-columns: minmax(0, 1fr); }
+  .feed { max-height: 520px; }
+}
+@media (max-width: 640px) {
+  .wrap { padding-inline: 16px; }
+  .stages { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .stage::before, .stage::after { display: none; }
+  .return { display: none; }
+  .cams { grid-template-columns: minmax(0, 1fr); }
+  .tele-row { grid-template-columns: minmax(0, 1fr); }
+  .hdr-meta { margin-left: 0; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+/* ---------- Tabs ---------- */
+.tabs { display: flex; align-items: center; gap: 4px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.tabs .grp { font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--faint); padding: 0 8px 0 18px; border-left: 1px solid var(--line); margin-left: 8px; }
+.tabs button { font: 500 14px var(--body); color: var(--muted); background: none; border: 0; border-bottom: 2px solid transparent; padding: 10px 12px 9px; cursor: pointer; margin-bottom: -1px; white-space: nowrap; }
+.tabs button:hover { color: var(--fg); }
+.tabs button[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--accent); }
+.tabs button .n { font-family: var(--mono); font-size: 11px; color: var(--faint); margin-left: 6px; }
+.tab { display: grid; gap: 16px; }
+.lede { margin: 0; color: var(--muted); font-size: 13.5px; max-width: 90ch; }
+.sim { font-family: var(--mono); font-size: 9.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); border: 1px dashed var(--faint); border-radius: 3px; padding: 0 4px; margin-left: 6px; vertical-align: 2px; white-space: nowrap; }
+.real { font-family: var(--mono); font-size: 9.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--ok); border: 1px solid color-mix(in srgb, var(--ok) 60%, transparent); border-radius: 3px; padding: 0 4px; margin-left: 6px; vertical-align: 2px; white-space: nowrap; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.tile { background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; display: grid; gap: 2px; align-content: start; }
+.tile .num { font-size: 24px; font-weight: 700; line-height: 1.1; }
+.tile .num small { font-size: 13px; color: var(--muted); font-weight: 500; }
+.tile p { margin: 0; font-size: 12px; color: var(--muted); }
+.tile.warn { border-color: color-mix(in srgb, var(--accent) 50%, var(--line)); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+.seg button { font: 500 12px var(--body); background: var(--panel-2); color: var(--muted); border: 0; padding: 5px 10px; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 18%, var(--panel-2)); color: var(--fg); }
+.btn { font: 500 12.5px var(--body); color: var(--fg); background: var(--panel-2); border: 1px solid var(--line); border-radius: 7px; padding: 6px 12px; cursor: pointer; }
+.btn:hover { border-color: var(--faint); }
+.btn.primary { background: var(--accent); color: #1a1405; border-color: var(--accent); font-weight: 600; }
+.btn.danger { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 50%, var(--line)); }
+.btn:disabled { opacity: .45; cursor: default; }
+.btn:focus-visible, .seg button:focus-visible, .tabs button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+select, input[type="text"], input[type="number"] { font: 13px var(--body); color: var(--fg); background: var(--panel-2); border: 1px solid var(--line); border-radius: 7px; padding: 5px 8px; min-width: 0; }
+input[type="range"] { accent-color: var(--accent); }
+label.fld { display: grid; gap: 4px; font-size: 12px; color: var(--muted); }
+
+/* ---------- Runs ---------- */
+.runs { display: grid; grid-template-columns: 290px minmax(0, 1fr); gap: 16px; align-items: start; }
+.runlist { display: grid; gap: 6px; }
+.runitem { text-align: left; font: inherit; color: inherit; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; display: grid; gap: 3px; cursor: pointer; }
+.runitem:hover { border-color: var(--faint); }
+.runitem[aria-current="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent); }
+.runitem:disabled { cursor: default; opacity: .55; }
+.runitem .t { display: flex; gap: 8px; align-items: center; font-weight: 600; font-size: 13px; }
+.runitem .m { font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
+.transport { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+.transport input[type="range"] { flex: 1 1 240px; min-width: 0; }
+.transport .mono { font-size: 12px; color: var(--muted); min-width: 120px; }
+.chans { display: grid; gap: 6px; margin-top: 12px; }
+.chan { display: grid; grid-template-columns: 130px minmax(0, 1fr) 150px; gap: 12px; align-items: center; }
+.chan canvas { width: 100%; height: 64px; display: block; cursor: crosshair; }
+.chan .vals { font-family: var(--mono); font-size: 11.5px; display: grid; gap: 1px; color: var(--muted); }
+.chan .vals b { color: var(--fg); font-weight: 500; }
+.keyline { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+.keyline i { display: inline-block; width: 18px; height: 0; border-top: 2px solid var(--fg); vertical-align: middle; margin-right: 6px; }
+.kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 14px; font-size: 12.5px; }
+.kv dt { color: var(--muted); font-family: var(--mono); font-size: 12px; }
+.kv dd { margin: 0; font-family: var(--mono); font-size: 12px; overflow-wrap: anywhere; }
+
+/* ---------- Tables ---------- */
+.tbl-wrap { overflow-x: auto; }
+table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tbl th { text-align: left; font: 500 11px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.tbl th button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; letter-spacing: inherit; text-transform: inherit; }
+.tbl th button:hover { color: var(--fg); }
+.tbl td { padding: 8px 10px; border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent); vertical-align: top; }
+.tbl tbody tr.row { cursor: pointer; }
+.tbl tbody tr.row:hover td { background: color-mix(in srgb, var(--panel-2) 80%, transparent); }
+.tbl tr.open td { background: var(--panel-2); }
+.tbl td.num, .tbl th.num { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.tbl .detail td { background: var(--panel-2); color: var(--fg); font-size: 13px; }
+.filters { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; margin-bottom: 10px; }
+
+/* ---------- Charts / bars ---------- */
+.hbars { display: grid; gap: 9px; }
+.hbar { display: grid; grid-template-columns: 120px minmax(0, 1fr) 64px; gap: 10px; align-items: center; font-size: 13px; }
+.hbar .track { height: 14px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px; overflow: hidden; display: flex; }
+.hbar .track i { display: block; height: 100%; }
+.hbar .v { text-align: right; font-family: var(--mono); font-size: 12px; }
+.hist { width: 100%; height: 150px; display: block; }
+
+/* ---------- Training ---------- */
+.curate { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 20px; align-items: start; }
+.gallery { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+.demo { background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; display: grid; cursor: pointer; text-align: left; font: inherit; color: inherit; padding: 0; }
+.demo:hover { border-color: var(--accent); }
+.demo video { width: 100%; aspect-ratio: 1492 / 480; object-fit: cover; display: block; background: #000; }
+.demo div { padding: 8px 10px; display: grid; gap: 2px; }
+.demo b { font-size: 13px; font-weight: 600; }
+.demo span { font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
+.cmd { font-family: var(--mono); font-size: 12.5px; background: #0a0d12; border: 1px solid var(--line); border-radius: 7px; padding: 10px 12px; overflow-x: auto; white-space: pre; color: var(--fg); }
+.form { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+
+/* ---------- Models ---------- */
+.reg { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.mcard { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: grid; gap: 8px; align-content: start; }
+.mcard.prod { border-color: var(--accent); }
+.mcard h3 { margin: 0; font-family: var(--display); font-stretch: 80%; font-size: 26px; font-weight: 750; display: flex; gap: 10px; align-items: center; }
+.mcard .nm { font-family: var(--mono); font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.mcard .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.matrix td.cell { text-align: center; font-family: var(--mono); font-size: 12.5px; border: 2px solid var(--panel); border-radius: 4px; }
+.matrix td.cell.simc { outline: 1px dashed color-mix(in srgb, var(--faint) 70%, transparent); outline-offset: -4px; }
+.delta-up { color: var(--ok); } .delta-down { color: var(--bad); }
+.confirm { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 12.5px; color: var(--accent); }
+
+@media (max-width: 1100px) {
+  .runs, .curate, .grid2, .grid3 { grid-template-columns: minmax(0, 1fr); }
+  .gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .chan { grid-template-columns: 100px minmax(0, 1fr); }
+  .chan .vals { grid-column: 2; grid-auto-flow: column; justify-content: start; gap: 12px; }
+}
+@media (max-width: 640px) {
+  .tabs .grp { display: none; }
+  .gallery { grid-template-columns: minmax(0, 1fr); }
+  .chan { grid-template-columns: minmax(0, 1fr); }
+  .chan .vals { grid-column: 1; }
+  .hbar { grid-template-columns: 90px minmax(0, 1fr) 54px; }
+}
+</style>
+<script src="data.js"></script>
+
+<div class="wrap">
+  <header>
+    <div class="brand"><b>Loop<span>VLA</span></b><small>Neil Lab · LEGO Build HAT robot</small></div>
+    <div class="hdr-meta">
+      <div><span class="eyebrow">Task</span><strong>pick up the cup</strong></div>
+      <div><span class="eyebrow">In production</span><strong class="mono" id="hdr-model">v2 · handoff_pick_cup_pos2</strong></div>
+      <div><span class="eyebrow">Lab time</span><strong class="mono" id="clock">--:--:--</strong></div>
+      <span class="pill ok live"><span class="dot"></span>System live</span>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Dashboard views">
+    <button data-tab="overview" role="tab" aria-selected="true">Overview</button>
+    <span class="grp">Engineering</span>
+    <button data-tab="runs" role="tab" aria-selected="false">Runs<span class="n">12</span></button>
+    <button data-tab="labels" role="tab" aria-selected="false">Annotations<span class="n">71</span></button>
+    <button data-tab="train" role="tab" aria-selected="false">Training data</button>
+    <button data-tab="models" role="tab" aria-selected="false">Models</button>
+  </nav>
+
+  <section class="tab" id="tab-overview">
+
+  <section class="loop" aria-label="The LoopVLA cycle">
+    <div class="stages">
+      <article class="stage" id="st-monitor">
+        <div class="stage-top"><div class="stage-name"><span class="eyebrow">01</span><h3>Monitor</h3></div><span class="pill ok live"><span class="dot"></span>Running</span></div>
+        <div class="big num" id="m-run">Rollout 108</div>
+        <p id="m-sub">Model v2 on Neil · 0.0 s of 30 s</p>
+        <p><span class="mono" id="m-today">Today: 5 runs · 3 grasped · 2 missed</span></p>
+      </article>
+      <article class="stage" id="st-capture">
+        <div class="stage-top"><div class="stage-name"><span class="eyebrow">02</span><h3>Capture</h3></div><span class="pill info"><span class="dot"></span>Auto</span></div>
+        <div class="big num"><span id="c-total">100</span> <small>videos</small></div>
+        <p>Front + top camera, motor log at 5 Hz, saved when each run ends</p>
+        <p class="mono" id="c-last">Last capture: —</p>
+      </article>
+      <article class="stage" id="st-annotate">
+        <div class="stage-top"><div class="stage-name"><span class="eyebrow">03</span><h3>VLM annotate</h3></div><span class="pill acc" id="a-pill"><span class="dot"></span>Judging</span></div>
+        <div class="big num"><span id="a-judged">71</span> <small>/ <span id="a-total">100</span> judged</small></div>
+        <div class="bar"><i id="a-bar"></i></div>
+        <p><span id="a-queue">29</span> in queue · Claude Opus 5.5 · 8 frames per camera</p>
+      </article>
+      <article class="stage" id="st-train">
+        <div class="stage-top"><div class="stage-name"><span class="eyebrow">04</span><h3>Fine-tune</h3></div><span class="pill mute" id="t-pill"><span class="dot"></span>Collecting</span></div>
+        <div class="big num" id="t-big">16 <small>/ 20 new episodes</small></div>
+        <div class="bar ok"><i id="t-bar"></i></div>
+        <p id="t-sub">Starts automatically at 20 new successful episodes</p>
+        <canvas id="t-loss" height="34" style="width:100%;height:34px;display:none"></canvas>
+      </article>
+    </div>
+    <div class="return"><span>Deploy · <b id="r-model">v2 handoff_pick_cup_pos2</b> → back to Neil</span></div>
+  </section>
+
+  <section class="main">
+    <article class="panel">
+      <div class="panel-head">
+        <h2>Live rollout</h2>
+        <div class="runmeta"><span>Run <b class="mono" id="r-id">—</b></span><span>Model <b class="mono" id="r-mdl">v2</b></span><span>Action chunks <b class="mono" id="r-chunks">0</b></span><span>Step <b class="mono" id="r-step">0</b></span></div>
+      </div>
+      <div class="cams">
+        <div class="cam"><video id="v-front" muted playsinline preload="auto"></video><span class="tag">front · Pi camera</span><span class="rec"><span class="dot"></span>REC</span>
+          <div class="verdict" id="verdict"></div></div>
+        <div class="side">
+          <div class="cam top" style="aspect-ratio:16/9"><video id="v-top" muted playsinline preload="auto"></video><span class="tag">top · iPhone</span></div>
+          <div class="legend" id="legend"></div>
+        </div>
+      </div>
+      <div class="tele">
+        <div class="tele-row"><span class="eyebrow">Wheel command<br>speed −100…100</span><canvas id="ch-wheels" height="74"></canvas></div>
+        <div class="tele-row"><span class="eyebrow">Arm &amp; gripper<br>angle, degrees</span><canvas id="ch-arm" height="74"></canvas></div>
+      </div>
+    </article>
+
+    <article class="panel" style="display:grid;grid-template-rows:auto 1fr">
+      <div class="panel-head"><h2>VLM annotation feed</h2><span class="eyebrow" id="f-rate">75% success · 53 / 71</span></div>
+      <div class="feed" id="feed"></div>
+    </article>
+  </section>
+
+  <section class="bottom">
+    <article class="panel">
+      <div class="panel-head"><h2>Model versions</h2><span class="eyebrow">Grasp rate on Neil</span></div>
+      <div class="versions" id="versions"></div>
+    </article>
+    <article class="panel">
+      <div class="panel-head"><h2>Where attempts fail</h2><span class="eyebrow">From VLM labels and rollouts</span></div>
+      <div class="fails" id="fails"></div>
+    </article>
+    <article class="panel">
+      <div class="panel-head"><h2>Annotation quality</h2><span class="eyebrow">vs. manual labelling</span></div>
+      <div class="stats" id="stats"></div>
+    </article>
+  </section>
+
+  </section>
+
+  <!-- ================= RUNS ================= -->
+  <section class="tab" id="tab-runs" hidden>
+    <p class="lede">Every rollout and demo, step by step. Scrub the video and see what the model asked for, what was sent to the motors, and what the motors actually did. Click any chart to jump there.</p>
+    <div class="runs">
+      <aside class="panel" style="display:grid;gap:10px">
+        <div class="seg" role="group" aria-label="Filter runs">
+          <button data-rf="all" aria-pressed="true">All</button><button data-rf="r" aria-pressed="false">VLA rollouts</button><button data-rf="d" aria-pressed="false">Demos</button>
+        </div>
+        <div class="runlist" id="runlist"></div>
+      </aside>
+      <div style="display:grid;gap:16px;min-width:0">
+        <article class="panel">
+          <div class="panel-head">
+            <h2 id="rd-title">—</h2>
+            <div id="rd-chips" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+          </div>
+          <div class="cams">
+            <div class="cam"><video id="rv-front" muted playsinline preload="auto"></video><span class="tag">front · Pi camera</span></div>
+            <div class="side">
+              <div class="cam top" style="aspect-ratio:16/9"><video id="rv-top" muted playsinline preload="auto"></video><span class="tag">top · iPhone</span></div>
+              <dl class="kv" id="rd-now"></dl>
+            </div>
+          </div>
+          <div class="transport">
+            <button class="btn" id="rt-play" title="Space">Play</button>
+            <button class="btn" id="rt-prev" title="Left arrow" aria-label="Previous step">◀ step</button>
+            <button class="btn" id="rt-next" title="Right arrow" aria-label="Next step">step ▶</button>
+            <input type="range" id="rt-scrub" min="0" max="1000" value="0" aria-label="Position in run">
+            <span class="mono" id="rt-time">0.0 s · step 1</span>
+            <select id="rt-rate" aria-label="Playback speed"><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select>
+          </div>
+          <div class="chans" id="chans"></div>
+          <div class="keyline" id="keyline" style="margin-top:10px"></div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px">
+            <label class="fld" style="grid-auto-flow:column;align-items:center;gap:8px">Overlay a demo on arm and gripper
+              <select id="rd-overlay"><option value="">None</option></select></label>
+          </div>
+        </article>
+        <div class="grid2">
+          <article class="panel"><div class="panel-head"><h2>Run statistics</h2><span class="eyebrow">Computed from the motor log</span></div><div class="tiles" id="rd-stats"></div></article>
+          <article class="panel"><div class="panel-head"><h2>Control loop timing</h2><span class="eyebrow" id="rd-dt-sub">Time between steps</span></div>
+            <canvas id="rd-dt" style="width:100%;height:120px;display:block"></canvas>
+            <p class="lede" style="margin-top:8px;font-size:12.5px" id="rd-dt-note"></p></article>
+        </div>
+        <article class="panel"><div class="panel-head"><h2>Run settings</h2><span class="eyebrow" id="rd-cfg-src">run.json</span></div><dl class="kv" id="rd-cfg"></dl></article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= ANNOTATIONS ================= -->
+  <section class="tab" id="tab-labels" hidden>
+    <p class="lede">Claude watched 8 frames from each camera for every attempt and decided whether the cup was picked up. Review the least confident verdicts first; confirmed and flipped labels go into the next curated dataset.</p>
+    <div class="tiles" id="lb-tiles"></div>
+    <div class="grid3">
+      <article class="panel"><div class="panel-head"><h2>Success by start spot</h2><span class="eyebrow">Picked up / judged</span></div><div class="hbars" id="lb-spots"></div></article>
+      <article class="panel"><div class="panel-head"><h2>Confidence</h2><span class="eyebrow">Attempts per bucket</span></div><canvas class="hist" id="lb-hist"></canvas><div class="keyline" style="margin-top:6px"><span><i style="border-color:var(--ok)"></i>Picked up</span><span><i style="border-color:var(--bad)"></i>Missed</span></div></article>
+      <article class="panel"><div class="panel-head"><h2>Cup at the end</h2><span class="eyebrow">VLM final-state call</span></div><div class="hbars" id="lb-cup"></div></article>
+    </div>
+    <article class="panel">
+      <div class="panel-head"><h2>All verdicts</h2><span class="eyebrow" id="lb-reviewed">Reviewed 0 of 71</span></div>
+      <div class="filters">
+        <label class="fld">Verdict<select id="lf-verdict"><option value="">All</option><option value="1">Picked up</option><option value="0">Missed</option></select></label>
+        <label class="fld">Start spot<select id="lf-spot"><option value="">All</option></select></label>
+        <label class="fld">Max confidence <span class="mono" id="lf-conf-v">100%</span><input type="range" id="lf-conf" min="70" max="100" value="100"></label>
+        <label class="fld" style="flex:1 1 200px">Search the reasoning<input type="text" id="lf-q" placeholder="e.g. cable reel, tilted, jaws"></label>
+      </div>
+      <div class="tbl-wrap"><table class="tbl" id="lb-table"><thead><tr>
+        <th><button data-sort="where">Attempt</button></th><th><button data-sort="success">Verdict</button></th>
+        <th class="num"><button data-sort="confidence">Confidence ▲</button></th><th><button data-sort="cup">Cup at end</button></th>
+        <th class="num"><button data-sort="key_frame_s">Decided at</button></th><th class="num"><button data-sort="duration_s">Length</button></th>
+        <th class="num"><button data-sort="cost_usd">Cost</button></th><th>Review</th></tr></thead><tbody></tbody></table></div>
+    </article>
+  </section>
+
+  <!-- ================= TRAINING DATA ================= -->
+  <section class="tab" id="tab-train" hidden>
+    <p class="lede">The fine-tuning set is built automatically from the VLM verdicts. Change the curation rule and see how the next dataset would change, then queue a training job on Athena.</p>
+    <article class="panel">
+      <div class="panel-head"><h2>Curation rule</h2><span class="eyebrow">Applied to the 71 judged attempts</span></div>
+      <div class="curate">
+        <div style="display:grid;gap:14px">
+          <p style="margin:0;font-size:14px">An attempt enters the training set when the VLM says the cup was <b>picked up</b> and its confidence is at least <b class="mono" id="cr-v">85%</b>.</p>
+          <input type="range" id="cr-conf" min="70" max="99" value="85" aria-label="Minimum confidence">
+          <div style="display:grid;gap:6px" id="cr-spots"></div>
+          <label style="display:flex;gap:8px;align-items:center;font-size:13px"><input type="checkbox" id="cr-reviewed"> Only labels a person has reviewed</label>
+        </div>
+        <div style="display:grid;gap:12px">
+          <div class="tiles" id="cr-tiles"></div>
+          <div class="hbars" id="cr-bars"></div>
+        </div>
+      </div>
+    </article>
+    <article class="panel">
+      <div class="panel-head"><h2>Teleoperated demos</h2><span class="eyebrow">Always in the set · 10 fps · click to open in Runs</span></div>
+      <div class="gallery" id="gallery"></div>
+    </article>
+    <div class="grid2">
+      <article class="panel">
+        <div class="panel-head"><h2>Queue a fine-tune</h2><span class="eyebrow">Athena GPU cluster</span></div>
+        <div class="form">
+          <label class="fld">Start from<select id="jf-base"><option value="lerobot/smolvla_base">lerobot/smolvla_base</option><option value="v2">v2 · handoff_pick_cup_pos2</option><option value="v3" selected>v3 · pick_cup_angle_182076</option></select></label>
+          <label class="fld">Action type<select id="jf-mode"><option value="angle">angle targets</option><option value="delta">delta</option></select></label>
+          <label class="fld">Training steps<input type="number" id="jf-steps" value="10000" min="200" step="1000"></label>
+          <label class="fld">Batch size<input type="number" id="jf-batch" value="64" min="8" step="8"></label>
+        </div>
+        <p class="eyebrow" style="margin:14px 0 6px">Command</p>
+        <div class="cmd" id="jf-cmd"></div>
+        <div style="display:flex;gap:8px;margin-top:12px;align-items:center;flex-wrap:wrap">
+          <button class="btn primary" id="jf-go">Queue job</button><button class="btn" id="jf-copy">Copy command</button><span class="mono" id="jf-msg" style="font-size:12px;color:var(--muted)"></span>
+        </div>
+      </article>
+      <article class="panel">
+        <div class="panel-head"><h2>Training jobs</h2><span class="eyebrow">lerobot 0.6.1 · SmolVLA</span></div>
+        <div class="tbl-wrap"><table class="tbl" id="jobs"><thead><tr><th>Job</th><th>Model</th><th class="num">Episodes</th><th class="num">Steps</th><th>Status</th></tr></thead><tbody></tbody></table></div>
+        <canvas id="jobs-loss" style="width:100%;height:120px;display:block;margin-top:12px"></canvas>
+        <div class="keyline" id="jobs-key" style="margin-top:6px"></div>
+      </article>
+    </div>
+  </section>
+
+  <!-- ================= MODELS ================= -->
+  <section class="tab" id="tab-models" hidden>
+    <p class="lede">Every model version that has driven Neil, how it did, and which one is in production. Deploying here switches the model the Overview shows.</p>
+    <div class="reg" id="reg"></div>
+    <div class="grid2">
+      <article class="panel">
+        <div class="panel-head"><h2>Grasp rate by start spot</h2><span class="eyebrow">Evaluation runs on Neil</span></div>
+        <div class="tbl-wrap"><table class="tbl matrix" id="matrix"></table></div>
+        <p class="lede" style="font-size:12px;margin-top:8px">Dashed cells are simulated for the demo. v2's total is real: 3 of the 5 rollouts that ran on 15 Oct grasped the cup.</p>
+      </article>
+      <article class="panel">
+        <div class="panel-head"><h2>Compare two versions</h2>
+          <div style="display:flex;gap:8px;align-items:center"><select id="ab-a" aria-label="Model A"></select><span class="eyebrow">vs</span><select id="ab-b" aria-label="Model B"></select></div></div>
+        <div class="tbl-wrap"><table class="tbl" id="ab"></table></div>
+      </article>
+    </div>
+  </section>
+
+  <footer>
+    <span>Videos, motor logs and VLM labels are real Neil recordings from 14–15 Oct 2026. Run counts, training progress and v3 results are simulated for the demo.</span>
+    <div class="controls" id="demo-controls" role="group" aria-label="Demo controls">
+      <button id="b-play" aria-pressed="false" title="Space">Pause</button>
+      <button data-speed="1" aria-pressed="true" title="1">1×</button>
+      <button data-speed="2" aria-pressed="false" title="2">2×</button>
+      <button data-speed="4" aria-pressed="false" title="4">4×</button>
+      <button id="b-reset" title="R">Restart</button>
+    </div>
+  </footer>
+</div>
+
+<script>
+(() => {
+  const D = window.LOOPVLA;
+  const $ = (id) => document.getElementById(id);
+  const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const runs = D.rollouts.filter((r) => r.steps > 0);
+  const TARGET = 20, TRAIN_S = 60, EVAL_S = 18, ANNOTATE_EVERY = 6;
+
+  // Labels: 6 already on screen, the rest feed the queue (successes and failures mixed like the real data).
+  const S = D.labels.filter((l) => l.success), F = D.labels.filter((l) => !l.success);
+  const initialFeed = [S[0], F[0], S[1], S[2], F[1], S[3]];
+  const queueOrder = [];
+  for (let i = 4, j = 2; i < S.length || j < F.length; ) {
+    for (let k = 0; k < 3 && i < S.length; k++) queueOrder.push(S[i++]);
+    if (j < F.length) queueOrder.push(F[j++]);
+  }
+
+  const MODELS0 = [
+    { v: "v1", name: "pick_cup", rate: 0.2, n: "2 / 10", status: "retired" },
+    { v: "v2", name: "handoff_pick_cup_pos2", rate: 0.6, n: "3 / 5", status: "prod" },
+    { v: "v3", name: "pick_cup_angle_182076", rate: null, n: "", status: "next" },
+  ];
+
+  let st, speed = 1, paused = false;
+  function reset() {
+    st = {
+      t: 0, captured: 100, judged: 71, queue: 29, succ: 53, newEp: 16, nextAnnot: 3,
+      ft: "collect", ftT: 0, evalDone: 0, evalOk: 0, loss: [],
+      runNo: 108, runIdx: 0, todayRuns: 5, todayOk: 3, todayMiss: 2, qi: 0, ending: false,
+      models: MODELS0.map((m) => ({ ...m })),
+    };
+    $("feed").innerHTML = "";
+    initialFeed.slice().reverse().forEach((l) => addFeed(l, false));
+    loadRun(0);
+    renderAll();
+  }
+
+  // ---------- rendering ----------
+  function setPill(el, cls, text, live) {
+    el.className = "pill " + cls + (live ? " live" : "");
+    el.innerHTML = '<span class="dot"></span>' + text;
+  }
+  function renderAll() {
+    $("c-total").textContent = st.captured;
+    $("a-judged").textContent = st.judged;
+    $("a-total").textContent = st.captured;
+    $("a-queue").textContent = st.queue;
+    $("a-bar").style.width = (100 * st.judged / st.captured).toFixed(1) + "%";
+    $("f-rate").textContent = Math.round(100 * st.succ / st.judged) + "% success · " + st.succ + " / " + st.judged;
+    $("m-today").textContent = `Today: ${st.todayRuns} runs · ${st.todayOk} grasped · ${st.todayMiss} missed`;
+    const prod = st.models.find((m) => m.status === "prod");
+    $("hdr-model").textContent = prod.v + " · " + prod.name;
+    $("r-model").textContent = prod.v + " " + prod.name;
+    $("r-mdl").textContent = prod.v;
+    renderTrain(); renderVersions(); renderFails(); renderStats();
+  }
+  function renderTrain() {
+    const next = st.models.find((m) => m.status === "next" || m.status === "training" || m.status === "eval");
+    $("st-train").classList.toggle("hot", st.ft !== "collect");
+    $("t-loss").style.display = st.ft === "train" ? "block" : "none";
+    if (st.ft === "collect") {
+      setPill($("t-pill"), "mute", "Collecting");
+      $("t-big").innerHTML = `${st.newEp} <small>/ ${TARGET} new episodes</small>`;
+      $("t-bar").style.width = (100 * st.newEp / TARGET) + "%";
+      $("t-sub").textContent = `Starts automatically at ${TARGET} new successful episodes`;
+    } else if (st.ft === "train") {
+      const p = st.ftT / TRAIN_S;
+      setPill($("t-pill"), "acc", "Training " + next.v, true);
+      $("t-big").innerHTML = `${Math.floor(p * 100)}<small>%</small>`;
+      $("t-bar").style.width = (p * 100) + "%";
+      $("t-sub").textContent = `${next.v} · SmolVLA on ${76 + TARGET} episodes · step ${Math.floor(p * 4000)} / 4000`;
+      drawLoss();
+    } else if (st.ft === "eval") {
+      setPill($("t-pill"), "info", "Evaluating " + next.v, true);
+      $("t-big").innerHTML = `${st.evalOk} <small>/ ${st.evalDone} grasped</small>`;
+      $("t-bar").style.width = (100 * st.evalDone / 10) + "%";
+      $("t-sub").textContent = `Test runs on Neil from 5 start spots · ${st.evalDone} / 10 done`;
+    } else if (st.ft === "deployed") {
+      setPill($("t-pill"), "ok", "Deployed " + st.models.find((m) => m.status === "prod").v);
+      $("t-big").innerHTML = `${Math.round(st.models.find((m) => m.status === "prod").rate * 100)}<small>% grasp rate</small>`;
+      $("t-bar").style.width = "100%";
+      $("t-sub").textContent = "Beat v2 (60%) · rolled out to Neil";
+    }
+  }
+  function renderVersions() {
+    $("versions").innerHTML = st.models.map((m) => {
+      const cls = m.status === "prod" ? "prod" : (m.status === "training" || m.status === "eval") ? "training" : "";
+      const pill = m.status === "prod" ? '<span class="pill acc">In production</span>'
+        : m.status === "training" ? '<span class="pill acc live"><span class="dot"></span>Training</span>'
+        : m.status === "eval" ? '<span class="pill info live"><span class="dot"></span>Evaluating</span>'
+        : m.status === "next" ? '<span class="pill mute">Next</span>' : '<span class="pill mute">Retired</span>';
+      const rate = m.rate == null ? "—" : Math.round(m.rate * 100) + "%";
+      return `<div class="ver ${cls}"><span class="vlbl">${m.v}</span><div class="vbar"><i style="width:${(m.rate || 0) * 100}%"></i></div><span class="vrate num">${rate}</span>
+        <span class="vname">${esc(m.name)}${m.n ? " · " + m.n + " runs" : ""} ${pill}</span></div>`;
+    }).join("");
+  }
+  function renderFails() {
+    const notReached = st.judged - st.succ;
+    const rows = [
+      ["Never reached the cup", notReached, "VLM labels"],
+      ["Drove past the cup", 2, "VLA rollouts"],
+      ["Stopped before first step", 2, "VLA rollouts"],
+    ];
+    const max = Math.max(...rows.map((r) => r[1]));
+    $("fails").innerHTML = rows.map(([k, n, src]) => `<div class="fail"><div class="fail-top"><b>${k}</b><span class="mono">${n} <span style="color:var(--faint)">· ${src}</span></span></div>
+      <div class="bar"><i style="width:${100 * n / max}%"></i></div></div>`).join("") +
+      `<p style="margin:2px 0 0;font-size:12.5px;color:var(--muted)">Every VLM-labelled failure is <span class="mono">did_not_reach_cup</span>: the grasp works once the cup is between the jaws.</p>`;
+  }
+  function renderStats() {
+    const cost = D.labels.reduce((a, l) => a + l.cost_usd, 0) / D.labels.length;
+    $("stats").innerHTML = [
+      [`$${cost.toFixed(3)}`, "cost per video judged"],
+      [`${Math.round(D.summary.mean_confidence * 100)}%`, "mean VLM confidence"],
+      [`${D.summary.label_agreement.agree} / ${D.summary.label_agreement.labelled}`, "agree with human labels"],
+      [`~${Math.round(D.labels.reduce((a, l) => a + l.duration_s, 0) / D.labels.length)} s`, "of video per attempt"],
+    ].map(([v, k]) => `<div class="stat"><span class="num">${v}</span><p>${k}</p></div>`).join("");
+  }
+
+  // ---------- feed ----------
+  function addFeed(l, animate = true, judging = false) {
+    const el = document.createElement("div");
+    el.className = "item" + (judging ? " judging" : "");
+    if (!animate) el.style.animation = "none";
+    fillItem(el, l, judging);
+    $("feed").prepend(el);
+    while ($("feed").children.length > 9) $("feed").lastChild.remove();
+    return el;
+  }
+  function fillItem(el, l, judging) {
+    el.classList.toggle("judging", judging);
+    const chip = judging ? '<span class="pill info live"><span class="dot"></span>Judging</span>'
+      : l.success ? '<span class="pill ok">Picked up</span>' : '<span class="pill bad">Missed</span>';
+    const conf = judging ? "" : `<span class="conf mono">${Math.round(l.confidence * 100)}%<span class="meter"><i style="width:${l.confidence * 100}%"></i></span></span>`;
+    const why = judging ? `Reading 8 front + 8 top frames<span class="typing"><span>.</span><span>.</span><span>.</span></span>` : esc(l.reason);
+    el.innerHTML = `<div class="item-top">${chip}<span class="where">${esc(l.where)}</span><span class="time mono">${esc(l.time)}</span>${conf}</div><div class="why">${why}</div>`;
+  }
+  function annotateNext() {
+    const l = queueOrder[st.qi++ % queueOrder.length];
+    const el = addFeed(l, true, true);
+    st.queue--; renderAll();
+    setTimeout(() => {
+      fillItem(el, l, false);
+      st.judged++;
+      if (l.success) { st.succ++; if (st.ft === "collect") st.newEp = Math.min(TARGET, st.newEp + 1); }
+      if (st.ft === "collect" && st.newEp >= TARGET) startTraining();
+      renderAll();
+    }, 1800 / speed);
+  }
+
+  // ---------- fine-tune ----------
+  function startTraining() {
+    st.ft = "train"; st.ftT = 0; st.loss = [];
+    st.models.find((m) => m.status === "next").status = "training";
+  }
+  function drawLoss() {
+    const c = $("t-loss"), dpr = devicePixelRatio || 1, w = c.clientWidth, h = 34;
+    c.width = w * dpr; c.height = h * dpr;
+    const g = c.getContext("2d"); g.scale(dpr, dpr);
+    if (st.loss.length < 2) return;
+    g.strokeStyle = css("--accent"); g.lineWidth = 1.5; g.beginPath();
+    st.loss.forEach((v, i) => { const x = (i / 119) * w, y = 3 + (1 - Math.min(1, v)) * (h - 6); i ? g.lineTo(x, y) : g.moveTo(x, y); });
+    g.stroke();
+    g.fillStyle = css("--muted"); g.font = "10px " + css("--mono");
+    g.fillText("loss " + st.loss[st.loss.length - 1].toFixed(3), w - 70, 10);
+  }
+
+  // ---------- live rollout ----------
+  const vf = $("v-front"), vt = $("v-top");
+  let run;
+  const allW = runs.flatMap((r) => r.series.flatMap((s) => [s[1], s[2]]));
+  const allA = runs.flatMap((r) => r.series.flatMap((s) => [s[3], s[4]]));
+  const rngW = [Math.min(-10, ...allW), Math.max(...allW) + 5];
+  const rngA = [Math.min(...allA) - 5, Math.max(...allA) + 5];
+
+  function loadRun(i) {
+    st.runIdx = i % runs.length; run = runs[st.runIdx];
+    st.ending = false;
+    $("verdict").classList.remove("show");
+    const hhmmss = run.id.slice(-6);
+    $("r-id").textContent = `#${st.runNo} (rec. ${hhmmss.slice(0, 2)}:${hhmmss.slice(2, 4)}:${hhmmss.slice(4)})`;
+    $("m-run").textContent = "Rollout " + st.runNo;
+    vf.src = run.front; vt.src = run.top;
+    vf.playbackRate = vt.playbackRate = speed;
+    if (!paused) { vf.play().catch(() => {}); vt.play().catch(() => {}); }
+  }
+  function stepAt(t) {
+    const s = run.series, tt = t * (run.duration_s / (vf.duration || run.duration_s));
+    let k = 0; while (k + 1 < s.length && s[k + 1][0] <= tt) k++;
+    return k;
+  }
+  function drawChart(id, idxA, idxB, colA, colB, rng, k, ticks) {
+    const c = $(id), dpr = devicePixelRatio || 1, w = c.clientWidth, h = 74;
+    if (c.width !== Math.round(w * dpr)) { c.width = w * dpr; c.height = h * dpr; }
+    const g = c.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+    const s = run.series, T = s[s.length - 1][0];
+    const X = (t) => (t / T) * (w - 2) + 1, Y = (v) => 4 + (1 - (v - rng[0]) / (rng[1] - rng[0])) * (h - 14);
+    g.strokeStyle = css("--line"); g.lineWidth = 1;
+    g.beginPath(); g.moveTo(0, Y(0)); g.lineTo(w, Y(0)); g.stroke();
+    if (ticks) { g.fillStyle = css("--faint"); s.forEach((p) => { if (p[5]) g.fillRect(X(p[0]) - 0.5, h - 6, 1.5, 5); }); }
+    for (const [idx, col] of [[idxA, colA], [idxB, colB]]) {
+      g.lineWidth = 1.5; g.lineJoin = "round";
+      g.globalAlpha = 0.18; g.strokeStyle = col; g.beginPath();
+      s.forEach((p, i) => (i ? g.lineTo(X(p[0]), Y(p[idx])) : g.moveTo(X(p[0]), Y(p[idx])))); g.stroke();
+      g.globalAlpha = 1; g.beginPath();
+      for (let i = 0; i <= k; i++) (i ? g.lineTo(X(s[i][0]), Y(s[i][idx])) : g.moveTo(X(s[i][0]), Y(s[i][idx])));
+      g.stroke();
+      g.fillStyle = col; g.beginPath(); g.arc(X(s[k][0]), Y(s[k][idx]), 3, 0, 7); g.fill();
+    }
+    g.strokeStyle = css("--fg"); g.globalAlpha = 0.35; g.beginPath(); g.moveTo(X(s[k][0]), 0); g.lineTo(X(s[k][0]), h); g.stroke(); g.globalAlpha = 1;
+  }
+  function frame() {
+    if (run) {
+      const k = stepAt(vf.currentTime || 0), p = run.series[k];
+      drawChart("ch-wheels", 1, 2, css("--s-left"), css("--s-right"), rngW, k, true);
+      drawChart("ch-arm", 3, 4, css("--s-arm"), css("--s-grip"), rngA, k, false);
+      $("r-step").textContent = k + 1 + " / " + run.steps;
+      $("r-chunks").textContent = run.series.slice(0, k + 1).reduce((a, s) => a + s[5], 0);
+      $("m-sub").textContent = `Model ${st.models.find((m) => m.status === "prod").v} on Neil · ${(vf.currentTime || 0).toFixed(1)} s of ${run.duration_s.toFixed(0)} s`;
+      $("legend").innerHTML = [["--s-left", "Left wheel", p[1]], ["--s-right", "Right wheel", p[2]], ["--s-arm", "Arm", p[3] + "°"], ["--s-grip", "Gripper", p[4] + "°"]]
+        .map(([c, n, v]) => `<div><span><i style="background:var(${c})"></i>${n}</span><span class="mono">${v}</span></div>`).join("");
+      if (Math.abs(vt.currentTime - vf.currentTime) > 0.35 && !vf.paused) vt.currentTime = vf.currentTime;
+    }
+    requestAnimationFrame(frame);
+  }
+  vf.addEventListener("ended", () => {
+    if (st.ending) return; st.ending = true;
+    const ok = run.outcome === "grasped";
+    $("verdict").innerHTML = `<div style="display:flex;gap:8px;align-items:center">${ok ? '<span class="pill ok">Grasped</span>' : '<span class="pill bad">Missed</span>'}<span class="eyebrow">Run complete</span></div>
+      <span style="font-size:13px">${esc(run.note)}</span><span class="mono" style="font-size:11.5px;color:var(--info)">Captured as video ${st.captured + 1} · queued for VLM annotation</span>`;
+    $("verdict").classList.add("show");
+    st.captured++; st.queue++; st.todayRuns++; ok ? st.todayOk++ : st.todayMiss++;
+    $("c-last").textContent = `Last capture: rollout ${st.runNo} · ${ok ? "grasped" : "missed"}`;
+    $("st-capture").classList.add("hot"); setTimeout(() => $("st-capture").classList.remove("hot"), 2500);
+    renderAll();
+    setTimeout(() => { st.runNo++; loadRun(st.runIdx + 1); }, 3500 / speed);
+  });
+
+  // ---------- simulation clock ----------
+  let last = performance.now();
+  setInterval(() => {
+    const now = performance.now(), dt = ((now - last) / 1000) * speed; last = now;
+    $("clock").textContent = new Date().toLocaleTimeString("en-GB");
+    if (paused) return;
+    st.t += dt;
+    $("st-annotate").classList.toggle("hot", $("feed").querySelector(".judging") !== null);
+    if (st.t >= st.nextAnnot && st.queue > 0) { st.nextAnnot = st.t + ANNOTATE_EVERY; annotateNext(); }
+    if (st.ft === "train") {
+      st.ftT += dt;
+      const p = Math.min(1, st.ftT / TRAIN_S);
+      while (st.loss.length < Math.floor(p * 120)) { const q = st.loss.length / 120; st.loss.push(0.08 + 0.85 * Math.exp(-4 * q) + Math.random() * 0.04); }
+      if (st.ftT >= TRAIN_S) { st.ft = "eval"; st.ftT = 0; st.models.find((m) => m.status === "training").status = "eval"; }
+      renderAll();
+    } else if (st.ft === "eval") {
+      st.ftT += dt;
+      const done = Math.min(10, Math.floor(st.ftT / (EVAL_S / 10)));
+      if (done > st.evalDone) { st.evalOk += [1, 1, 0, 1, 1, 0, 1, 1, 0, 1][st.evalDone]; st.evalDone = done; renderAll(); }
+      if (st.ftT >= EVAL_S) {
+        st.ft = "deployed"; st.ftT = 0;
+        st.models.forEach((m) => { if (m.status === "prod") m.status = "retired"; });
+        const nm = st.models.find((m) => m.status === "eval"); nm.status = "prod"; nm.rate = st.evalOk / 10; nm.n = `${st.evalOk} / 10`;
+        st.models.push({ v: "v4", name: "next fine-tune", rate: null, n: "", status: "next" });
+        if (st.models.length > 4) st.models.shift();
+        renderAll();
+      }
+    } else if (st.ft === "deployed") {
+      st.ftT += dt;
+      if (st.ftT > 12) { st.ft = "collect"; st.newEp = 0; renderAll(); }
+    }
+  }, 200);
+
+  // ---------- controls ----------
+  function setSpeed(s) {
+    speed = s; vf.playbackRate = vt.playbackRate = s;
+    document.querySelectorAll("[data-speed]").forEach((b) => b.setAttribute("aria-pressed", String(+b.dataset.speed === s)));
+  }
+  function togglePause() {
+    paused = !paused;
+    $("b-play").textContent = paused ? "Play" : "Pause";
+    $("b-play").setAttribute("aria-pressed", String(paused));
+    paused ? (vf.pause(), vt.pause()) : (vf.play().catch(() => {}), vt.play().catch(() => {}));
+  }
+  $("b-play").onclick = togglePause;
+  $("b-reset").onclick = () => { reset(); };
+  document.querySelectorAll("[data-speed]").forEach((b) => (b.onclick = () => setSpeed(+b.dataset.speed)));
+  window.LVO = {
+    models: () => st.models,
+    deploy(v) {
+      const m = st.models.find((x) => x.v === v);
+      if (!m || m.rate == null) return;
+      st.models.forEach((x) => { if (x.status === "prod") x.status = "retired"; });
+      m.status = "prod";
+      renderAll();
+    },
+  };
+  addEventListener("keydown", (e) => {
+    if (document.body.dataset.tab && document.body.dataset.tab !== "overview") return;
+    if (/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
+    if (e.key === " ") { e.preventDefault(); togglePause(); }
+    else if (e.key === "r" || e.key === "R") reset();
+    else if (["1", "2", "4"].includes(e.key)) setSpeed(+e.key);
+  });
+
+  reset();
+  requestAnimationFrame(frame);
+})();
+</script>
+<script>
+// ================= Engineer tabs =================
+(() => {
+  const D = window.LOOPVLA, O = window.LVO;
+  const $ = (id) => document.getElementById(id);
+  const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const fmt = (v, d = 1) => (v == null || Number.isNaN(v) ? "—" : Number(v).toFixed(d));
+  const CH = [["Left wheel", "--s-left"], ["Right wheel", "--s-right"], ["Arm", "--s-arm"], ["Gripper", "--s-grip"]];
+  const CLOSED = -45, LIFTED = -15;
+  const store = { get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
+                  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
+
+  // ---------- tabs ----------
+  const TABS = ["overview", "runs", "labels", "train", "models"];
+  const inited = {};
+  function show(tab) {
+    if (!TABS.includes(tab)) tab = "overview";
+    document.body.dataset.tab = tab;
+    TABS.forEach((t) => { $("tab-" + t).hidden = t !== tab; });
+    document.querySelectorAll(".tabs [data-tab]").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === tab)));
+    $("demo-controls").hidden = tab !== "overview";
+    if (tab !== "runs") pauseRun();
+    if (!inited[tab] && INIT[tab]) { INIT[tab](); inited[tab] = true; }
+    if (REFRESH[tab]) REFRESH[tab]();
+    try { history.replaceState(null, "", "#" + tab); } catch {}
+  }
+  document.querySelectorAll(".tabs [data-tab]").forEach((b) => (b.onclick = () => show(b.dataset.tab)));
+
+  // ---------- shared chart helper ----------
+  function chart(cv, { h, xMax, lines, vlines = [], playhead = null, pad = 4, zero = true }) {
+    const dpr = devicePixelRatio || 1, w = cv.clientWidth;
+    if (!w) return null;
+    if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = w * dpr; cv.height = h * dpr; }
+    const g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+    let lo = Infinity, hi = -Infinity;
+    lines.forEach((l) => l.pts.forEach(([, y]) => { if (y < lo) lo = y; if (y > hi) hi = y; }));
+    if (zero) { lo = Math.min(lo, 0); hi = Math.max(hi, 0); }
+    if (hi - lo < 1e-6) { hi += 1; lo -= 1; }
+    const m = (hi - lo) * 0.08; lo -= m; hi += m;
+    const X = (x) => 1 + (x / xMax) * (w - 2), Y = (y) => pad + (1 - (y - lo) / (hi - lo)) * (h - 2 * pad);
+    g.strokeStyle = css("--line"); g.lineWidth = 1;
+    vlines.forEach((x) => { g.globalAlpha = 0.6; g.beginPath(); g.moveTo(X(x) + 0.5, 0); g.lineTo(X(x) + 0.5, h); g.stroke(); });
+    g.globalAlpha = 1;
+    if (zero) { g.beginPath(); g.moveTo(0, Y(0)); g.lineTo(w, Y(0)); g.stroke(); }
+    for (const l of lines) {
+      g.strokeStyle = l.color; g.lineWidth = l.width || 1.5; g.globalAlpha = l.alpha ?? 1; g.setLineDash(l.dash || []); g.lineJoin = "round";
+      g.beginPath(); l.pts.forEach(([x, y], i) => (i ? g.lineTo(X(x), Y(y)) : g.moveTo(X(x), Y(y)))); g.stroke();
+    }
+    g.setLineDash([]); g.globalAlpha = 1;
+    if (playhead != null) { g.strokeStyle = css("--fg"); g.globalAlpha = 0.45; g.beginPath(); g.moveTo(X(playhead), 0); g.lineTo(X(playhead), h); g.stroke(); g.globalAlpha = 1; }
+    g.fillStyle = css("--faint"); g.font = "10px " + css("--mono");
+    g.fillText(fmt(hi, 0), 4, 10); g.fillText(fmt(lo, 0), 4, h - 3);
+    return { X, Y, w };
+  }
+  const idxAt = (rows, t) => { let a = 0, b = rows.length - 1; while (a < b) { const m = (a + b + 1) >> 1; rows[m][0] <= t ? (a = m) : (b = m - 1); } return a; };
+  const quant = (arr, q) => { const s = [...arr].sort((a, b) => a - b); return s[Math.min(s.length - 1, Math.floor(q * (s.length - 1)))]; };
+
+  // ---------- run metrics (also used by Models) ----------
+  function metrics(item) {
+    const f = item.full, r = item.kind === "r";
+    const ARM = r ? 11 : 7, GRIP = r ? 12 : 8;
+    const T = f[f.length - 1][0];
+    const dts = f.slice(1).map((row, i) => (row[0] - f[i][0]) * 1000);
+    let closeT = null, liftT = null;
+    for (const row of f) {
+      if (closeT == null && row[GRIP] <= CLOSED) closeT = row[0];
+      if (closeT != null && liftT == null && row[ARM] <= LIFTED) liftT = row[0];
+    }
+    const maxI = dts.indexOf(Math.max(...dts));
+    return {
+      T, n: f.length, hz: (f.length - 1) / T, med: quant(dts, 0.5), p95: quant(dts, 0.95), max: dts[maxI], maxAt: f[maxI][0], maxStep: maxI + 1, dts,
+      chunks: r ? f.reduce((a, row) => a + row[13], 0) : null,
+      closeT, liftT, wheel: r ? [f[f.length - 1][14], f[f.length - 1][15]] : null,
+      final: r ? f[f.length - 1].slice(9, 13) : f[f.length - 1].slice(5, 9),
+    };
+  }
+
+  // ================= RUNS =================
+  const vf = $("rv-front"), vt = $("rv-top");
+  const items = [
+    ...D.rollouts.map((r) => {
+      const hh = r.id.slice(-6), time = `${hh.slice(0, 2)}:${hh.slice(2, 4)}:${hh.slice(4)}`;
+      return { key: r.id, kind: "r", raw: r, title: "Rollout " + time, full: r.full, disabled: !r.steps,
+        sub: r.steps ? `${r.model.split("_")[0] === "handoff" ? "v2" : r.model} · ${r.duration_s.toFixed(1)} s · ${r.steps} steps` : "no steps recorded",
+        outcome: r.outcome };
+    }),
+    ...D.episodes.map((e) => ({ key: e.id, kind: "d", raw: e, title: "Demo · " + ["First", "Second", "Third", "Fourth", "Fifth"][+e.id[0] - 1] + " spot",
+      full: e.full, sub: `teleop · ${(e.frames / e.fps).toFixed(1)} s · ${e.frames} frames`, outcome: "demo" })),
+  ];
+  const demos = items.filter((i) => i.kind === "d");
+  let cur = null, overlay = null, rf = "all";
+  const chip = (o) => o === "grasped" ? '<span class="pill ok">Grasped</span>' : o === "missed_cup" ? '<span class="pill bad">Missed</span>'
+    : o === "aborted" ? '<span class="pill mute">Aborted</span>' : '<span class="pill info">Demo</span>';
+
+  function renderRunList() {
+    $("runlist").innerHTML = items.filter((i) => rf === "all" || i.kind === rf).map((i) =>
+      `<button class="runitem" data-key="${i.key}" ${i.disabled ? "disabled" : ""} aria-current="${cur && cur.key === i.key}">
+        <span class="t">${chip(i.outcome)}${esc(i.title)}</span><span class="m">${esc(i.sub)}</span></button>`).join("");
+    $("runlist").querySelectorAll(".runitem").forEach((b) => (b.onclick = () => selectRun(b.dataset.key)));
+  }
+  document.querySelectorAll("[data-rf]").forEach((b) => (b.onclick = () => {
+    rf = b.dataset.rf; document.querySelectorAll("[data-rf]").forEach((x) => x.setAttribute("aria-pressed", String(x === b))); renderRunList();
+  }));
+
+  function selectRun(key) {
+    cur = items.find((i) => i.key === key); if (!cur || cur.disabled) return;
+    cur.m = cur.m || metrics(cur);
+    const r = cur.kind === "r", raw = cur.raw;
+    $("rd-title").textContent = cur.title;
+    $("rd-chips").innerHTML = chip(cur.outcome) + (r ? `<span class="pill mute">${esc(raw.model)}</span><span class="pill mute">${esc(raw.config.action_mode)} actions</span>` +
+      '<span class="pill mute" title="Judged from the final camera frames and gripper reading">outcome provisional</span>' : '<span class="pill mute">operator target</span>');
+    vf.src = raw.front; vt.src = raw.top; vf.playbackRate = vt.playbackRate = +$("rt-rate").value;
+    $("rt-play").textContent = "Play";
+    // channel rows
+    $("chans").innerHTML = CH.map(([n], c) => `<div class="chan"><span class="eyebrow">${n}<br>${c < 2 ? (r ? "speed −100…100" : "degrees since start") : "angle, degrees"}</span>
+      <canvas id="ch-${c}" height="64"></canvas><div class="vals" id="cv-${c}"></div></div>`).join("");
+    CH.forEach((_, c) => { $("ch-" + c).onclick = (e) => { const b = e.target.getBoundingClientRect(); seekData(((e.clientX - b.left) / b.width) * xMax()); }; });
+    $("keyline").innerHTML = (r ? '<span><i style="border-top-style:dashed"></i>Model output</span><span><i style="border-color:var(--muted);border-top-width:1px"></i>Sent to motor</span>'
+      : '<span><i style="border-top-style:dashed"></i>Operator target</span>') + '<span><i style="border-color:var(--s-arm)"></i>Measured (channel colour)</span>' +
+      (r ? '<span><i style="border-color:var(--line);height:10px;border-top:0;border-left:1px solid var(--faint);width:0"></i>New action chunk</span>' : "");
+    $("rd-overlay").innerHTML = '<option value="">None</option>' + demos.filter((d) => d !== cur).map((d) => `<option value="${d.key}">${esc(d.title)}</option>`).join("");
+    overlay = null;
+    renderStats(); renderDt(); renderCfg(); renderRunList(); drawRun();
+  }
+  $("rd-overlay").onchange = (e) => { overlay = demos.find((d) => d.key === e.target.value) || null; drawRun(); };
+
+  const xMax = () => Math.max(cur.m.T, overlay ? overlay.full[overlay.full.length - 1][0] : 0);
+  const tNow = () => (vf.duration ? (vf.currentTime / vf.duration) * cur.m.T : 0);
+  function seekData(t) { if (vf.duration) { vf.currentTime = vt.currentTime = Math.max(0, Math.min(cur.m.T, t)) / cur.m.T * vf.duration; } drawRun(); }
+  function stepBy(d) { const k = Math.max(0, Math.min(cur.full.length - 1, idxAt(cur.full, tNow() + 1e-4) + d)); vf.pause(); vt.pause(); $("rt-play").textContent = "Play"; seekData(cur.full[k][0] + 1e-3); }
+  function pauseRun() { if (!vf.paused) { vf.pause(); vt.pause(); $("rt-play").textContent = "Play"; } }
+  $("rt-play").onclick = () => { if (!cur) return; if (vf.paused) { if (vf.ended) seekData(0); vf.play().catch(() => {}); vt.play().catch(() => {}); $("rt-play").textContent = "Pause"; } else pauseRun(); };
+  $("rt-prev").onclick = () => cur && stepBy(-1);
+  $("rt-next").onclick = () => cur && stepBy(1);
+  $("rt-rate").onchange = (e) => { vf.playbackRate = vt.playbackRate = +e.target.value; };
+  $("rt-scrub").oninput = (e) => cur && seekData((e.target.value / 1000) * cur.m.T);
+  vf.addEventListener("ended", () => { $("rt-play").textContent = "Play"; });
+
+  function drawRun() {
+    if (!cur || document.body.dataset.tab !== "runs") return;
+    const r = cur.kind === "r", f = cur.full, t = tNow(), k = idxAt(f, t), row = f[k], XM = xMax();
+    const vl = r ? f.filter((x) => x[13]).map((x) => x[0]) : [];
+    CH.forEach(([, col], c) => {
+      const lines = r ? [
+        { pts: f.map((x) => [x[0], x[5 + c]]), color: css("--muted"), width: 1, alpha: 0.7 },
+        { pts: f.map((x) => [x[0], x[1 + c]]), color: css("--fg"), dash: [4, 3], width: 1.2, alpha: 0.85 },
+        { pts: f.map((x) => [x[0], x[9 + c]]), color: css(col), width: 2 },
+      ] : [
+        { pts: f.map((x) => [x[0], x[1 + c]]), color: css("--fg"), dash: [4, 3], width: 1.2, alpha: 0.85 },
+        { pts: f.map((x) => [x[0], x[5 + c]]), color: css(col), width: 2 },
+      ];
+      if (overlay && c >= 2) lines.unshift({ pts: overlay.full.map((x) => [x[0], x[5 + c]]), color: css(col), dash: [1, 3], width: 2, alpha: 0.55 });
+      chart($("ch-" + c), { h: 64, xMax: XM, lines, vlines: vl, playhead: row[0] });
+      $("cv-" + c).innerHTML = r
+        ? `<span>model <b>${fmt(row[1 + c])}</b></span><span>sent <b>${fmt(row[5 + c])}</b></span><span>measured <b>${fmt(row[9 + c], 0)}</b></span>`
+        : `<span>target <b>${fmt(row[1 + c], 0)}</b></span><span>measured <b>${fmt(row[5 + c], 0)}</b></span>`;
+    });
+    $("rt-time").textContent = `${row[0].toFixed(2)} s · step ${k + 1} / ${f.length}`;
+    if (document.activeElement !== $("rt-scrub")) $("rt-scrub").value = Math.round((t / cur.m.T) * 1000);
+    const chunkNo = r ? f.slice(0, k + 1).reduce((a, x) => a + x[13], 0) : null;
+    $("rd-now").innerHTML = (r ? [["chunk", `#${chunkNo}${row[13] ? " (new)" : ""}`], ["wheel travel", `${row[14]}° / ${row[15]}°`]] : [["frame", `${k + 1} at 10 fps`]])
+      .concat([["gripper", row[r ? 12 : 8] <= CLOSED ? "closed" : "open"], ["arm", row[r ? 11 : 7] <= LIFTED ? "raised" : "lowered"]])
+      .map(([a, b]) => `<dt>${a}</dt><dd>${esc(b)}</dd>`).join("");
+    if (Math.abs(vt.currentTime - vf.currentTime) > 0.3 && !vf.paused) vt.currentTime = vf.currentTime;
+  }
+  (function loop() { drawRun(); requestAnimationFrame(loop); })();
+
+  function renderStats() {
+    const m = cur.m, r = cur.kind === "r";
+    const tiles = [
+      [`${m.T.toFixed(1)}<small> s</small>`, `${m.n} ${r ? "steps" : "frames"}`],
+      [`${m.hz.toFixed(1)}<small> Hz</small>`, r ? "control rate" : "recording rate"],
+      [m.closeT != null ? `${m.closeT.toFixed(1)}<small> s</small>` : "never", "gripper closed at"],
+      [m.liftT != null ? `${m.liftT.toFixed(1)}<small> s</small>` : "never", "arm lifted the cup at"],
+    ];
+    if (r) tiles.push(
+      [`${m.chunks}`, `action chunks · ${(m.n / m.chunks).toFixed(1)} steps each`],
+      [`${Math.round(m.max)}<small> ms</small>`, `longest step, at ${m.maxAt.toFixed(1)} s`, m.max > 4 * m.med],
+      [`${m.wheel[0]}° / ${m.wheel[1]}°`, "wheel travel, left / right", Math.abs(m.wheel[0] - m.wheel[1]) > 0.4 * Math.max(...m.wheel.map(Math.abs))],
+      [`${m.final.map((v) => Math.round(v)).join(" / ")}`, "final state L / R / arm / grip"]);
+    else tiles.push([`${m.final.map((v) => Math.round(v)).join(" / ")}`, "final state L / R / arm / grip"]);
+    $("rd-stats").innerHTML = tiles.map(([v, k, warn]) => `<div class="tile${warn ? " warn" : ""}"><span class="num">${v}</span><p>${esc(k)}</p></div>`).join("");
+  }
+  function renderDt() {
+    const m = cur.m, cv = $("rd-dt");
+    const dpr = devicePixelRatio || 1, w = cv.clientWidth, h = 120;
+    cv.width = w * dpr; cv.height = h * dpr;
+    const g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const cap = Math.max(m.p95 * 2.5, m.med * 3), bw = w / m.dts.length;
+    m.dts.forEach((d, i) => {
+      const bh = Math.min(1, d / cap) * (h - 16);
+      g.fillStyle = d > 2 * m.med ? css("--accent") : css("--faint");
+      g.fillRect(i * bw, h - bh, Math.max(1, bw - 1), bh);
+    });
+    const ym = h - (m.med / cap) * (h - 16);
+    g.strokeStyle = css("--info"); g.setLineDash([3, 3]); g.beginPath(); g.moveTo(0, ym); g.lineTo(w, ym); g.stroke(); g.setLineDash([]);
+    g.fillStyle = css("--info"); g.font = "10px " + css("--mono"); g.fillText(`median ${Math.round(m.med)} ms`, 4, ym - 4);
+    if (m.max > cap) { g.fillStyle = css("--accent"); g.fillText(`▲ ${Math.round(m.max)} ms (off scale)`, Math.min(w - 130, m.maxStep * bw), 10); }
+    const slow = m.dts.filter((d) => d > 2 * m.med).length;
+    $("rd-dt-sub").textContent = `${m.dts.length} intervals`;
+    $("rd-dt-note").textContent = cur.kind === "r"
+      ? `Median ${Math.round(m.med)} ms (${(1000 / m.med).toFixed(1)} Hz), 95th percentile ${Math.round(m.p95)} ms. ${slow} step${slow === 1 ? "" : "s"} took more than twice the median.` +
+        (m.maxStep === 1 ? ` The longest (${Math.round(m.max)} ms) is the first step, which waits for the first action chunk.` : ` The longest was ${Math.round(m.max)} ms at step ${m.maxStep}.`)
+      : `Teleop recording at a steady ${(1000 / m.med).toFixed(0)} fps; ${slow} late frame${slow === 1 ? "" : "s"}.`;
+  }
+  function renderCfg() {
+    const r = cur.kind === "r", c = r ? cur.raw.config : { source: cur.raw.source, action: cur.raw.action_kind, position: cur.raw.position, fps: cur.raw.fps, frames: cur.raw.frames, date: cur.raw.date };
+    $("rd-cfg-src").textContent = r ? "run.json" : "episode.json";
+    $("rd-cfg").innerHTML = Object.entries(c).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v === null ? "null" : v)}</dd>`).join("");
+  }
+  addEventListener("resize", () => { if (cur && document.body.dataset.tab === "runs") renderDt(); });
+  addEventListener("keydown", (e) => {
+    if (document.body.dataset.tab !== "runs" || !cur || /INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
+    if (e.key === " ") { e.preventDefault(); $("rt-play").click(); }
+    else if (e.key === "ArrowLeft") { e.preventDefault(); stepBy(-1); }
+    else if (e.key === "ArrowRight") { e.preventDefault(); stepBy(1); }
+  });
+
+  // ================= ANNOTATIONS =================
+  const L = D.labels;
+  let reviews = store.get("loopvla-reviews", {});
+  const eff = (l) => (reviews[l.name] === "flip" ? !l.success : l.success);
+  const CUP = { held_lifted: "Held and lifted", upright_free: "Standing, not held", out_of_view: "Out of view" };
+  const SPOTS = ["First spot", "Second spot", "Third spot", "Fourth spot", "Fifth spot", "Early session", "Demo episode"];
+  let sort = { k: "confidence", dir: 1 }, openRow = null;
+
+  function initLabels() {
+    $("lf-spot").innerHTML = '<option value="">All</option>' + SPOTS.map((s) => `<option>${s}</option>`).join("");
+    ["lf-verdict", "lf-spot", "lf-conf", "lf-q"].forEach((id) => ($(id).oninput = () => { $("lf-conf-v").textContent = $("lf-conf").value + "%"; renderTable(); }));
+    $("lb-table").querySelectorAll("[data-sort]").forEach((b) => (b.onclick = () => {
+      sort = { k: b.dataset.sort, dir: sort.k === b.dataset.sort ? -sort.dir : 1 };
+      $("lb-table").querySelectorAll("[data-sort]").forEach((x) => (x.textContent = x.textContent.replace(/ [▲▼]$/, "")));
+      b.textContent += sort.dir > 0 ? " ▲" : " ▼"; renderTable();
+    }));
+  }
+  function refreshLabels() {
+    const ok = L.filter(eff).length, cost = L.reduce((a, l) => a + l.cost_usd, 0), low = L.filter((l) => l.confidence < 0.85).length;
+    $("lb-tiles").innerHTML = [
+      [`${L.length}`, "attempts judged"], [`${ok} <small>(${Math.round(100 * ok / L.length)}%)</small>`, "picked up the cup"],
+      [`${Math.round(D.summary.mean_confidence * 100)}%`, "mean confidence"], [`${low}`, "below 85% confidence: review first", low > 0],
+      [`${D.summary.label_agreement.agree} / ${D.summary.label_agreement.labelled}`, "agree with human labels"],
+      [`$${cost.toFixed(2)}`, `total · $${(cost / L.length).toFixed(3)} per video`],
+      [`${esc(D.summary.model)}`, `judge · ${D.summary.frames} frames per camera`, false, true],
+    ].map(([v, k, w, small]) => `<div class="tile${w ? " warn" : ""}"><span class="num" style="${small ? "font-size:15px;padding-top:6px" : ""}">${v}</span><p>${k}</p></div>`).join("");
+    const by = SPOTS.map((s) => { const a = L.filter((l) => l.where === s); return [s, a.filter(eff).length, a.length]; }).filter((x) => x[2]);
+    const mx = Math.max(...by.map((x) => x[2]));
+    $("lb-spots").innerHTML = by.map(([s, k, n]) => `<div class="hbar"><span>${s}</span><div class="track" style="width:${100 * n / mx}%"><i style="width:${100 * k / n}%;background:var(--ok)"></i><i style="width:${100 * (n - k) / n}%;background:var(--bad)"></i></div><span class="v">${k} / ${n}</span></div>`).join("");
+    const cups = Object.entries(CUP).map(([k, n]) => [n, L.filter((l) => l.cup === k).length]);
+    $("lb-cup").innerHTML = cups.map(([n, c]) => `<div class="hbar"><span>${n}</span><div class="track"><i style="width:${100 * c / L.length}%;background:var(--info)"></i></div><span class="v">${c}</span></div>`).join("") +
+      `<p class="lede" style="font-size:12px;margin-top:4px">All ${L.length - L.filter((l) => l.success).length} misses are <span class="mono">did_not_reach_cup</span>: the robot never got the gripper to the cup.</p>`;
+    drawHist(); renderTable();
+  }
+  function drawHist() {
+    const cv = $("lb-hist"), dpr = devicePixelRatio || 1, w = cv.clientWidth, h = 150;
+    if (!w) return;
+    cv.width = w * dpr; cv.height = h * dpr;
+    const g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const lo = 0.7, step = 0.025, nb = 12, B = Array.from({ length: nb }, () => [0, 0]);
+    L.forEach((l) => { const i = Math.max(0, Math.min(nb - 1, Math.floor((l.confidence - lo) / step + 1e-9))); B[i][eff(l) ? 0 : 1]++; });
+    const mx = Math.max(...B.map((b) => b[0] + b[1])), bw = (w - 8) / nb, base = h - 16;
+    B.forEach(([s, f], i) => {
+      const x = 4 + i * bw, hs = (s / mx) * (base - 6), hf = (f / mx) * (base - 6);
+      g.fillStyle = css("--ok"); g.fillRect(x + 1, base - hs, bw - 3, hs);
+      g.fillStyle = css("--bad"); g.fillRect(x + 1, base - hs - hf, bw - 3, hf);
+    });
+    g.fillStyle = css("--faint"); g.font = "10px " + css("--mono");
+    [0.7, 0.8, 0.9, 1.0].forEach((v) => g.fillText(Math.round(v * 100) + "%", Math.max(2, Math.min(w - 26, 4 + ((v - lo) / step) * bw - 8)), h - 3));
+  }
+  function renderTable() {
+    const fv = $("lf-verdict").value, fs = $("lf-spot").value, fc = +$("lf-conf").value / 100, q = $("lf-q").value.trim().toLowerCase();
+    let rows = L.filter((l) => (fv === "" || String(+eff(l)) === fv) && (!fs || l.where === fs) && l.confidence <= fc + 1e-9 && (!q || l.reason.toLowerCase().includes(q)));
+    rows.sort((a, b) => { const x = sort.k === "success" ? +eff(a) : a[sort.k], y = sort.k === "success" ? +eff(b) : b[sort.k]; return (x > y ? 1 : x < y ? -1 : 0) * sort.dir; });
+    const rv = (l) => reviews[l.name] === "ok" ? '<span class="pill ok">Confirmed</span>' : reviews[l.name] === "flip" ? '<span class="pill acc">Flipped</span>' : '<span style="color:var(--faint)">—</span>';
+    $("lb-table").tBodies[0].innerHTML = rows.map((l) => {
+      const v = eff(l) ? '<span class="pill ok">Picked up</span>' : '<span class="pill bad">Missed</span>';
+      const main = `<tr class="row${openRow === l.name ? " open" : ""}" data-n="${esc(l.name)}" tabindex="0"><td><b style="font-weight:600">${esc(l.where)}</b> <span class="mono" style="color:var(--muted);font-size:12px">${esc(l.time)}</span></td><td>${v}</td>
+        <td class="num">${Math.round(l.confidence * 100)}%</td><td>${CUP[l.cup] || esc(l.cup)}</td><td class="num">${fmt(l.key_frame_s)} s</td><td class="num">${fmt(l.duration_s)} s</td><td class="num">$${l.cost_usd.toFixed(3)}</td><td>${rv(l)}</td></tr>`;
+      const det = openRow === l.name ? `<tr class="detail"><td colspan="8"><div style="display:grid;gap:10px;max-width:110ch"><span>${esc(l.reason)}</span>
+        <span class="mono" style="font-size:12px;color:var(--muted)">${esc(l.name)}${l.human_label != null ? ` · human label: ${l.human_label ? "picked up" : "missed"}` : ""}</span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-rv="ok">Confirm verdict</button><button class="btn" data-rv="flip">Flip to ${l.success ? "missed" : "picked up"}</button>${reviews[l.name] ? '<button class="btn" data-rv="">Clear review</button>' : ""}</div></div></td></tr>` : "";
+      return main + det;
+    }).join("") || `<tr><td colspan="8" style="color:var(--muted)">No verdicts match these filters.</td></tr>`;
+    $("lb-table").querySelectorAll("tr.row").forEach((tr) => {
+      const tog = () => { openRow = openRow === tr.dataset.n ? null : tr.dataset.n; renderTable(); };
+      tr.onclick = tog; tr.onkeydown = (e) => { if (e.key === "Enter") tog(); };
+    });
+    $("lb-table").querySelectorAll("[data-rv]").forEach((b) => (b.onclick = (e) => {
+      e.stopPropagation();
+      if (b.dataset.rv) reviews[openRow] = b.dataset.rv; else delete reviews[openRow];
+      store.set("loopvla-reviews", reviews); refreshLabels();
+    }));
+    $("lb-reviewed").textContent = `Showing ${rows.length} · reviewed ${Object.keys(reviews).length} of ${L.length}`;
+  }
+
+  // ================= TRAINING DATA =================
+  const jobs = [
+    { id: "181436", model: "v1 · pick_cup", ep: 50, steps: 10000, status: "Done", real: true },
+    { id: "—", model: "v2 · handoff_pick_cup_pos2", ep: null, steps: null, status: "Done", real: true },
+    { id: "182076", model: "v3 · pick_cup_angle_182076", ep: null, steps: null, status: "Done", real: true },
+  ];
+  let queued = 0;
+  function initTrain() {
+    $("cr-spots").innerHTML = '<span class="eyebrow">Start spots</span><div style="display:flex;gap:6px 14px;flex-wrap:wrap">' +
+      SPOTS.map((s, i) => `<label style="display:flex;gap:6px;align-items:center;font-size:13px"><input type="checkbox" data-spot="${s}" ${i < 5 ? "checked" : ""}>${s}</label>`).join("") + "</div>";
+    ["cr-conf", "cr-reviewed"].forEach((id) => ($(id).oninput = curate));
+    $("cr-spots").querySelectorAll("input").forEach((c) => (c.onchange = curate));
+    $("gallery").innerHTML = demos.map((d) => `<button class="demo" data-key="${d.key}"><video muted loop playsinline preload="metadata" src="${d.raw.video}#t=4"></video>
+      <div><b>${esc(d.title.replace("Demo · ", ""))}</b><span>${d.raw.frames} frames · ${(d.raw.frames / 10).toFixed(1)} s · ${esc(d.raw.date)}</span></div></button>`).join("");
+    $("gallery").querySelectorAll(".demo").forEach((b) => {
+      const v = b.querySelector("video");
+      b.onmouseenter = () => v.play().catch(() => {}); b.onmouseleave = () => v.pause();
+      b.onclick = () => { show("runs"); selectRun(b.dataset.key); };
+    });
+    ["jf-base", "jf-mode", "jf-steps", "jf-batch"].forEach((id) => ($(id).oninput = cmd));
+    $("jf-go").onclick = () => {
+      queued++;
+      jobs.push({ id: `queued-${queued}`, model: `v${3 + queued} · from ${$("jf-base").value}`, ep: curState.total, steps: +$("jf-steps").value, status: "Queued", real: false });
+      $("jf-msg").textContent = "Added to the list. Demo only: nothing was sent to Athena.";
+      renderJobs(); cmd();
+    };
+    $("jf-copy").onclick = () => {
+      const t = $("jf-cmd").textContent;
+      const sel = () => { const r = document.createRange(); r.selectNodeContents($("jf-cmd")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); $("jf-msg").textContent = "Selected: press Ctrl+C to copy."; };
+      try { navigator.clipboard.writeText(t).then(() => ($("jf-msg").textContent = "Copied."), sel); } catch { sel(); }
+    };
+  }
+  let curState = { total: 0 };
+  function curate() {
+    const thr = +$("cr-conf").value / 100, only = $("cr-reviewed").checked;
+    const spots = new Set([...$("cr-spots").querySelectorAll("input:checked")].map((c) => c.dataset.spot));
+    $("cr-v").textContent = Math.round(thr * 100) + "%";
+    let missed = 0, low = 0, off = 0, unrev = 0; const inc = [];
+    L.forEach((l) => {
+      if (!spots.has(l.where)) off++;
+      else if (!eff(l)) missed++;
+      else if (l.confidence < thr) low++;
+      else if (only && !reviews[l.name]) unrev++;
+      else inc.push(l);
+    });
+    curState.total = inc.length + demos.length;
+    $("cr-tiles").innerHTML = [
+      [`${inc.length + demos.length}`, `episodes in the next set (${inc.length} curated + ${demos.length} demos)`],
+      [`${missed}`, "left out: missed the cup"], [`${low}`, "left out: confidence too low", low > 0], [`${off + unrev}`, only ? "left out: spot off or not reviewed" : "left out: spot turned off"],
+    ].map(([v, k, w]) => `<div class="tile${w ? " warn" : ""}"><span class="num">${v}</span><p>${k}</p></div>`).join("");
+    const by = SPOTS.map((s) => [s, inc.filter((l) => l.where === s).length]).filter((x) => x[1]);
+    const mx = Math.max(10, ...by.map((x) => x[1]));
+    $("cr-bars").innerHTML = by.map(([s, n]) => `<div class="hbar"><span>${s}</span><div class="track"><i style="width:${100 * n / mx}%;background:var(--accent)"></i></div><span class="v">${n}</span></div>`).join("") +
+      `<p class="lede" style="font-size:12px">For reference, v1 was trained on 50 episodes (Athena job 181436, 10,000 steps).</p>`;
+    cmd();
+  }
+  function cmd() {
+    const st = +$("jf-steps").value || 10000, b = +$("jf-batch").value || 64, ds = `pick_cup_loop_v${4 + queued}`;
+    $("jf-cmd").textContent = `# ${ds}: ${curState.total} episodes · start from ${$("jf-base").value} · ${$("jf-mode").value} actions\n` +
+      `rsync -av data/${ds} your.name@athena.technion.ac.il:$VLA/data/\nsbatch train_neil.job ${st} ${b} ${ds}`;
+  }
+  function renderJobs() {
+    const live = O.models().find((m) => m.status === "training" || m.status === "eval");
+    const rows = jobs.map((j) => ({ ...j })).concat(live ? [{ id: "auto", model: `${live.v} · ${live.name}`, ep: 96, steps: 4000, status: live.status === "training" ? "Training" : "Evaluating", real: false }] : []);
+    $("jobs").tBodies[0].innerHTML = rows.map((j) => `<tr><td class="mono">${esc(j.id)}</td><td>${esc(j.model)}${j.real ? "" : '<span class="sim">sim</span>'}</td>
+      <td class="num">${j.ep ?? "—"}</td><td class="num">${j.steps ? j.steps.toLocaleString("en-US") : "—"}</td>
+      <td>${j.status === "Done" ? '<span class="pill ok">Done</span>' : j.status === "Queued" ? '<span class="pill mute">Queued</span>' : `<span class="pill acc live"><span class="dot"></span>${j.status}</span>`}</td></tr>`).join("");
+    const curve = (k, a, n) => Array.from({ length: n }, (_, i) => { const x = i / (n - 1); return [x * 100, 0.06 + a * Math.exp(-k * x) + 0.012 * Math.sin(i * 1.7) * (1 - x)]; });
+    chart($("jobs-loss"), { h: 120, xMax: 100, zero: false, lines: [
+      { pts: curve(3.2, 0.9, 80), color: css("--faint"), width: 1.5 },
+      { pts: curve(4.5, 0.8, 80), color: css("--accent"), width: 2 } ] });
+    $("jobs-key").innerHTML = '<span><i style="border-color:var(--faint)"></i>v1 loss</span><span><i style="border-color:var(--accent)"></i>v3 loss</span><span>x: % of training steps</span><span class="sim">sim</span>';
+  }
+
+  // ================= MODELS =================
+  const META = {
+    v1: { job: "181436", mode: "target angles", trained: "50 episodes · 10,000 steps", spots: [[1, 2], [0, 2], [1, 2], [0, 2], [0, 2]],
+          m: { rate: 0.2, close: 21.4, hz: 5.1, stall: 1610, past: "6 / 10" } },
+    v2: { job: "—", mode: "delta: wheel degrees still to turn", trained: "pick_cup + handoff demos", spots: [[1, 1], [1, 1], [0, 1], [1, 1], [0, 1]], real: true },
+    v3: { job: "182076", mode: "angle: wheel target angles", trained: "pick_cup · angle actions", spots: [[2, 2], [2, 2], [1, 2], [1, 2], [1, 2]],
+          m: { rate: 0.7, close: 12.8, hz: 5.4, stall: 940, past: "2 / 10" } },
+    v4: { job: "auto", mode: "—", trained: "next curated set" },
+  };
+  // v2's numbers are real: computed from this morning's rollouts.
+  (() => {
+    const rs = items.filter((i) => i.kind === "r" && !i.disabled).map((i) => ({ i, m: metrics(i) }));
+    const g = rs.filter((x) => x.i.outcome === "grasped");
+    META.v2.m = { rate: g.length / rs.length, close: g.reduce((a, x) => a + x.m.closeT, 0) / g.length,
+      hz: rs.reduce((a, x) => a + x.m.hz, 0) / rs.length, stall: Math.max(...rs.map((x) => x.m.max)),
+      past: `${rs.filter((x) => x.i.outcome === "missed_cup").length} / ${rs.length}` };
+  })();
+  let confirmV = null, sig = "";
+  function renderModels() {
+    const ms = O.models();
+    sig = ms.map((m) => m.v + m.status).join();
+    $("reg").innerHTML = ms.map((m) => {
+      const me = META[m.v] || {}, prod = m.status === "prod";
+      const st = { prod: '<span class="pill acc">In production</span>', retired: '<span class="pill mute">Retired</span>', next: '<span class="pill mute">Waiting for data</span>',
+        training: '<span class="pill acc live"><span class="dot"></span>Training</span>', eval: '<span class="pill info live"><span class="dot"></span>Evaluating</span>' }[m.status];
+      const act = prod ? '<span class="eyebrow">Driving Neil now</span>'
+        : m.rate == null ? '<button class="btn" disabled>Not evaluated yet</button>'
+        : confirmV === m.v ? `<span class="confirm">Switch Neil to ${m.v}?<button class="btn primary" data-dep="${m.v}">Deploy ${m.v}</button><button class="btn" data-cancel>Cancel</button></span>`
+        : `<button class="btn${m.status === "retired" ? " danger" : ""}" data-ask="${m.v}">${m.status === "retired" ? "Roll back to " : "Deploy "}${m.v}</button>`;
+      return `<div class="mcard${prod ? " prod" : ""}"><h3>${m.v} ${st}</h3><span class="nm">${esc(m.name)}</span>
+        <dl class="kv"><dt>grasp rate</dt><dd>${m.rate == null ? "—" : Math.round(m.rate * 100) + "% (" + m.n + ")"}${m.v === "v2" ? '<span class="real">real</span>' : m.rate != null ? '<span class="sim">sim</span>' : ""}</dd>
+        <dt>actions</dt><dd>${esc(me.mode || "—")}</dd><dt>trained on</dt><dd>${esc(me.trained || "—")}</dd><dt>Athena job</dt><dd>${esc(me.job || "—")}</dd></dl>
+        <div class="actions">${act}</div></div>`;
+    }).join("");
+    $("reg").querySelectorAll("[data-ask]").forEach((b) => (b.onclick = () => { confirmV = b.dataset.ask; renderModels(); }));
+    $("reg").querySelectorAll("[data-cancel]").forEach((b) => (b.onclick = () => { confirmV = null; renderModels(); }));
+    $("reg").querySelectorAll("[data-dep]").forEach((b) => (b.onclick = () => { O.deploy(b.dataset.dep); confirmV = null; renderModels(); }));
+    // matrix
+    const ev = ms.filter((m) => META[m.v] && META[m.v].spots);
+    const cell = (k, n, sim) => { const r = k / n; return `<td class="cell${sim ? " simc" : ""}" style="background:color-mix(in srgb, var(--ok) ${Math.round(r * 55)}%, var(--panel-2))">${k}/${n}</td>`; };
+    $("matrix").innerHTML = `<thead><tr><th>Model</th>${["Spot 1", "Spot 2", "Spot 3", "Spot 4", "Spot 5"].map((s) => `<th style="text-align:center">${s}</th>`).join("")}<th style="text-align:center">Total</th></tr></thead><tbody>` +
+      ev.map((m) => {
+        const sp = META[m.v].spots, done = m.rate != null;
+        if (!done) return `<tr><td class="mono">${m.v}</td><td colspan="6" style="color:var(--muted)">${m.status === "training" ? "Training now" : m.status === "eval" ? "Evaluation running" : "Not evaluated yet"}</td></tr>`;
+        const k = sp.reduce((a, x) => a + x[0], 0), n = sp.reduce((a, x) => a + x[1], 0);
+        return `<tr><td class="mono">${m.v}${m.status === "prod" ? ' <span class="pill acc" style="font-size:9.5px;padding:1px 6px">prod</span>' : ""}</td>${sp.map(([a, b]) => cell(a, b, true)).join("")}${cell(k, n, m.v !== "v2")}</tr>`;
+      }).join("") + "</tbody>";
+    // A/B
+    const done = ms.filter((m) => m.rate != null && META[m.v] && META[m.v].m);
+    const opts = done.map((m) => `<option value="${m.v}">${m.v}</option>`).join("");
+    const a0 = $("ab-a").value, b0 = $("ab-b").value;
+    $("ab-a").innerHTML = opts; $("ab-b").innerHTML = opts;
+    $("ab-a").value = done.some((m) => m.v === a0) ? a0 : (ms.find((m) => m.status === "prod") || done[0]).v;
+    $("ab-b").value = done.some((m) => m.v === b0) && b0 !== $("ab-a").value ? b0 : (done.find((m) => m.v !== $("ab-a").value) || done[0]).v;
+    renderAB();
+  }
+  function renderAB() {
+    const A = $("ab-a").value, B = $("ab-b").value, ma = META[A].m, mb = META[B].m;
+    const rows = [
+      ["Grasp rate", (m) => Math.round(m.rate * 100) + "%", (m) => m.rate, 1],
+      ["Gripper closes at", (m) => m.close.toFixed(1) + " s", (m) => m.close, -1],
+      ["Control rate", (m) => m.hz.toFixed(1) + " Hz", (m) => m.hz, 1],
+      ["Longest step", (m) => Math.round(m.stall) + " ms", (m) => m.stall, -1],
+      ["Drove past the cup", (m) => m.past, (m) => +m.past.split("/")[0] / +m.past.split("/")[1], -1],
+    ];
+    const src = (v) => (v === "v2" ? '<span class="real">real</span>' : '<span class="sim">sim</span>');
+    $("ab").innerHTML = `<thead><tr><th>Metric</th><th class="num">${A}${src(A)}</th><th class="num">${B}${src(B)}</th><th class="num">${B} vs ${A}</th></tr></thead><tbody>` +
+      rows.map(([n, f, v, good]) => {
+        const d = v(mb) - v(ma), better = d * good > 0, same = Math.abs(d) < 1e-9;
+        return `<tr><td>${n}</td><td class="num">${f(ma)}</td><td class="num">${f(mb)}</td><td class="num ${same ? "" : better ? "delta-up" : "delta-down"}">${same ? "same" : better ? "better" : "worse"}</td></tr>`;
+      }).join("") + "</tbody>";
+  }
+  $("ab-a").onchange = renderAB; $("ab-b").onchange = renderAB;
+  setInterval(() => {
+    const s = O.models().map((m) => m.v + m.status).join();
+    if (s === sig) return;
+    if (document.body.dataset.tab === "models") renderModels();
+    if (document.body.dataset.tab === "train") renderJobs();
+  }, 1000);
+
+  const INIT = { runs: () => { renderRunList(); selectRun(items.find((i) => !i.disabled).key); }, labels: initLabels, train: initTrain };
+  const REFRESH = { labels: refreshLabels, train: () => { curate(); renderJobs(); }, models: renderModels, runs: () => cur && (renderDt(), renderStats()) };
+  window.LVTabs = { show };
+  show((location.hash || "").slice(1) || "overview");
+})();
+</script>
