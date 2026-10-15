@@ -1,21 +1,43 @@
-# LoopVLA lab dashboard (demo)
+# LoopVLA lab dashboard
 
-A mock dashboard for the 4 minute LoopVLA talk. Five clean pages for the talk (Loop, Workflow, Data, Brain, Impact), a live demo, and Analysis and Workflow tabs for everyday work.
+The LoopVLA dashboard for Neil: a scrolling **Overview** for the 4 minute talk, a **Live demo** of the loop, and **Analysis** and **Workflow** tabs for everyday work on real runs, labels, jobs and models.
 
-## Open it
+Watch the 2.5 minute tour first: [`demo/LoopVLA_dashboard_demo.mp4`](demo/LoopVLA_dashboard_demo.mp4) (1080p).
 
-1. Open `index.html` in Google Chrome. No server is needed.
-2. Use full screen (`Ctrl+Cmd+F`).
+## Run it
+
+Nothing to install. It is plain HTML, CSS and JavaScript, and works offline.
+
+1. Get the branch:
+   ```bash
+   git fetch origin
+   git switch loopvla-dashboard-lab
+   ```
+2. Open `loopvla-dashboard/index.html` in Google Chrome (double-click it, or drag it into a Chrome window). No server is needed.
+3. Go full screen: `F11` on Windows, `Ctrl+Cmd+F` on a Mac.
+
+| To show | Do this |
+|---|---|
+| The pitch | Stay on **Overview** and press **Play story** (or `Space`). It scrolls through the five sections in about 50 seconds |
+| The loop running | Press **Live demo** at the top right |
+| Engineering detail | **Analysis** (Runs, Labels, Batch analysis) and **Workflow** (Jobs, Models) |
 
 > [!TIP]
-> Start the story without a click: open `index.html?story=1`.
+> Start the story without a click: open `index.html?story=1`. Open a tab directly with a link such as `index.html#runs`, `#analysis` or `#jobs`.
+
+If Chrome blocks the videos when opened from a file (some company setups do), serve the folder instead and open http://127.0.0.1:8000:
+
+```bash
+cd loopvla-dashboard
+python -m http.server 8000
+```
 
 ## Controls
 
 | Key or action | Result |
 |---|---|
 | `Space` or **Play story** | Plays the full story in about 50 seconds |
-| `1` to `5` | Loop, Workflow, Data, Brain, Impact |
+| `1` to `5` | Scroll Overview to Loop, Workflow, Data, Brain or Impact |
 | Workflow switch | Flips between Today and With LoopVLA |
 | Mouse over a demo card | Replays that demo |
 | Click a demo card | Opens the demo with both cameras |
