@@ -15,7 +15,9 @@ and runs the model at 10 steps a second, like scripts/run_policy.py:
 
 The spec says how actions become commands ("action_mode"): v1 models give wheel speeds;
 delta models (models/handoff_pick_cup_pos2) give wheel degrees still to turn, sent as
-pi_bridge.py's left_deg/right_deg, with arm and gripper targets on the abs_pos_deg scale.
+pi_bridge.py's left_deg/right_deg, with arm and gripper targets on the abs_pos_deg scale;
+angle models (models/pick_cup_angle_182076) give wheel target angles, sent as the move
+from the wheel's current angle.
 Picking a model picks the spec made for it (the spec's "checkpoint").
 
 Stopping a drive run, the emergency stop, closing the page (no poll for 1.5 s) or losing
@@ -53,7 +55,7 @@ os.environ.setdefault("EXTERNAL_CAMERA_URL", "http://132.68.34.85:8080/stream.mj
 
 from neil_robot import clock, config  # noqa: E402
 from neil_robot.motor_stream import MotorState, MotorStateStream  # noqa: E402
-from neil_robot.observation import ObservationSpec  # noqa: E402
+from neil_robot.observation import ObservationError, ObservationSpec  # noqa: E402
 from neil_robot.policy_client import PolicyClient, PolicyServerError  # noqa: E402
 from neil_robot.policy_runner import PolicyRunner  # noqa: E402
 from neil_robot.recorder import SyncRecorder  # noqa: E402
@@ -74,6 +76,7 @@ START_ARM, START_GRIP = 2.0, -15.0  # typical start pose in the 50 recordings (r
 # Delta models: state/action arm = -(abs_pos_deg - ARM_ABS0), gripper = -(abs_pos_deg - GRIP_ABS0);
 # wheel moves under DELTA_DEADBAND degrees count as 0 (see inference_kit/neil_io.py).
 ARM_ABS0, GRIP_ABS0, DELTA_DEADBAND = 14, -93, 3.0
+MAX_WHEEL_STEP = 120  # angle models: most degrees one command may ask a wheel to turn
 
 # Robot terms (+ forward / arm down / gripper open) = sign x raw motor value.
 SIGN = {"left": config.LEFT_WHEEL_SIGN_FORWARD, "right": config.RIGHT_WHEEL_SIGN_FORWARD,
@@ -360,7 +363,14 @@ class Run:
         self.history.append(self.action[:4] if self.action else None)
 
     def execute(self, values: list[float]) -> None:
-        cmd = self.ctl.command_for(values, self.spec)
+        now = None
+        if self.spec.action_mode == "angle":  # the wheel angles now, on the model's scale
+            st = self.ctl.motors.latest() if self.ctl.motors is not None else None
+            try:
+                now = self.spec.state_from(st.as_step(clock.now()))[:2] if st else None
+            except ObservationError:
+                now = None
+        cmd = self.ctl.command_for(values, self.spec, now)
         self._cmd_this_step = cmd
         if self.drive and not self.estopped and self.ctl.bridge:
             self.ctl.bridge.set_command(cmd)
@@ -602,8 +612,9 @@ class Controller:
         pi_bridge.py starts can be stale (gripper reads closed), and the model must not plan
         from them: it then decides the cup is already held and never drives."""
         arm, grip = spec.start_pose or (START_ARM, START_GRIP)
-        cmd = {"left": 0, "right": 0, "arm_abs": ARM_ABS0 - arm, "grip_abs": GRIP_ABS0 - grip} \
-            if spec.action_mode == "delta" else {"left": 0, "right": 0, "arm_pos": arm, "grip_pos": grip}
+        za, zg = spec.abs_zero or (ARM_ABS0, GRIP_ABS0)
+        cmd = {"left": 0, "right": 0, "arm_abs": za - arm, "grip_abs": zg - grip} \
+            if spec.action_mode in ("delta", "angle") else {"left": 0, "right": 0, "arm_pos": arm, "grip_pos": grip}
         last, count, t_end = None, 0, time.monotonic() + timeout
         while time.monotonic() < t_end:
             bridge.set_command(cmd)
@@ -650,23 +661,31 @@ class Controller:
                 self.note(f"the page stopped polling for {DEADMAN_S:g} s")
                 self.estop()
 
-    def command_for(self, values: list[float], spec: ObservationSpec | None = None) -> dict:
-        """One action -> the pi_bridge.py command, within the page's caps."""
+    def command_for(self, values: list[float], spec: ObservationSpec | None = None,
+                    wheels_now: list[float] | None = None) -> dict:
+        """One action -> the pi_bridge.py command, within the page's caps. wheels_now: for
+        angle models, the wheel state values now (None = keep the wheels still)."""
         c = self.caps
         clamp = lambda v, lo, hi: max(lo, min(hi, v))  # noqa: E731
         cap = c["wheel_cap"]
-        if spec is not None and spec.action_mode == "delta":
+        if spec is not None and spec.action_mode in ("delta", "angle"):
+            angle = spec.action_mode == "angle"
             lo, hi = spec.action_range or ([float("-inf")] * 4, [float("inf")] * 4)
             v = [clamp(x, a, b) for x, a, b in zip(values[:4], lo, hi)]
             self._seq += 1  # pi_bridge.py moves the wheel target once per seq, however often it is resent
             cmd = {"seq": self._seq, "wheel_cap": cap}
-            if c["wheels"]:
-                cmd["left_deg"], cmd["right_deg"] = (0.0 if abs(d) < DELTA_DEADBAND else round(d, 1) for d in v[:2])
+            moves = v[:2] if not angle else None if wheels_now is None else \
+                [clamp(t - n, -MAX_WHEEL_STEP, MAX_WHEEL_STEP) for t, n in zip(v[:2], wheels_now)]
+            if c["wheels"] and moves is not None:
+                cmd["left_deg"], cmd["right_deg"] = (0.0 if abs(d) < DELTA_DEADBAND else round(d, 1) for d in moves)
             else:
                 cmd["left"] = cmd["right"] = 0
             if c["arm_grip"]:
-                cmd["arm_abs"] = round(ARM_ABS0 - clamp(v[2], c["arm_min"], c["arm_max"]), 1)
-                cmd["grip_abs"] = round(GRIP_ABS0 - clamp(v[3], c["grip_min"], c["grip_max"]), 1)
+                za, zg = spec.abs_zero or (ARM_ABS0, GRIP_ABS0)
+                # the page's arm/gripper limits are on the v1 / delta scale, so they apply to delta only
+                arm = v[2] if angle else clamp(v[2], c["arm_min"], c["arm_max"])
+                grip = v[3] if angle else clamp(v[3], c["grip_min"], c["grip_max"])
+                cmd["arm_abs"], cmd["grip_abs"] = round(za - arm, 1), round(zg - grip, 1)
             return cmd
         cmd = {"left": int(clamp(round(values[0]), -cap, cap)) if c["wheels"] else 0,
                "right": int(clamp(round(values[1]), -cap, cap)) if c["wheels"] else 0}

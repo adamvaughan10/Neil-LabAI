@@ -8,5 +8,6 @@
   "action_mode": "delta",
   "action_range": [[-67, -110, -19, -81], [106, 80, 3, 5]],
   "start_pose": [2, -23],
+  "abs_zero": [14, -93],
   "checkpoint": "models/handoff_pick_cup_pos2/pretrained_model"
 }
