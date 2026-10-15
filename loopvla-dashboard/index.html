@@ -48,26 +48,18 @@
   <nav class="tabs lg">
     <div class="tab-pill" id="tabPill"></div>
     <button class="tab on" data-view="overview">Overview</button>
-    <button class="tab" data-view="ops">Live</button>
-    <button class="tab" data-view="runs">Runs</button>
-    <button class="tab" data-view="analysis">Analysis</button>
-    <button class="tab" data-view="labels">Labels</button>
-    <button class="tab" data-view="jobs">Jobs</button>
-    <button class="tab" data-view="models">Models</button>
+    <button class="tab" data-view="g:analysis">Analysis</button>
+    <button class="tab" data-view="g:workflow">Workflow</button>
   </nav>
-  <nav class="subtabs lg" aria-label="Overview pages">
-    <button class="sub on" data-view="loop">Loop</button>
-    <button class="sub" data-view="flow">Workflow</button>
-    <button class="sub" data-view="data">Data</button>
-    <button class="sub" data-view="brain">Brain</button>
-    <button class="sub" data-view="impact">Impact</button>
-  </nav>
+  <nav class="subtabs lg" id="subtabs" aria-label="Sections of this tab"></nav>
   <div class="right">
-    <div class="live-pill lg"><i></i>Live</div>
+    <button class="live-pill lg" id="liveBtn" title="Live demonstration of the loop"><i></i>Live demo</button>
     <button class="play" id="playBtn"><svg><use href="#i-play"/></svg><span>Play story</span></button>
   </div>
 </header>
 
+<!-- OVERVIEW: the five pitch sections on one scrolling page -->
+<main class="pitch-scroll" id="pitch">
 <!-- 1. LOOP -->
 <section class="view on" id="v-loop">
   <div>
@@ -183,13 +175,15 @@
   <div class="note">Estimates</div>
 </section>
 
-<!-- ================= LAB 6. LIVE LOOP ================= -->
+</main>
+
+<!-- ================= LIVE DEMO (button at the top right) ================= -->
 <section class="view lab-view" id="v-ops">
   <div class="wrap">
     <div class="lab-head">
-      <div><h2>The loop, <em>live.</em></h2>
-        <p>Every stage of LoopVLA on Neil right now. The video, motor log and Claude verdicts replay real recordings from 14 and 15 Oct.</p></div>
-      <span class="pill2 ai"><span class="dot"></span>Running · task "pick up the cup"</span>
+      <div><h2>Live <em>demonstration.</em></h2>
+        <p>The whole LoopVLA loop running on Neil: watch a try, record it, let Claude label it, and train when there is enough good data. This demonstration replays real recordings from 14 and 15 Oct.</p></div>
+      <span class="pill2 ai"><span class="dot"></span>Live demo · task "pick up the cup"</span>
     </div>
     <div class="stages4">
       <article class="st4 lg" id="o-watch">

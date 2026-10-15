@@ -767,5 +767,5 @@
   (function loop() { oFrame(); rDraw(); requestAnimationFrame(loop); })();
   addEventListener("resize", () => { if ($("#v-labels").classList.contains("on")) lHist(); if ($("#v-runs").classList.contains("on") && cur) rSide(); if ($("#v-analysis").classList.contains("on")) anRender(); });
   oLoad(0); oRender();
-  const cv = $(".tab.on")?.dataset.view; if (cv && P.LAB_VIEWS.includes(cv)) window.LAB.shown(cv);
+  const cv = $(".lab-view.on")?.id.slice(2); if (cv) window.LAB.shown(cv);
 })();

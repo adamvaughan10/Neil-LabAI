@@ -1,6 +1,6 @@
 # LoopVLA lab dashboard (demo)
 
-A mock dashboard for the 4 minute LoopVLA talk. Five clean pages for the talk (Loop, Workflow, Data, Brain, Impact), and six engineering tabs for everyday work.
+A mock dashboard for the 4 minute LoopVLA talk. Five clean pages for the talk (Loop, Workflow, Data, Brain, Impact), a live demo, and Analysis and Workflow tabs for everyday work.
 
 ## Open it
 
@@ -29,18 +29,17 @@ A mock dashboard for the 4 minute LoopVLA talk. Five clean pages for the talk (L
 
 ## Tabs
 
-One tab bar. **Overview** is the talk: the five pitch pages (Loop, Workflow, Data, Brain, Impact) under it, keys `1` to `5`, and **Play story**. The other tabs are for everyday engineering work:
-
 | Tab | What it is for |
 |---|---|
-| Live | Watch, Record, Label and Train with live counters, a VLA rollout with its motor log, Claude's verdicts as they arrive |
-| Runs | One run at a time: both cameras, model output vs. what reached the motors vs. what they measured, control timing, and links to the original files and logs. Covers the 97 demos, the 5 VLA rollouts and the 9 pipeline tests (inference latency per chunk) |
-| Analysis | Two groups of runs side by side: success, timing medians, time to close the gripper, every run's motor curves (optionally aligned at the gripper close), per-run table with CSV, and policy server speed |
-| Labels | Claude's 71 verdicts: by start spot, confidence, review table, and the curation rule for the next training set |
-| Jobs | Queue recording, labeling, training, evaluation and dry-run jobs as the exact commands for this repo and Athena; suggestions from the data; history of jobs that already ran. The queue is saved in the browser |
-| Models | Model versions with deploy and roll back, and v2 on Neil vs. the human demos |
+| Overview | The talk: the five pitch sections (Loop, Workflow, Data, Brain, Impact) on one page that scrolls. **Play story** scrolls through them; keys `1` to `5` jump to a section |
+| Live demo (button at the top right) | A live demonstration of the loop: Watch, Record, Label and Train with live counters, a VLA rollout with its motor log, and Claude's verdicts as they arrive |
+| Analysis › Runs | One run at a time: both cameras, model output vs. what reached the motors vs. what they measured, control timing, and links to the original files and logs. Covers the 97 demos, the 5 VLA rollouts and the 9 pipeline tests |
+| Analysis › Labels | Claude's 71 verdicts: by start spot, confidence, review table, and the curation rule for the next training set |
+| Analysis › Batch analysis | Two groups of runs side by side: success, timing medians, time to close the gripper, every run's motor curves (optionally aligned at the gripper close), per-run table with CSV, and policy server speed |
+| Workflow › Jobs | Queue recording, labeling, training, evaluation and dry-run jobs as the exact commands for this repo and Athena; suggestions from the data; history of jobs that already ran. The queue is saved in the browser |
+| Workflow › Models | Model versions with deploy and roll back, and v2 on Neil vs. the human demos |
 
-The demo counter and the overnight upgrade are shared between Overview and Live.
+The demo counter and the overnight upgrade are shared between Overview and the Live demo.
 
 Real: the 5 VLA rollouts of 15 Oct (videos, motor log, run settings), Claude's 71 verdicts with notes and costs, v2's 3 of 5, and the 9 pipeline tests of 14 Oct (inference.jsonl). In Overview, Data shows Claude's real verdicts on the 50 Batch A demos (Batch B is not judged yet) and Brain's v2 point is measured. Marked as demo values: the Base, v1 and v3 grasp rates, and the Impact estimates.
 

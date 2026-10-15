@@ -10,13 +10,28 @@
 
 [hidden] { display: none !important; }
 
-/* ---------- One tab bar: Overview holds the five pitch pages ---------- */
+/* ---------- Tabs: Overview scrolls, Analysis and Workflow have sub-tabs ---------- */
 .subtabs { position: fixed; z-index: 19; top: 94px; left: 50%; transform: translateX(-50%); display: flex; gap: 2px; padding: 4px; border-radius: 99px; }
-.sub { padding: 7px 16px; border-radius: 99px; font-size: 14px; font-weight: 800; color: var(--navy-2); transition: all .3s; }
+.subtabs:empty { display: none; }
+.sub { padding: 8px 18px; border-radius: 99px; font-size: 15px; font-weight: 800; color: var(--navy-2); transition: all .3s; }
 .sub.on { background: var(--navy); color: #fff; box-shadow: 0 8px 16px -8px rgba(27,42,89,.6); }
-body.lab .subtabs, body.lab .play { display: none; }
-body:not(.lab) .view { padding-top: 146px; }
-body.story .subtabs { opacity: .6; }
+.tab-pill { transition: left .55s var(--ease), width .55s var(--ease), opacity .3s; }
+body.lab .play { display: none; }
+.view.lab-view { padding-top: 150px !important; }
+#v-ops.lab-view { padding-top: 116px !important; }
+
+/* Overview: the five pitch sections on one page that scrolls */
+.pitch-scroll { position: fixed; inset: 0; overflow-y: auto; overflow-x: hidden; scroll-snap-type: y proximity; scrollbar-width: thin; }
+body.lab .pitch-scroll { visibility: hidden; pointer-events: none; }
+.pitch-scroll .view { position: relative; inset: auto; display: grid; min-height: 100vh; scroll-snap-align: start; }
+.pitch-scroll #v-data { height: 100vh; }
+#v-impact .note { position: absolute; right: 40px; bottom: 18px; }
+
+/* Live demo: the button at the top right */
+.live-pill { cursor: pointer; transition: transform .3s var(--ease), background .3s, color .3s; }
+.live-pill:hover { transform: scale(1.05); }
+.live-pill.on { color: #fff; background: linear-gradient(135deg, #ff6fb8, var(--pink)); box-shadow: 0 14px 30px -10px rgba(224,33,138,.8), inset 0 2px 0 rgba(255,255,255,.45); }
+.live-pill.on i { background: #fff; }
 
 /* ---------- Pitch additions ---------- */
 .card .ok.no { background: linear-gradient(135deg, #ff9fb2, #e0215a); }
@@ -24,7 +39,6 @@ body.story .subtabs { opacity: .6; }
 .modal .notes { margin: 14px 10px 4px; font-size: clamp(15px, 1.1vw, 19px); font-weight: 700; color: var(--navy); line-height: 1.4; max-height: 7.5em; overflow-y: auto; }
 .modal .notes b { display: block; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--pink-text); margin-bottom: 4px; }
 .modal.unjudged .approved i { background: linear-gradient(135deg, #b4b9cf, #7c829f); }
-#v-impact .note { position: fixed; right: 40px; bottom: 18px; }
 
 /* ---------- Lab pages ---------- */
 .view.lab-view { overflow-y: auto; padding: 116px 40px 40px; scrollbar-width: thin; }

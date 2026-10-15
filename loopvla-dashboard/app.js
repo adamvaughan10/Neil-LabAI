@@ -31,26 +31,50 @@
   // ---------- Pages ----------
   const VIEWS = ["loop", "flow", "data", "brain", "impact"];
   const LAB_VIEWS = ["ops", "runs", "analysis", "labels", "jobs", "models"];
-  const pill = $("#tabPill");
-  function movePill() { const on = $(".tab.on"); pill.style.left = on.offsetLeft + "px"; pill.style.width = on.offsetWidth + "px"; }
-  let lastPitch = "loop";   // the Overview tab holds the five pitch pages
-  function show(v) {
-    if (v === "overview") v = lastPitch;
-    const lab = LAB_VIEWS.includes(v);
+  // Tabs: Overview (the five pitch pages on one scrolling page), Analysis and Workflow (each with
+  // sub-tabs), and the Live demo behind the button at the top right.
+  const GROUPS = {
+    analysis: [["runs", "Runs"], ["labels", "Labels"], ["analysis", "Batch analysis"]],
+    workflow: [["jobs", "Jobs"], ["models", "Models"]],
+  };
+  const groupOf = v => Object.keys(GROUPS).find(g => GROUPS[g].some(([k]) => k === v));
+  const lastSub = { analysis: "runs", workflow: "jobs" };
+  const pill = $("#tabPill"), scroller = $("#pitch");
+  function movePill() {
+    const on = $(".tab.on");
+    pill.style.opacity = on ? 1 : 0;
+    if (on) { pill.style.left = on.offsetLeft + "px"; pill.style.width = on.offsetWidth + "px"; }
+  }
+  let current = "loop";
+  function show(v, opts = {}) {
+    if (v === "overview") v = "loop";
+    if (v.startsWith("g:")) v = lastSub[v.slice(2)];
+    const lab = LAB_VIEWS.includes(v), group = groupOf(v);
     if (lab && S.storyOn) stopStory();
-    if (!lab) lastPitch = v;
+    if (group) lastSub[group] = v;
+    current = v;
     document.body.classList.toggle("lab", lab);
-    $$(".tab").forEach(t => t.classList.toggle("on", t.dataset.view === (lab ? v : "overview")));
-    $$(".sub").forEach(t => t.classList.toggle("on", t.dataset.view === v));
-    $$(".view").forEach(s => s.classList.toggle("on", s.id === "v-" + v));
+    $$(".tab").forEach(t => t.classList.toggle("on", lab ? t.dataset.view === "g:" + group : t.dataset.view === "overview"));
+    $("#liveBtn").classList.toggle("on", v === "ops");
+    $("#subtabs").innerHTML = group ? GROUPS[group].map(([k, n]) => `<button class="sub${k === v ? " on" : ""}" data-view="${k}">${n}</button>`).join("") : "";
+    $$("#subtabs .sub").forEach(b => b.onclick = () => show(b.dataset.view));
+    $$(".lab-view").forEach(s => s.classList.toggle("on", s.id === "v-" + v));
+    $$("#pitch .view").forEach(s => s.classList.add("on"));
     movePill();
-    if (v === "loop") requestAnimationFrame(layoutPath);
-    if (v === "flow") requestAnimationFrame(layoutBack);
-    if (v === "data") renderGrid();
-    if (v === "brain") drawChart(true);
+    if (!lab) {
+      requestAnimationFrame(() => { layoutPath(); layoutBack(); });
+      if (opts.scroll !== false) scroller.scrollTo({ top: $("#v-" + v).offsetTop, behavior: opts.instant ? "auto" : "smooth" });
+    }
     window.LAB?.shown(v);
   }
-  $$(".tab, .sub").forEach(t => t.onclick = () => show(t.dataset.view));
+  // Overview keeps its scroll position when you come back to it
+  $$(".tab").forEach(t => t.onclick = () => show(t.dataset.view, { scroll: t.dataset.view !== "overview" }));
+  $("#liveBtn").onclick = () => show("ops");
+  // The brain chart draws itself the first time its section scrolls into view
+  let brainSeen = false;
+  new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting && !brainSeen) { brainSeen = true; drawChart(true); }
+  }), { root: scroller, threshold: 0.45 }).observe($("#v-brain"));
   addEventListener("resize", () => { movePill(); layoutPath(); layoutBack(); });
   requestAnimationFrame(movePill);
 
@@ -172,12 +196,14 @@
     $$("#chips .chip").forEach(x => x.classList.toggle("on", x === c));
     renderGrid();
   });
+  let gridDrawn = false;
   function renderGrid() {
     const g = $("#grid"); g.innerHTML = "";
     EPS.filter(e => !pos || e.pos === pos).slice().reverse().forEach((e, n) => {
       const c = document.createElement("div");
       c.className = "card";
-      c.style.animationDelay = Math.min(n, 30) * 22 + "ms";
+      if (gridDrawn && !e.fresh) c.style.animation = "none";   // on the scrolling page, only a new card pops in
+      else c.style.animationDelay = Math.min(n, 30) * 22 + "ms";
       c.innerHTML = `<img loading="lazy" src="assets/eps/${e.id}/t05.jpg" alt="">
         ${e.v ? `<div class="ok${e.v.success ? "" : " no"}"><svg><use href="#i-${e.v.success ? "check" : "x"}"/></svg></div>` : `<div class="ok wait" title="Not judged yet">…</div>`}
         <div class="tag">Demo ${e.no}</div><div class="bar"><b></b></div>`;
@@ -190,6 +216,7 @@
       c.onclick = () => openDemo(e);
       g.appendChild(c);
     });
+    gridDrawn = true; EPS.forEach(e => { e.fresh = false; });
   }
 
   // ---------- Demo viewer ----------
@@ -332,9 +359,9 @@
   window.LOOP = { S, EPS, show, refresh, upgrade, openDemo, LAB_VIEWS };
 
   // ---------- Start ----------
-  refresh(); layoutPath(); drawChart(false);
+  refresh(); layoutPath(); drawChart(false); renderGrid();
   const h = location.hash.slice(1);
-  if (VIEWS.includes(h) || LAB_VIEWS.includes(h)) show(h);
+  show(VIEWS.includes(h) || LAB_VIEWS.includes(h) ? h : "overview", { instant: true, scroll: VIEWS.includes(h) });
   if (h === "flow-loop") { show("flow"); setTimeout(() => flowMode("loop"), 50); }
   const q = new URLSearchParams(location.search);
   if (q.has("demo")) { show("data"); openDemo(EPS[+q.get("demo")]); }
