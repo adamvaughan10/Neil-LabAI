@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LoopVLA</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body class="refract">
+<div class="bg">
+  <div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div><div class="orb o4"></div>
+  <div class="gem g1"></div><div class="gem g2"></div><div class="gem g3"></div><div class="gem g4"></div>
+</div>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <!-- liquid glass: bend what is behind the panel -->
+    <filter id="liquid" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.006 0.009" numOctaves="2" seed="11" result="noise"/>
+      <feGaussianBlur in="noise" stdDeviation="3" result="soft"/>
+      <feDisplacementMap in="SourceGraphic" in2="soft" scale="90" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="2.4"/></symbol>
+    <symbol id="i-rec" viewBox="0 0 24 24"><rect x="2.5" y="6" width="13" height="12" rx="3" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="m15.5 10.5 6-3.5v10l-6-3.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/></symbol>
+    <symbol id="i-tag" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.6" fill="currentColor"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2c.6 4.8 2.7 7.4 8 8-5.3.6-7.4 3.2-8 8-.6-4.8-2.7-7.4-8-8 5.3-.6 7.4-3.2 8-8Zm7 12c.3 2.4 1.3 3.7 4 4-2.7.3-3.7 1.6-4 4-.3-2.4-1.3-3.7-4-4 2.7-.3 3.7-1.6 4-4Z"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path fill="currentColor" d="M7 4.5v15l12.5-7.5z"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><path fill="currentColor" d="M6 4h4v16H6zM14 4h4v16h-4z"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="M4 12h15m-6-6 6 6-6 6"/></symbol>
+    <symbol id="i-wrench" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M14.7 6.3a4 4 0 0 0 5 5L21 13l-8 8-3.5-3.5L4 12a4 4 0 0 1 5-5l1.7 1.3M3 21l6-6"/></symbol>
+    <symbol id="i-person" viewBox="0 0 24 24"><circle cx="12" cy="7.5" r="4" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M4 21c1-4.2 4.2-6 8-6s7 1.8 8 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M3 4v16h18M6 8c3 0 4 8 7 8s3-4 7-4"/></symbol>
+    <symbol id="i-robot" viewBox="0 0 24 24"><rect x="4" y="8" width="16" height="11" rx="4" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M12 8V4.5M9 13h.01M15 13h.01" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-loop" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="M4 12a8 8 0 0 1 14-5.3M20 4v4h-4M20 12a8 8 0 0 1-14 5.3M4 20v-4h4"/></symbol>
+  </defs>
+</svg>
+
+<header class="top">
+  <div class="brand lg">
+    <svg viewBox="0 0 40 40"><defs><linearGradient id="lgr" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#ff7cc4"/><stop offset="1" stop-color="#6c6be0"/></linearGradient></defs>
+      <circle cx="20" cy="20" r="14" fill="none" stroke="url(#lgr)" stroke-width="5.5" stroke-dasharray="66 22" stroke-linecap="round"><animateTransform attributeName="transform" type="rotate" from="0 20 20" to="360 20 20" dur="5s" repeatCount="indefinite"/></circle>
+      <circle cx="20" cy="20" r="5" fill="#e0218a"/></svg>
+    <span>Loop<b>VLA</b></span>
+  </div>
+  <nav class="tabs lg">
+    <div class="tab-pill" id="tabPill"></div>
+    <button class="tab on" data-view="loop">Loop</button>
+    <button class="tab" data-view="flow">Workflow</button>
+    <button class="tab" data-view="data">Data</button>
+    <button class="tab" data-view="brain">Brain</button>
+    <button class="tab" data-view="impact">Impact</button>
+  </nav>
+  <div class="right">
+    <div class="live-pill lg"><i></i>Live</div>
+    <button class="play" id="playBtn"><svg><use href="#i-play"/></svg><span>Play story</span></button>
+  </div>
+</header>
+
+<!-- 1. LOOP -->
+<section class="view on" id="v-loop">
+  <div>
+    <h1>Robots that<br>collect their<br><em>own data.</em></h1>
+    <p class="lead">Watch. Record. Label. Train. On repeat.</p>
+    <div class="stats">
+      <div class="stat lg hot" id="statDemos"><b id="nDemos">97</b><span>demos captured</span></div>
+      <div class="stat lg"><b>0</b><span>hours of human work</span></div>
+      <div class="stat lg"><b>1</b><span>night per upgrade</span></div>
+    </div>
+  </div>
+  <div class="stage" id="stage">
+    <svg class="path" id="pathSvg">
+      <defs><linearGradient id="flowGrad" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#3fa3dd"/><stop offset=".4" stop-color="#e0218a"/><stop offset=".7" stop-color="#6c6be0"/><stop offset="1" stop-color="#7aa346"/></linearGradient></defs>
+      <path class="track" id="trackPath"/><path class="flow" id="flowPath"/>
+      <circle class="spark" id="spark" r="9"/>
+    </svg>
+    <div class="tv lg">
+      <div class="screen">
+        <img id="liveImg" alt="Neil and the cup, top camera">
+        <div class="box" id="cupBox"><span>Cup</span></div>
+        <div class="box bot" id="botBox"><span>Neil</span></div>
+        <div class="rec lg"><i></i>Recording</div>
+        <div class="say lg"><div class="ai"><svg><use href="#i-spark"/></svg></div><span id="say">Finding the cup</span></div>
+        <div class="stamp" id="stamp"><div class="lg"><b>Good demo</b><span>Added to training data</span></div></div>
+      </div>
+    </div>
+    <div class="steps-anchor">
+      <div class="step lg s-watch" data-s="watch"><div class="ic"><svg><use href="#i-eye"/></svg></div>Watch</div>
+      <div class="step lg s-record" data-s="record"><div class="ic"><svg><use href="#i-rec"/></svg></div>Record</div>
+      <div class="step lg s-label" data-s="label"><div class="ic"><svg><use href="#i-tag"/></svg></div>Label</div>
+      <div class="step lg s-train" data-s="train"><div class="ic"><svg><use href="#i-spark"/></svg></div>Train</div>
+    </div>
+  </div>
+</section>
+
+<!-- 2. WORKFLOW -->
+<section class="view" id="v-flow">
+  <div class="head">
+    <h1>What is <em>the loop?</em></h1>
+    <div class="switch lg" id="flowSwitch"><div class="knob" id="knob"></div><button class="on" data-m="today">Today</button><button data-m="loop">With LoopVLA</button></div>
+  </div>
+  <div class="flow-wrap" id="flowWrap">
+    <div class="blocks" id="blocks">
+      <div class="blk" data-n="1"><div class="face front lg"><div class="ic human"><svg><use href="#i-wrench"/></svg></div><span class="who ">Person</span><h3>Set up the robot</h3><p>Cables, cameras, code</p></div></div>
+      <div class="blk flip" data-n="2"><div class="face front lg"><div class="ic human"><svg><use href="#i-person"/></svg></div><span class="who ">Person</span><h3>Collect demos</h3><p>People drive the robot</p></div><div class="face back lg"><div class="ic ai"><svg><use href="#i-rec"/></svg></div><span class="who ai">AI agent</span><h3>Robot practices</h3><p>AI records every try</p></div></div>
+      <div class="blk flip" data-n="3"><div class="face front lg"><div class="ic human"><svg><use href="#i-person"/></svg></div><span class="who ">Person</span><h3>Label videos</h3><p>Cut and tag by hand</p></div><div class="face back lg"><div class="ic ai"><svg><use href="#i-tag"/></svg></div><span class="who ai">AI agent</span><h3>Label tries</h3><p>AI keeps the good ones</p></div></div>
+      <div class="blk flip" data-n="4"><div class="face front lg"><div class="ic human"><svg><use href="#i-person"/></svg></div><span class="who ">Person</span><h3>Train the VLA</h3><p>An engineer starts it</p></div><div class="face back lg"><div class="ic ai"><svg><use href="#i-spark"/></svg></div><span class="who ai">AI agent</span><h3>Train the VLA</h3><p>Starts by itself</p></div></div>
+      <div class="blk flip" data-n="5"><div class="face front lg"><div class="ic human"><svg><use href="#i-chart"/></svg></div><span class="who ">Training log</span><h3>Loss looks great</h3><p>0.09. Looks like it worked</p></div><div class="face back lg"><div class="ic ai"><svg><use href="#i-robot"/></svg></div><span class="who ai">AI agent</span><h3>Test on the robot</h3><p>AI watches the real result</p></div></div>
+      <div class="blk flip" data-n="6"><div class="face front lg bad-end"><div class="ic bad"><svg><use href="#i-x"/></svg></div><span class="who ">Result</span><h3>Robot did not learn</h3><p>You find out at the very end</p></div><div class="face back lg good-end"><div class="ic good"><svg><use href="#i-check"/></svg></div><span class="who ">Result</span><h3>Robot learned</h3><p>It picks up the cup</p></div></div>
+    </div>
+    <svg class="back-arrow" id="backArrow"><path id="backPath"/><polygon class="head" id="backHead"/></svg>
+    <div class="back-label lg" id="backLabel"><svg><use href="#i-loop"/></svg><span id="backTxt">Start over by hand. Again and again.</span></div>
+  </div>
+  <div class="verdict" id="verdict">The log says <em>yes</em>. The robot says <em>no</em>.</div>
+</section>
+
+<!-- 3. DATA -->
+<section class="view" id="v-data">
+  <div class="head">
+    <div>
+      <h1><em id="nData">97</em> training demos.</h1>
+      <p class="lead">Recorded by the robot. Labeled by AI. No camera crew.</p>
+    </div>
+    <div class="chips lg" id="chips">
+      <button class="chip on" data-pos="0">All</button>
+      <button class="chip" data-pos="1">Spot 1</button>
+      <button class="chip" data-pos="2">Spot 2</button>
+      <button class="chip" data-pos="3">Spot 3</button>
+      <button class="chip" data-pos="4">Spot 4</button>
+      <button class="chip" data-pos="5">Spot 5</button>
+    </div>
+  </div>
+  <div class="wall"><div class="grid" id="grid"></div></div>
+</section>
+
+<!-- 4. BRAIN -->
+<section class="view" id="v-brain">
+  <div>
+    <h1>A smarter robot,<br><em>every night.</em></h1>
+    <div class="big-rate lg"><b id="rate">64%</b><span>of tries, Neil picks up the cup</span></div>
+    <div class="tonight lg">
+      <div class="row"><span id="tLbl">Next upgrade</span><span id="tVal">97 / 100 demos</span></div>
+      <div class="meter"><b id="tBar"></b></div>
+    </div>
+  </div>
+  <div class="chart lg">
+    <svg id="chart" viewBox="0 0 800 560"></svg>
+    <div class="note">Demo values</div>
+  </div>
+</section>
+
+<!-- 5. IMPACT -->
+<section class="view" id="v-impact">
+  <div>
+    <h1>Skip the <em>robot camera crew.</em></h1>
+    <p class="lead">Big robot companies pay whole teams to drive robots by hand, just to get data.</p>
+  </div>
+  <div class="vs">
+    <div class="side old lg">
+      <div class="who">Today</div>
+      <div><div class="n">1 week</div><div class="u">to make the robot better</div></div>
+      <div><div class="n">117 h</div><div class="u">of people for 1,000 demos</div></div>
+    </div>
+    <div class="arrow"><div><svg><use href="#i-arrow"/></svg></div></div>
+    <div class="side new lg">
+      <div class="who">With LoopVLA</div>
+      <div><div class="n">1 night</div><div class="u">to make the robot better</div></div>
+      <div><div class="n">2 h</div><div class="u">of people for 1,000 demos</div></div>
+    </div>
+  </div>
+  <div class="closing">Your team builds <em>skills</em>, not datasets.</div>
+</section>
+
+<!-- run viewer -->
+<div class="veil" id="veil"></div>
+<div class="modal lg" id="modal">
+  <button class="x lg" id="mx">×</button>
+  <div class="screen">
+    <img id="mTop" alt="Top camera">
+    <div class="eye"><img id="mEye" alt="Robot camera"><span>Neil's eye</span></div>
+    <div class="approved lg"><i><svg><use href="#i-check"/></svg></i><span id="mTitle">Demo #1</span></div>
+    <div class="say lg"><div class="ai"><svg><use href="#i-spark"/></svg></div><span id="mSay">Finding the cup</span></div>
+  </div>
+</div>
+
+<div class="caption lg" id="caption"><span id="capT"></span><div class="prog"><b id="capP"></b></div></div>
+
+<script src="assets/data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
