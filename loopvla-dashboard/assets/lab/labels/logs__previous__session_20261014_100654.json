@@ -1,0 +1,21 @@
+{
+  "name": "logs__previous__session_20261014_100654",
+  "path": "Neil LabAI-recorder/logs/previous/session_20261014_100654",
+  "kind": "session",
+  "task": "pick up the cup",
+  "duration_s": 8.5,
+  "label": null,
+  "success": false,
+  "confidence": 0.95,
+  "failure_category": "did_not_reach_cup",
+  "reason": "No cup shows up in any front-camera frame. The robot turns past a cable reel and a laptop (1.2\u20133.6 s), then stops facing a glass wall (7.2\u20138.4 s) with no cup and no magenta gripper parts in view. The arm (4\u00b0) and gripper (\u221245\u00b0) readings never change, so the gripper never moved.",
+  "cup_final_state": "out_of_view",
+  "key_frame_s": 8.4,
+  "model": "claude-opus-5-5",
+  "usage": {
+    "input_tokens": 5902,
+    "output_tokens": 371,
+    "cost_usd": 0.0437704
+  },
+  "backend": "claude-code"
+}

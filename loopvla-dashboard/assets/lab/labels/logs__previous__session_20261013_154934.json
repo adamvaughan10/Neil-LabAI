@@ -1,0 +1,21 @@
+{
+  "name": "logs__previous__session_20261013_154934",
+  "path": "Neil LabAI-recorder/logs/previous/session_20261013_154934",
+  "kind": "session",
+  "task": "pick up the cup",
+  "duration_s": 955.2,
+  "label": null,
+  "success": false,
+  "confidence": 0.97,
+  "failure_category": "did_not_reach_cup",
+  "reason": "The top camera shows the robot staying in the top-right corner for the whole attempt, while the cup stays untouched and upright on the left. At 955.1 s the robot is still far from the cup. The arm stays at -6\u00b0 and the gripper never closes on anything.",
+  "cup_final_state": "upright_free",
+  "key_frame_s": 955.1,
+  "model": "claude-opus-5-5",
+  "usage": {
+    "input_tokens": 8411,
+    "output_tokens": 585,
+    "cost_usd": 0.0681224
+  },
+  "backend": "claude-code"
+}

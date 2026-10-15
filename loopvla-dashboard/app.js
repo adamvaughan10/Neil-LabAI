@@ -30,35 +30,27 @@
 
   // ---------- Pages ----------
   const VIEWS = ["loop", "flow", "data", "brain", "impact"];
-  const LAB_VIEWS = ["ops", "runs", "labels", "models"];
+  const LAB_VIEWS = ["ops", "runs", "analysis", "labels", "jobs", "models"];
   const pill = $("#tabPill");
   function movePill() { const on = $(".tab.on"); pill.style.left = on.offsetLeft + "px"; pill.style.width = on.offsetWidth + "px"; }
+  let lastPitch = "loop";   // the Overview tab holds the five pitch pages
   function show(v) {
+    if (v === "overview") v = lastPitch;
     const lab = LAB_VIEWS.includes(v);
     if (lab && S.storyOn) stopStory();
+    if (!lab) lastPitch = v;
     document.body.classList.toggle("lab", lab);
-    $$("#modeSwitch button").forEach(b => b.classList.toggle("on", b.dataset.mode === (lab ? "lab" : "pitch")));
-    $$(".tab").forEach(t => t.classList.toggle("on", t.dataset.view === v));
+    $$(".tab").forEach(t => t.classList.toggle("on", t.dataset.view === (lab ? v : "overview")));
+    $$(".sub").forEach(t => t.classList.toggle("on", t.dataset.view === v));
     $$(".view").forEach(s => s.classList.toggle("on", s.id === "v-" + v));
     movePill();
     if (v === "loop") requestAnimationFrame(layoutPath);
     if (v === "flow") requestAnimationFrame(layoutBack);
     if (v === "data") renderGrid();
     if (v === "brain") drawChart(true);
-    requestAnimationFrame(moveModeKnob);
     window.LAB?.shown(v);
   }
-  const lastView = { pitch: "loop", lab: "ops" };
-  function moveModeKnob() {
-    const on = $("#modeSwitch button.on"), k = $("#modeKnob");
-    if (on) { k.style.left = on.offsetLeft + "px"; k.style.width = on.offsetWidth + "px"; }
-  }
-  $$("#modeSwitch button").forEach(b => b.onclick = () => {
-    const cur = $(".tab.on")?.dataset.view;
-    if (cur) lastView[LAB_VIEWS.includes(cur) ? "lab" : "pitch"] = cur;
-    show(lastView[b.dataset.mode]);
-  });
-  $$(".tab").forEach(t => t.onclick = () => show(t.dataset.view));
+  $$(".tab, .sub").forEach(t => t.onclick = () => show(t.dataset.view));
   addEventListener("resize", () => { movePill(); layoutPath(); layoutBack(); });
   requestAnimationFrame(movePill);
 
@@ -334,7 +326,6 @@
     if (e.key === "Escape") { closeDemo(); if (S.storyOn) stopStory(); }
     if (/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
     if ("12345".includes(e.key) && e.key.length === 1) show(VIEWS[+e.key - 1]);
-    if ("6789".includes(e.key) && e.key.length === 1) show(LAB_VIEWS[+e.key - 6]);
     if (e.code === "Space" && !document.body.classList.contains("lab")) { e.preventDefault(); S.storyOn ? stopStory() : startStory(); }
   });
 

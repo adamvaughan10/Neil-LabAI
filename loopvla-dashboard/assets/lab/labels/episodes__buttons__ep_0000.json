@@ -1,0 +1,21 @@
+{
+  "name": "episodes__buttons__ep_0000",
+  "path": "Neil LabAI-recorder/episodes/buttons/ep_0000",
+  "kind": "episode",
+  "task": "pick up the cup",
+  "duration_s": 24.5,
+  "label": true,
+  "success": true,
+  "confidence": 0.88,
+  "failure_category": "none",
+  "reason": "The robot drove so the cup sat between the jaws, and the gripper closed at 13.9s (gripper -30 to -55). From 17.4s the arm was raised (arm -24) and the cup stayed tilted in the jaws. In the last frame at 24.4s the cup still fills the front view with the magenta gripper below it, so it is still held.",
+  "cup_final_state": "held_lifted",
+  "key_frame_s": 24.4,
+  "model": "claude-opus-5-5",
+  "usage": {
+    "input_tokens": 8410,
+    "output_tokens": 397,
+    "cost_usd": 0.013755799999999999
+  },
+  "backend": "claude-code"
+}

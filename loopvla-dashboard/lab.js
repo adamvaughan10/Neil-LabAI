@@ -1,4 +1,4 @@
-/* LoopVLA Lab mode: Live loop, Runs, Labels, Models. Plain JS, no build step.
+/* LoopVLA engineering tabs: Live, Runs, Analysis, Labels, Jobs, Models. Plain JS, no build step.
    Shares the demo counter and the overnight upgrade with app.js through window.LOOP. */
 (() => {
   const L = window.LAB_DATA, P = window.LOOP;
@@ -60,8 +60,12 @@
   // ---------- Metrics ----------
   function rMetrics(r) {
     const f = r.full, T = f[f.length - 1][0], dts = f.slice(1).map((row, i) => (row[0] - f[i][0]) * 1000);
-    let closeT = null, liftT = null;
-    for (const row of f) { if (closeT == null && row[12] <= CLOSED) closeT = row[0]; if (closeT != null && liftT == null && row[11] <= LIFTED) liftT = row[0]; }
+    let open = false, closeT = null, liftT = null;
+    for (const row of f) {
+      if (row[12] > -35) open = true;
+      if (open && closeT == null && row[12] <= CLOSED) closeT = row[0];
+      if (closeT != null && liftT == null && row[11] <= LIFTED) liftT = row[0];
+    }
     const maxI = dts.indexOf(Math.max(...dts));
     return { T, n: f.length, hz: (f.length - 1) / T, med: quant(dts, .5), p95: quant(dts, .95), max: dts[maxI], maxAt: f[maxI][0], maxStep: maxI + 1, dts,
       chunks: f.reduce((a, row) => a + row[13], 0), closeT, liftT, wheel: [f[f.length - 1][14], f[f.length - 1][15]], final: f[f.length - 1].slice(9, 13) };
@@ -175,10 +179,12 @@
       sub: r.steps ? `v2 · ${fmt(r.duration_s)} s · ${r.steps} steps · 15 Oct` : "stopped before the first step", outcome: r.outcome })),
     ...DEMOS.map(e => ({ key: e.id, kind: "d", e, title: `Demo ${e.no}`, sub: `spot ${e.pos} · ${fmt(e.dur)} s · ${e.steps} steps · ${e.time}`,
       outcome: e.v ? (e.v.success ? "picked" : "missed") : "unjudged" })),
+    ...(L.tests || []).map(p => ({ key: p.id, kind: "p", p, title: "Pipeline test " + hhmmss(p.id), disabled: !p.steps,
+      sub: p.steps ? `${p.checkpoint} · ${p.mode} · ${p.steps} steps · 14 Oct` : "no steps recorded", outcome: "test" })),
   ];
   let cur = null, rf = "all", dk = 0, dTimer = null;
   const chip = o => ({ grasped: '<span class="pill2 ok">Grasped</span>', missed_cup: '<span class="pill2 bad">Missed</span>', aborted: '<span class="pill2 wait">Stopped</span>',
-    picked: '<span class="pill2 ok">Picked up</span>', missed: '<span class="pill2 bad">Missed</span>', unjudged: '<span class="pill2 wait">Not judged</span>' }[o]);
+    picked: '<span class="pill2 ok">Picked up</span>', missed: '<span class="pill2 bad">Missed</span>', unjudged: '<span class="pill2 wait">Not judged</span>', test: '<span class="pill2 lab">Dry run</span>' }[o]);
   function rList() {
     $("#rlist").innerHTML = ITEMS.filter(i => rf === "all" || i.kind === rf).map(i =>
       `<button class="ritem" data-key="${i.key}" ${i.disabled ? "disabled" : ""} aria-current="${cur?.key === i.key}"><span class="t1">${chip(i.outcome)}${esc(i.title)}</span><span class="t2">${esc(i.sub)}</span></button>`).join("");
@@ -188,40 +194,64 @@
   const rv = () => ({ f: $("#rv-front"), t: $("#rv-top") });
   function rSelect(key) {
     cur = ITEMS.find(i => i.key === key); if (!cur || cur.disabled) return;
-    clearInterval(dTimer); dk = 0;
-    const r = cur.kind === "r";
+    clearInterval(dTimer); dTimer = null; dk = 0;
+    const r = cur.kind === "r", d = cur.kind === "d", p = cur.kind === "p";
     $("#r-title").textContent = cur.title;
     $("#r-chips").innerHTML = chip(cur.outcome) + (r ? `<span class="pill2 wait">${esc(cur.r.model)}</span><span class="pill2 wait">${esc(cur.r.config.action_mode)} actions</span>`
-      : `<span class="pill2 wait">teleoperated · spot ${cur.e.pos}</span><span class="pill2 wait">${esc(cur.e.batch)}</span>`);
+      : d ? `<span class="pill2 wait">teleoperated · spot ${cur.e.pos}</span><span class="pill2 wait">${esc(cur.e.batch)}</span>`
+      : `<span class="pill2 wait">${esc(cur.p.checkpoint)}</span><span class="pill2 wait">${esc(cur.p.device)} · ${esc(cur.p.mode)}</span><span class="pill2 wait">task "${esc(cur.p.task)}"</span>`);
     $("#r-cams").innerHTML = r
       ? `<div class="cam"><video id="rv-front" muted playsinline preload="auto" src="assets/lab/${cur.r.id}/front.mp4"></video><span class="lbl">Neil's eye</span></div>
          <div class="cam wide" style="align-self:start"><video id="rv-top" muted playsinline preload="auto" src="assets/lab/${cur.r.id}/top.mp4"></video><span class="lbl">Top camera</span></div>`
-      : `<div class="cam"><img id="rd-front" alt="Neil's eye"><span class="lbl">Neil's eye</span></div>
-         <div class="cam wide" style="align-self:start"><img id="rd-top" alt="Top camera"><span class="lbl">Top camera</span></div>`;
-    $("#r-strip").hidden = r;
-    if (!r) {
+      : d ? `<div class="cam"><img id="rd-front" alt="Neil's eye"><span class="lbl">Neil's eye</span></div>
+         <div class="cam wide" style="align-self:start"><img id="rd-top" alt="Top camera"><span class="lbl">Top camera</span></div>`
+      : `<div class="pane-note" style="grid-column:1/-1">The policy server answered on a recorded session (<span class="mono">${esc(cur.p.replay)}</span>) and the
+         actions were logged, not sent: Neil did not move. This run measures the pipeline, not the robot.</div>`;
+    $("#r-strip").hidden = !d;
+    $("#r-transport").hidden = p;
+    if (d) {
       $("#r-strip").innerHTML = Array.from({ length: 10 }, (_, k) => `<img data-k="${k}" src="assets/eps/${cur.e.id}/t${pad(k, 2)}.jpg" alt="frame ${k + 1}">`).join("");
       $$("#r-strip img").forEach(im => im.onclick = () => { dStop(); dShow(+im.dataset.k); });
       dShow(0);
-    } else {
+    } else if (r) {
       const v = rv(); v.f.playbackRate = v.t.playbackRate = +$("#r-rate").value;
       v.f.addEventListener("ended", () => { $("#r-play").textContent = "Play"; });
     }
     $("#r-play").textContent = "Play";
-    $("#r-chans").innerHTML = CH.map(([n, c], i) => `<div class="chan"><span class="nm"><i style="background:var(${c})"></i>${n}<small>${i < 2 ? (r ? "speed −100…100" : "speed") : "angle, degrees"}</small></span>
-      <canvas id="rc-${i}" height="64"></canvas><div class="vals" id="rcv-${i}"></div></div>`).join("");
-    CH.forEach((_, i) => $("#rc-" + i).onclick = ev => { const b = ev.target.getBoundingClientRect(); rSeek(((ev.clientX - b.left) / b.width) * rT()); });
-    $("#r-legend").innerHTML = (r ? '<span><i style="border-top-style:dashed"></i>Model output</span><span><i style="border-color:#9097b5;border-top-width:2px"></i>Sent to the motor</span>' : "")
-      + '<span><i style="border-color:var(--pink)"></i>Measured (channel colour)</span>' + (r ? '<span><i style="border-color:rgba(27,42,89,.25);border-top-width:1px"></i>New action chunk</span>' : '<span>Her motor log: 48 points across the demo</span>');
-    rStats(); rSide(); rList(); rDraw();
+    if (p) {
+      const c = cur.p.chunks;
+      $("#r-chans").innerHTML = `<div class="chan"><span class="nm">Round trip<small>per action chunk</small></span><canvas id="rc-lat" height="90"></canvas><div class="vals" id="rcv-lat"></div></div>`;
+      $("#r-legend").innerHTML = '<span><i style="border-color:var(--pink)"></i>Round trip (laptop to server and back)</span><span><i style="border-color:var(--purple)"></i>Model inference on the server</span>';
+      requestAnimationFrame(() => {
+        const cv = $("#rc-lat"), dpr = devicePixelRatio || 1, w = cv.clientWidth, h = 90;
+        cv.width = w * dpr; cv.height = h * dpr;
+        const g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+        const mx = Math.max(...c.map(x => x.round_trip_ms || 0), 1), bw = Math.min(80, (w - 10) / Math.max(1, c.length));
+        c.forEach((x, i) => {
+          const hr = (x.round_trip_ms / mx) * (h - 22), hi = ((x.infer_ms || 0) / mx) * (h - 22);
+          g.fillStyle = css("--pink"); g.beginPath(); g.roundRect(6 + i * bw, h - 16 - hr, bw * .42, hr, 5); g.fill();
+          g.fillStyle = css("--purple"); g.beginPath(); g.roundRect(6 + i * bw + bw * .46, h - 16 - hi, bw * .42, hi, 5); g.fill();
+          g.fillStyle = css("--navy-2"); g.font = "800 10px " + css("--mono"); g.fillText(`#${i + 1}`, 6 + i * bw, h - 3);
+        });
+        $("#rcv-lat").innerHTML = `<span>median <b>${fmt(median(c.map(x => x.round_trip_ms)) / 1000, 2)} s</b></span><span>chunks <b>${c.length}</b></span>`;
+      });
+    } else {
+      $("#r-chans").innerHTML = CH.map(([n, c], i) => `<div class="chan"><span class="nm"><i style="background:var(${c})"></i>${n}<small>${i < 2 ? "speed" : "angle, degrees"}</small></span>
+        <canvas id="rc-${i}" height="64"></canvas><div class="vals" id="rcv-${i}"></div></div>`).join("");
+      CH.forEach((_, i) => $("#rc-" + i).onclick = ev => { const b = ev.target.getBoundingClientRect(); rSeek(((ev.clientX - b.left) / b.width) * rT()); });
+      $("#r-legend").innerHTML = (r ? '<span><i style="border-top-style:dashed"></i>Model output</span><span><i style="border-color:#9097b5;border-top-width:2px"></i>Sent to the motor</span>' : "")
+        + '<span><i style="border-color:var(--pink)"></i>Measured (channel colour)</span>' + (r ? '<span><i style="border-color:rgba(27,42,89,.25);border-top-width:1px"></i>New action chunk</span>' : '<span>Motor log: 48 points across the demo</span>');
+    }
+    rStats(); rSide(); rFiles(); rList(); rDraw();
   }
-  const rT = () => cur.kind === "r" ? cur.r.m.T : cur.e.dur;
+  const rT = () => cur.kind === "r" ? cur.r.m.T : cur.kind === "d" ? cur.e.dur : (cur.p.duration_s || 1);
   const rNow = () => {
+    if (cur.kind === "p") return 0;
     if (cur.kind === "d") return (dk / 9) * cur.e.dur;
     const f = $("#rv-front"); return f && f.duration ? (f.currentTime / f.duration) * cur.r.m.T : 0;
   };
   function rSeek(t) {
-    if (!cur) return;
+    if (!cur || cur.kind === "p") return;
     if (cur.kind === "d") { dStop(); dShow(Math.round((t / cur.e.dur) * 9)); return; }
     const v = rv(); if (v.f.duration) v.f.currentTime = v.t.currentTime = Math.max(0, Math.min(cur.r.m.T, t)) / cur.r.m.T * v.f.duration;
   }
@@ -252,7 +282,7 @@
   $("#r-rate").onchange = e => { const v = rv(); if (v.f) v.f.playbackRate = v.t.playbackRate = +e.target.value; if (dTimer) { dStop(); $("#r-play").click(); } };
   $("#r-scrub").oninput = e => cur && rSeek((e.target.value / 1000) * rT());
   function rDraw() {
-    if (!cur || !$("#v-runs").classList.contains("on")) return;
+    if (!cur || cur.kind === "p" || !$("#v-runs").classList.contains("on")) return;
     const t = rNow(), T = rT();
     if (cur.kind === "r") {
       const f = cur.r.full, k = idxAt(f, t), row = f[k], vl = f.filter(x => x[13]).map(x => x[0]);
@@ -279,6 +309,14 @@
     el.innerHTML = rows.map(([v, k, cls]) => `<div class="tile ${cls || ""}"><b>${v}</b><span>${esc(k)}</span></div>`).join("");
   }
   function rStats() {
+    if (cur.kind === "p") {
+      const p = cur.p, c = p.chunks;
+      return tiles($("#r-stats"), [
+        [`${fmt(p.duration_s)}<small> s</small>`, `${p.steps} steps at ${p.fps} fps`], [`${c.length}`, `action chunks of ${c[0]?.chunk_size ?? "—"}`],
+        [`${fmt(median(c.map(x => x.round_trip_ms)) / 1000, 2)}<small> s</small>`, "round trip per chunk (median)", median(c.map(x => x.round_trip_ms)) > 5000 ? "warn" : ""],
+        [`${fmt(median(c.map(x => x.infer_ms || 0)) / 1000, 2)}<small> s</small>`, "model inference per chunk"],
+        [`${p.late_ticks ?? "—"}`, "late control ticks"], [`${fmt(p.cam_age_ms?.pi, 0)} / ${fmt(p.cam_age_ms?.external, 0)}<small> ms</small>`, "camera frame age, robot / top"]]);
+    }
     if (cur.kind === "r") {
       const m = cur.r.m;
       tiles($("#r-stats"), [
@@ -296,6 +334,12 @@
     }
   }
   function rSide() {
+    if (cur.kind === "p") {
+      $("#r-side-h").textContent = "Inference per chunk";
+      $("#r-side").innerHTML = `<div class="tbl-wrap"><table class="t2"><thead><tr><th>Chunk</th><th class="num">Asked at step</th><th class="num">Answered at step</th><th class="num">Round trip</th><th class="num">Inference</th><th class="num">Decode</th></tr></thead><tbody>` +
+        cur.p.chunks.map((c, i) => `<tr><td>#${i + 1}</td><td class="num">${c.obs_step}</td><td class="num">${c.reply_step ?? "—"}</td><td class="num">${fmt(c.round_trip_ms, 0)} ms</td><td class="num">${fmt(c.infer_ms, 0)} ms</td><td class="num">${fmt(c.decode_ms, 1)} ms</td></tr>`).join("") + "</tbody></table></div>";
+      return;
+    }
     if (cur.kind === "r") {
       const m = cur.r.m;
       $("#r-side-h").textContent = "Control loop timing";
@@ -321,6 +365,43 @@
            <p style="margin:0;font-size:15px;font-weight:700;line-height:1.45">${esc(v.reason)}</p>`
         : `<p style="margin:0;font-size:15px;font-weight:800" class="muted">Not judged yet. This demo is from ${esc(cur.e.batch)}; Claude has judged Batch A so far (50 demos).</p>`;
     }
+  }
+  const SRC_SUB = { "Batch A": ["first position", "second position", "third position", "fourth position", "fifth position"],
+                   "Batch B": ["first_spot", "second", "third position", "fourth", "fifht"] };
+  const SRC_DIR = { "Batch A": "episodes/all sessions", "Batch B": "all poistions 2" };
+  function fileRow(label, path, href) {
+    return `<div class="frow"><span class="fl">${esc(label)}</span><span class="mono fp">${esc(path)}</span>
+      ${href ? `<a class="btn2" href="${esc(href)}" target="_blank" rel="noopener">Open</a>` : '<span class="btn2 off">on that machine</span>'}
+      <button class="btn2" data-copy="${esc(path)}">Copy path</button></div>`;
+  }
+  function rFiles() {
+    let rows = [], sub = "";
+    if (cur.kind === "r") {
+      const id = cur.r.id, base = `dashboard_sample_data/vla_rollouts/${id}`;
+      sub = "in Neil-LabAI, branch claude/project-thread-4sp9ds";
+      rows = [["Motor log, one line per step", `${base}/steps.jsonl`, `assets/lab/${id}/steps.jsonl`], ["Run settings", `${base}/run.json`, `assets/lab/${id}/run.json`],
+        ["Robot camera", `${base}/front.mp4`, `assets/lab/${id}/front.mp4`], ["Top camera", `${base}/top.mp4`, `assets/lab/${id}/top.mp4`],
+        ["Model it ran", cur.r.config.policy, null]];
+    } else if (cur.kind === "d") {
+      const e = cur.e, dir = `${SRC_DIR[e.batch]}/${SRC_SUB[e.batch][e.pos - 1]}/session_${e.id}`;
+      sub = "recorded on Neil, 14 Oct";
+      rows = [["Session folder (steps.jsonl, pi/, external/)", dir + "/", null], ["Motor log", `${dir}/steps.jsonl`, null],
+        ["Top camera frames used here", `loopvla-dashboard/assets/eps/${e.id}/t00.jpg … t09.jpg`, `assets/eps/${e.id}/t05.jpg`],
+        ["Robot camera frames used here", `loopvla-dashboard/assets/eps/${e.id}/f00.jpg … f09.jpg`, `assets/eps/${e.id}/f05.jpg`]];
+      if (e.v) rows.push(["Claude's verdict", `output/classifier/…/attempts/${e.v.name}.json`, `assets/lab/labels/${e.v.name}.json`], ["Session Claude judged", e.v.source || "—", null]);
+    } else {
+      const id = cur.p.id, base = `logs/${id}`;
+      sub = "in Neil-LabAI/logs on the laptop that ran it (not in git)";
+      rows = [["Inference log, one line per chunk", `${base}/inference.jsonl`, `assets/lab/tests/${id}/inference.jsonl`], ["Server and spec", `${base}/policy.json`, `assets/lab/tests/${id}/policy.json`],
+        ["Run info and camera timing", `${base}/info.json`, `assets/lab/tests/${id}/info.json`], ["Motor and camera log", `${base}/steps.jsonl`, null], ["Session it replayed", cur.p.replay || "—", null]];
+    }
+    $("#r-files-sub").textContent = sub;
+    $("#r-files").innerHTML = rows.map(([a, b, c]) => fileRow(a, b, c)).join("");
+    $$("#r-files [data-copy]").forEach(bt => bt.onclick = () => copyText(bt.dataset.copy, bt));
+  }
+  function copyText(t, btn) {
+    const done = () => { const o = btn.textContent; btn.textContent = "Copied"; setTimeout(() => (btn.textContent = o), 1200); };
+    try { navigator.clipboard.writeText(t).then(done, () => prompt("Copy:", t)); } catch { prompt("Copy:", t); }
   }
   addEventListener("keydown", e => {
     if (!$("#v-runs").classList.contains("on") || !cur || /INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
@@ -404,12 +485,7 @@
   }
 
   // ================= MODELS =================
-  const jobs = [
-    { id: "181436", model: "v1 · pick_cup", ep: 50, steps: 10000, status: "Done", note: "" },
-    { id: "181719", model: "training run", ep: null, steps: null, status: "Done", note: "final loss 0.09" },
-    { id: "182076", model: "v3 · pick_cup_angle_182076", ep: null, steps: null, status: "Done", note: "" },
-  ];
-  let confirmV = null, queued = 0;
+  let confirmV = null;
   function mRender() {
     syncV3();
     $("#m-cards").innerHTML = MODELS.map(m => {
@@ -440,32 +516,234 @@
     ];
     $("#m-vs").innerHTML = `<thead><tr><th>Measure</th><th class="num">v2 on Neil</th><th class="num">Human demos</th></tr></thead><tbody>` +
       rows.map(([k, a, b]) => `<tr><td><b>${k}</b></td><td class="num">${a}</td><td class="num">${b}</td></tr>`).join("") + "</tbody>";
-    mJobs();
   }
-  function mJobs() {
-    const live = $("#tLbl")?.textContent === "Training now";
-    const rows = jobs.concat(live ? [{ id: "auto", model: "v3 · started by LoopVLA", ep: P.S.demos, steps: 10000, status: "Training", note: $("#tVal").textContent }] : []);
-    $("#m-jobs").innerHTML = `<thead><tr><th>Job</th><th>Model</th><th class="num">Demos</th><th class="num">Steps</th><th>Status</th></tr></thead><tbody>` +
-      rows.map(j => `<tr><td class="mono">${esc(j.id)}</td><td>${esc(j.model)}${j.note ? `<br><span class="muted mono" style="font-size:12px">${esc(j.note)}</span>` : ""}</td>
-        <td class="num">${j.ep ?? "—"}</td><td class="num">${j.steps ? j.steps.toLocaleString("en-US") : "—"}</td>
-        <td>${j.status === "Done" ? '<span class="pill2 ok">Done</span>' : j.status === "Queued" ? '<span class="pill2 wait">Queued</span>' : `<span class="pill2 ai"><span class="dot"></span>${j.status}</span>`}</td></tr>`).join("") + "</tbody>";
-    jCmd();
+  // ================= ANALYSIS: groups of runs =================
+  // One record per run, rollouts and demos alike: time in seconds, motor curves, timing and outcome.
+  const REC = [
+    ...RUNS.map(r => ({ key: r.id, kind: "r", name: "Rollout " + hhmmss(r.id), T: r.m.T, closeT: r.m.closeT, liftT: r.m.liftT, hz: r.m.hz,
+      ok: r.outcome === "grasped", outcome: r.outcome, finalGrip: r.m.final[3],
+      curves: { grip: r.full.map(x => [x[0], x[12]]), arm: r.full.map(x => [x[0], x[11]]), wheel: r.full.map(x => [x[0], (x[5] + x[6]) / 2]) } })),
+    ...DEMOS.map(e => {
+      const s = dSeries(e), m = dMetrics(e);
+      return { key: e.id, kind: "d", name: "Demo " + e.no, T: e.dur, closeT: m.closeT, liftT: m.liftT, hz: e.fps, pos: e.pos, batch: e.batch,
+        ok: e.v ? e.v.success : null, finalGrip: s[s.length - 1][4],
+        curves: { grip: s.map(x => [x[0], x[4]]), arm: s.map(x => [x[0], x[3]]), wheel: s.map(x => [x[0], x[1] == null || x[2] == null ? null : (x[1] + x[2]) / 2]) } };
+    }),
+  ];
+  const GROUPS_AN = [
+    ["v2 rollouts, 15 Oct", x => x.kind === "r"],
+    ["v2 rollouts that grasped", x => x.kind === "r" && x.ok],
+    ["v2 rollouts that missed", x => x.kind === "r" && !x.ok],
+    ["All human demos", x => x.kind === "d"],
+    ...[1, 2, 3, 4, 5].map(k => [`Demos from spot ${k}`, x => x.kind === "d" && x.pos === k]),
+    ["Demos Claude judged (Batch A)", x => x.kind === "d" && x.batch === "Batch A"],
+    ["Demos not judged yet (Batch B)", x => x.kind === "d" && x.batch === "Batch B"],
+  ];
+  $("#an-a").innerHTML = $("#an-b").innerHTML = GROUPS_AN.map(([n], i) => `<option value="${i}">${esc(n)}</option>`).join("");
+  $("#an-a").value = "0"; $("#an-b").value = "3";
+  ["an-a", "an-b", "an-align", "an-each"].forEach(id => $("#" + id).onchange = anRender);
+  const q3 = a => { const v = a.filter(x => x != null && !Number.isNaN(x)); return v.length ? [quant(v, .25), quant(v, .5), quant(v, .75)] : null; };
+  const span = (a, d = 1, u = " s") => { const q = q3(a); return q ? `${fmt(q[1], d)}${u} <span class="muted">[${fmt(q[0], d)}–${fmt(q[2], d)}]</span>` : "—"; };
+  function anSets() {
+    const A = REC.filter(GROUPS_AN[+$("#an-a").value][1]), B = REC.filter(GROUPS_AN[+$("#an-b").value][1]);
+    return { A, B, nA: GROUPS_AN[+$("#an-a").value][0], nB: GROUPS_AN[+$("#an-b").value][0] };
   }
-  function jCmd() {
-    const st = +$("#j-steps").value || 10000, b = +$("#j-batch").value || 64, ds = `pick_cup_loop_v${4 + queued}`;
-    $("#j-cmd").textContent = `# ${ds}: ${P.S.demos} demos · start from ${$("#j-base").value}\nrsync -av data/${ds} your.name@athena.technion.ac.il:$VLA/data/\nsbatch train_neil.job ${st} ${b} ${ds}`;
+  function anRender() {
+    if (!$("#v-analysis").classList.contains("on")) return;
+    const { A, B, nA, nB } = anSets(), align = $("#an-align").checked;
+    $("#an-n").textContent = `A: ${A.length} runs · B: ${B.length} runs`;
+    const succ = g => { const j = g.filter(x => x.ok != null); return j.length ? `${j.filter(x => x.ok).length} / ${j.length} <span class="muted">(${Math.round(100 * j.filter(x => x.ok).length / j.length)}%)</span>` : "not judged"; };
+    const rows = [
+      ["Runs", g => `${g.length}`], ["Picked up the cup", succ], ["Length of a try", g => span(g.map(x => x.T))],
+      ["Gripper closes at", g => span(g.map(x => x.closeT))], ["Arm lifts the cup at", g => span(g.map(x => x.liftT))],
+      ["Close to lift", g => span(g.map(x => (x.liftT != null && x.closeT != null ? x.liftT - x.closeT : null)))],
+      ["Never closed the gripper", g => `${g.filter(x => x.closeT == null).length}`], ["Steps per second", g => span(g.map(x => x.hz), 1, "")],
+      ["Gripper angle at the end", g => span(g.map(x => x.finalGrip), 0, "°")],
+    ];
+    $("#an-table").innerHTML = `<thead><tr><th>Measure</th><th class="num"><span class="sw a"></span>${esc(nA)}</th><th class="num"><span class="sw b"></span>${esc(nB)}</th></tr></thead><tbody>` +
+      rows.map(([k, f]) => `<tr><td><b>${k}</b></td><td class="num">${f(A)}</td><td class="num">${f(B)}</td></tr>`).join("") + "</tbody>";
+    anDots(A, B); anCurves(A, B, align); anRuns(A, B); anLatency();
   }
-  ["j-base", "j-steps", "j-batch"].forEach(id => $("#" + id).oninput = jCmd);
-  $("#j-go").onclick = () => {
-    queued++;
-    jobs.push({ id: `queued-${queued}`, model: `v${3 + queued} · from ${$("#j-base").value.split(" ")[0]}`, ep: P.S.demos, steps: +$("#j-steps").value, status: "Queued", note: "" });
-    $("#j-msg").textContent = "Added to the list. Nothing was sent to Athena.";
-    mJobs();
+  function anDots(A, B) {
+    const cv = $("#an-dots"), dpr = devicePixelRatio || 1, w = cv.clientWidth, h = 230;
+    if (!w) return;
+    cv.width = w * dpr; cv.height = h * dpr;
+    const g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const all = [...A, ...B].map(x => x.closeT).filter(x => x != null), mx = Math.max(10, ...all) * 1.08;
+    const X = t => 70 + (t / mx) * (w - 90);
+    g.strokeStyle = "rgba(27,42,89,.15)"; g.fillStyle = css("--navy-2"); g.font = "800 11px " + css("--font");
+    for (let t = 0; t <= mx; t += mx > 30 ? 10 : 5) { g.beginPath(); g.moveTo(X(t), 10); g.lineTo(X(t), h - 24); g.stroke(); g.fillText(t + " s", X(t) - 8, h - 8); }
+    [[A, "A", css("--pink"), 70], [B, "B", css("--purple"), 150]].forEach(([set, n, col, y]) => {
+      g.fillStyle = css("--navy"); g.font = "900 15px " + css("--font"); g.fillText("Group " + n, 4, y + 5);
+      set.forEach((x, i) => {
+        if (x.closeT == null) return;
+        const jy = y + ((i * 37) % 31) - 15;
+        g.fillStyle = col; g.globalAlpha = .75; g.beginPath(); g.arc(X(x.closeT), jy, 6, 0, 7); g.fill(); g.globalAlpha = 1;
+      });
+      const md = median(set.map(x => x.closeT).filter(x => x != null));
+      if (md != null) { g.fillStyle = css("--navy"); g.fillRect(X(md) - 2, y - 26, 4, 52); g.font = "800 12px " + css("--mono"); g.fillText(fmt(md) + " s", X(md) + 6, y - 18); }
+      const never = set.filter(x => x.closeT == null).length;
+      if (never) { g.fillStyle = css("--bad"); g.font = "800 12px " + css("--font"); g.fillText(`${never} never closed`, w - 110, y + 5); }
+    });
+  }
+  function medianCurve(set, key, align, grid) {
+    return grid.map(t => {
+      const v = set.map(x => {
+        const t0 = align ? x.closeT : 0;
+        if (align && t0 == null) return null;
+        const c = x.curves[key], tt = t + t0;
+        if (tt < c[0][0] || tt > c[c.length - 1][0]) return null;
+        return c[idxAt(c, tt)][1];
+      }).filter(y => y != null);
+      return [t, v.length >= Math.max(1, Math.ceil(set.length / 3)) ? median(v) : null];
+    });
+  }
+  function anCurves(A, B, align) {
+    const each = $("#an-each").checked;
+    const keys = [["grip", "Gripper", "angle, degrees"], ["arm", "Arm", "angle, degrees"], ["wheel", "Wheels", "mean speed"]];
+    $("#an-curves-sub").textContent = align ? "time 0 = the moment each run closed the gripper · thin: each run · thick: median" : "thin: each run · thick: median";
+    if (!$("#an-chans").children.length) $("#an-chans").innerHTML = keys.map(([k, n, u]) => `<div class="chan"><span class="nm">${n}<small>${u}</small></span><canvas id="ac-${k}" height="120"></canvas><div class="vals" id="acv-${k}"></div></div>`).join("");
+    const lo = align ? -10 : 0, hi = align ? 15 : Math.max(...[...A, ...B].map(x => x.T), 10);
+    const grid = Array.from({ length: 120 }, (_, i) => lo + (i / 119) * (hi - lo));
+    keys.forEach(([k]) => {
+      const lines = [];
+      const shift = (x, c) => (align ? c.map(([t, v]) => [t - x.closeT, v]).filter(([t]) => t >= lo && t <= hi) : c);
+      if (each) [[A, css("--pink")], [B, css("--purple")]].forEach(([set, col]) => set.forEach(x => { if (!align || x.closeT != null) lines.push({ pts: shift(x, x.curves[k]), color: col, width: 1, alpha: .22 }); }));
+      lines.push({ pts: medianCurve(A, k, align, grid), color: css("--pink"), width: 3.5 }, { pts: medianCurve(B, k, align, grid), color: css("--purple"), width: 3.5 });
+      // chart() takes x from 0: shift the window so lo maps to the left edge
+      chart($("#ac-" + k), { h: 120, xMax: hi - lo, zero: k === "wheel", lines: lines.map(l => ({ ...l, pts: l.pts.map(([t, v]) => [t - lo, v]) })), vlines: align ? [-lo] : [] });
+      $("#acv-" + k).innerHTML = `<span>${align ? "−10 s … +15 s" : `0 … ${fmt(hi, 0)} s`}</span>${align ? "<span>line: gripper closes</span>" : ""}`;
+    });
+  }
+  let anRows = [];
+  function anRuns(A, B) {
+    anRows = [...A.map(x => ["A", x]), ...B.map(x => ["B", x])];
+    const res = x => (x.ok == null ? '<span class="muted">not judged</span>' : x.ok ? '<span class="pill2 ok">Picked up</span>' : '<span class="pill2 bad">Missed</span>');
+    $("#an-runs").innerHTML = `<thead><tr><th></th><th>Run</th><th>Result</th><th class="num">Length</th><th class="num">Closes</th><th class="num">Lifts</th></tr></thead><tbody>` +
+      anRows.map(([g, x]) => `<tr class="row" data-key="${x.key}"><td><span class="sw ${g.toLowerCase()}"></span></td><td><b>${esc(x.name)}</b>${x.pos ? ` <span class="muted mono" style="font-size:12px">spot ${x.pos}</span>` : ""}</td><td>${res(x)}</td>
+        <td class="num">${fmt(x.T)} s</td><td class="num">${x.closeT == null ? "—" : fmt(x.closeT) + " s"}</td><td class="num">${x.liftT == null ? "—" : fmt(x.liftT) + " s"}</td></tr>`).join("") + "</tbody>";
+    $$("#an-runs tr.row").forEach(tr => tr.onclick = () => { P.show("runs"); rSelect(tr.dataset.key); });
+  }
+  $("#an-csv").onclick = () => {
+    const csv = ["group,run,kind,spot,result,length_s,gripper_closes_s,arm_lifts_s,steps_per_s"].concat(anRows.map(([g, x]) =>
+      [g, x.name, x.kind === "r" ? "rollout" : "demo", x.pos ?? "", x.ok == null ? "" : x.ok ? "picked_up" : "missed", fmt(x.T, 2), x.closeT == null ? "" : fmt(x.closeT, 2), x.liftT == null ? "" : fmt(x.liftT, 2), fmt(x.hz, 2)].join(","))).join("\n");
+    copyText(csv, $("#an-csv")); $("#an-msg").textContent = `${anRows.length} rows`;
   };
-  $("#j-copy").onclick = () => {
-    const sel = () => { const r = document.createRange(); r.selectNodeContents($("#j-cmd")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); $("#j-msg").textContent = "Selected: press Ctrl+C."; };
-    try { navigator.clipboard.writeText($("#j-cmd").textContent).then(() => ($("#j-msg").textContent = "Copied."), sel); } catch { sel(); }
+  function anLatency() {
+    const T = (L.tests || []).filter(t => t.chunks.length);
+    const groups = {};
+    T.forEach(t => (groups[t.checkpoint] = groups[t.checkpoint] || []).push(...t.chunks.map(c => c.round_trip_ms)));
+    const v2 = median(RUNS.map(r => r.m.med));
+    const bars = Object.entries(groups).map(([k, v]) => [k + " (CPU)", median(v), v.length]).concat([["v2 on mps: gap between steps", v2, RUNS.reduce((a, r) => a + r.m.n, 0)]]);
+    const cv = $("#an-lat"), dpr = devicePixelRatio || 1, w = cv.clientWidth, h = 200;
+    if (!w) return;
+    cv.width = w * dpr; cv.height = h * dpr;
+    const g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const lmx = Math.log10(Math.max(...bars.map(b => b[1])) * 1.5), lmn = 1, X = v => 210 + ((Math.log10(v) - lmn) / (lmx - lmn)) * (w - 290);
+    bars.forEach(([n, v, c], i) => {
+      const y = 22 + i * 52;
+      g.fillStyle = css("--navy"); g.font = "900 13px " + css("--font"); g.fillText(n, 4, y + 14);
+      g.fillStyle = css("--navy-2"); g.font = "700 11px " + css("--font"); g.fillText(`${c} samples`, 4, y + 30);
+      g.fillStyle = i === bars.length - 1 ? css("--s-arm") : v > 5000 ? css("--bad") : css("--purple");
+      g.beginPath(); g.roundRect(210, y, Math.max(6, X(v) - 210), 26, 8); g.fill();
+      g.fillStyle = css("--navy"); g.font = "800 13px " + css("--mono"); g.fillText(v >= 1000 ? fmt(v / 1000, 1) + " s" : Math.round(v) + " ms", X(v) + 8, y + 18);
+    });
+    const base = groups["lerobot/smolvla_base"];
+    $("#an-lat-note").innerHTML = `<p class="muted" style="font-size:13px;font-weight:700;margin:6px 0 0">Log scale. ${base ? `smolvla_base on the laptop CPU needs ${fmt(median(base) / 1000, 1)} s for one chunk of 50 actions, which Neil uses up in 5 s at 10 steps per second: about ${fmt(median(base) / 5000, 1)}× too slow for real time.` : ""} The dummy server (no model) answered in a median ${fmt(median(groups["dummy server"] || [0]), 0)} ms; the dry-run guide starts it with <span class="mono">--dummy-latency 0.5</span>, so most of that is a deliberate wait. On 15 Oct, v2 on the laptop GPU (mps) kept a median of ${Math.round(v2)} ms between control steps, with longer pauses while a new chunk was on its way.</p>`;
+  }
+
+  // ================= JOBS: queue, suggestions, history =================
+  const JTYPES = {
+    record: { name: "Record demos", where: "laptop + gamepad", fields: [["spot", "Start spot", "select", ["1", "2", "3", "4", "5"], "1"], ["n", "Demos to record", "number", null, 10], ["speed", "Wheel speed", "number", null, 30]],
+      cmd: f => `# branch vla-recording · drive Neil with the gamepad, ${f.n} demos from spot ${f.spot}\npython scripts/gamepad_drive.py --record --speed ${f.speed}\n# then turn the sessions into training episodes\npython scripts/session_to_episode.py logs/session_* --out episodes --task "pick up the cup"`,
+      title: f => `Record ${f.n} demos from spot ${f.spot}` },
+    label: { name: "Label with Claude", where: "laptop", fields: [["paths", "Folders or attempts", "text", null, "logs/"], ["frames", "Frames per camera", "number", null, 8], ["effort", "Effort", "select", ["low", "medium", "high"], "medium"], ["dry", "Dry run (contact sheets only, no API calls)", "check", null, false]],
+      cmd: f => `# branch claude/project-thread-hph8vb · writes output/classifier/<date>_<time>/\npython scripts/classify_attempts.py ${f.paths} --task "pick up the cup" --frames ${f.frames} --effort ${f.effort}${f.dry ? " --dry-run" : ""}`,
+      title: f => `Label ${f.paths} with Claude${f.dry ? " (dry run)" : ""}` },
+    train: { name: "Fine-tune on Athena", where: "Athena GPU", fields: [["ds", "Dataset", "text", null, "pick_cup"], ["steps", "Training steps", "number", null, 20000], ["batch", "Batch size", "number", null, 64], ["test", "Short test first (200 steps, 2h_2g queue)", "check", null, false]],
+      cmd: f => `# from the laptop: copy the dataset to Athena\nrsync -av data/${f.ds} your.name@athena.technion.ac.il:$VLA/data/\n# on Athena, in the jobs folder\n${f.test ? `sbatch --qos=2h_2g --time=00:30:00 train_neil.job 200 8 ${f.ds}` : `sbatch train_neil.job ${f.steps} ${f.batch} ${f.ds}`}\ntsqr -u $USER                      # PD = waiting, R = running\ntail -f neil_smolvla_JOBID.log     # Ctrl+C stops watching, not the job`,
+      title: f => f.test ? `Test training on ${f.ds} (200 steps)` : `Fine-tune on ${f.ds}: ${Number(f.steps).toLocaleString("en-US")} steps` },
+    eval: { name: "Evaluate on Neil", where: "laptop + Neil", fields: [["model", "Model", "select", ["handoff_pick_cup_pos2", "pick_cup_angle_182076", "pick_cup"], "handoff_pick_cup_pos2"], ["n", "Runs", "number", null, 10], ["seconds", "Seconds per run", "number", null, 30]],
+      cmd: f => `# in inference_kit/ · stay next to Neil, Ctrl+C stops it\nfor i in $(seq 1 ${f.n}); do\n  python run_policy.py --policy ../models/${f.model}/pretrained_model --task "pick up the cup" --seconds ${f.seconds}\n  read -p "Reset the cup and Neil, then press Enter"\ndone\n# then let Claude judge the new runs\npython ../scripts/classify_attempts.py runs/`,
+      title: f => `Evaluate ${f.model}: ${f.n} runs on Neil` },
+    dry: { name: "Dry run on a recording", where: "laptop", fields: [["session", "Recorded session", "text", null, "logs/session_20261014_105424"], ["ckpt", "Checkpoint", "text", null, "models/handoff_pick_cup_pos2/pretrained_model"], ["spec", "Observation spec", "select", ["specs/pick_cup.json", "specs/pick_cup_pos2.json", "specs/pick_cup_angle.json", "specs/pick_cup_kit.json"], "specs/pick_cup_pos2.json"]],
+      cmd: f => `# terminal 1: the policy server\npython policy_server/server.py --checkpoint ${f.ckpt} --device mps\n# terminal 2: replay a recording through it; nothing moves\npython scripts/run_policy.py --replay ${f.session} --spec ${f.spec} --mode async --seconds 30`,
+      title: f => `Dry run ${f.ckpt.split("/")[1] || f.ckpt} on ${f.session.split("/").pop()}` },
   };
+  let jType = "label", jForm = {};
+  let queue = store.get("loopvla-jobs", []);
+  const jSave = () => store.set("loopvla-jobs", queue);
+  const STATUS = ["Queued", "Running", "Done", "Failed"];
+  function jFields() {
+    const t = JTYPES[jType];
+    jForm = Object.fromEntries(t.fields.map(([k, , , , d]) => [k, jForm[k] ?? d]));
+    $("#jb-types").innerHTML = Object.entries(JTYPES).map(([k, v]) => `<button class="chip${k === jType ? " on" : ""}" data-t="${k}">${v.name}</button>`).join("");
+    $$("#jb-types .chip").forEach(c => c.onclick = () => { jType = c.dataset.t; jForm = {}; jFields(); });
+    $("#jb-form").innerHTML = t.fields.map(([k, label, type, opts]) =>
+      type === "select" ? `<label class="fld">${label}<select data-f="${k}">${opts.map(o => `<option${String(jForm[k]) === o ? " selected" : ""}>${o}</option>`).join("")}</select></label>`
+      : type === "check" ? `<label style="display:flex;gap:8px;align-items:center;font-size:14px;font-weight:800;grid-column:1/-1"><input type="checkbox" data-f="${k}"${jForm[k] ? " checked" : ""}> ${label}</label>`
+      : `<label class="fld">${label}<input type="${type}" data-f="${k}" value="${esc(jForm[k])}"></label>`).join("") + `<p class="muted" style="grid-column:1/-1;margin:0;font-size:13px;font-weight:800">Runs on: ${t.where}</p>`;
+    $$("#jb-form [data-f]").forEach(el => el.oninput = () => { jForm[el.dataset.f] = el.type === "checkbox" ? el.checked : el.value; jCmdShow(); });
+    jCmdShow();
+  }
+  const jCmdShow = () => { $("#jb-cmd").textContent = JTYPES[jType].cmd(jForm); };
+  function jAdd(type, form) {
+    const t = JTYPES[type];
+    queue.push({ id: Date.now().toString(36), type, title: t.title(form), cmd: t.cmd(form), status: "Queued", jobid: "", at: new Date().toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) });
+    jSave(); jQueue();
+  }
+  $("#jb-add").onclick = () => { jAdd(jType, jForm); $("#jb-msg").textContent = "Added. Copy the command and run it, then set its status."; };
+  $("#jb-copy").onclick = () => copyText($("#jb-cmd").textContent, $("#jb-copy"));
+  $("#jb-script").onclick = () => {
+    const q = queue.filter(j => j.status === "Queued");
+    copyText(q.length ? q.map(j => `# ---- ${j.title}\n${j.cmd}`).join("\n\n") : "# nothing queued", $("#jb-script"));
+  };
+  $("#jb-clear").onclick = () => { queue = queue.filter(j => j.status !== "Done"); jSave(); jQueue(); };
+  function jQueue() {
+    $("#jb-count").textContent = `${queue.filter(j => j.status === "Queued").length} queued · ${queue.filter(j => j.status === "Running").length} running`;
+    $("#jb-queue").innerHTML = queue.length ? queue.map((j, i) => `<div class="qitem s-${j.status.toLowerCase()}" data-i="${i}">
+        <div class="qtop"><b>${esc(j.title)}</b><span class="muted mono" style="font-size:12px">${esc(JTYPES[j.type]?.name || j.type)} · added ${esc(j.at)}</span></div>
+        <details><summary>Command</summary><div class="cmd">${esc(j.cmd)}</div></details>
+        <div class="qbar"><select data-act="status">${STATUS.map(s2 => `<option${s2 === j.status ? " selected" : ""}>${s2}</option>`).join("")}</select>
+          ${j.type === "train" ? `<input type="text" data-act="jobid" placeholder="Athena job id" value="${esc(j.jobid)}" style="width:130px">` : ""}
+          <button class="btn2" data-act="copy">Copy</button><button class="btn2" data-act="up" ${i ? "" : "disabled"} aria-label="Move up">↑</button><button class="btn2" data-act="del">Remove</button></div></div>`).join("")
+      : `<p class="muted" style="font-weight:800;margin:0">Nothing queued. Add a job on the left or take one of the suggestions above.</p>`;
+    $$("#jb-queue .qitem").forEach(el => {
+      const i = +el.dataset.i, j = queue[i];
+      el.querySelector('[data-act="status"]').onchange = e => { j.status = e.target.value; jSave(); jQueue(); jbHist(); };
+      el.querySelector('[data-act="jobid"]')?.addEventListener("change", e => { j.jobid = e.target.value.trim(); jSave(); jbHist(); });
+      el.querySelector('[data-act="copy"]').onclick = e => copyText(j.cmd, e.target);
+      el.querySelector('[data-act="up"]').onclick = () => { [queue[i - 1], queue[i]] = [queue[i], queue[i - 1]]; jSave(); jQueue(); };
+      el.querySelector('[data-act="del"]').onclick = () => { queue.splice(i, 1); jSave(); jQueue(); };
+    });
+  }
+  function jbSugg() {
+    const unjudged = DEMOS.filter(d => !d.v).length, missed = RUNS.filter(r => r.outcome === "missed_cup").length;
+    const S = P.S, toGo = Math.max(0, S.goal - S.demos);
+    const items = [
+      unjudged && ["label", { paths: '"all poistions 2/"', frames: 8, effort: "medium", dry: false }, `Label ${unjudged} demos Claude has not seen`, `Batch B (${unjudged} demos) has no verdicts, so none of it can go into the next training set yet.`],
+      missed && ["eval", { model: "handoff_pick_cup_pos2", n: 10, seconds: 30 }, "Evaluate v2 from all five spots", `v2 missed ${missed} of ${RUNS.length} rollouts by driving past the cup. Five runs from one spot are too few to tell where it fails.`],
+      MODELS[3].rate == null || !MODELS[3].real ? ["eval", { model: "pick_cup_angle_182076", n: 10, seconds: 30 }, "Test v3 on Neil", "v3 (pick_cup_angle_182076, job 182076) has never driven Neil. Measure it before it can replace v2."] : null,
+      ["train", { ds: "pick_cup", steps: 20000, batch: 64, test: toGo > 0 }, toGo > 0 ? `Test the training job (${toGo} demos to go)` : `Fine-tune on ${S.demos} demos`, toGo > 0 ? `The next fine-tune starts at ${S.goal} good demos. A 200-step test now catches problems before then.` : `${S.demos} demos are ready: the threshold of ${S.goal} is reached.`],
+    ].filter(Boolean);
+    $("#jb-sugg").innerHTML = items.map(([t, f, title, why], i) => `<div class="sg"><span class="pill2 lab">${JTYPES[t].name}</span><b>${esc(title)}</b><p>${esc(why)}</p><button class="btn2 primary" data-sg="${i}">Add to queue</button></div>`).join("");
+    $$("#jb-sugg [data-sg]").forEach(b => b.onclick = () => { const [t, f] = items[+b.dataset.sg]; jAdd(t, { ...Object.fromEntries(JTYPES[t].fields.map(x => [x[0], x[4]])), ...f }); b.textContent = "Added"; b.disabled = true; });
+  }
+  function jbHist() {
+    const rows = [
+      ["14 Oct 11:16–12:07", "Dry runs on recordings", "9 pipeline tests: dummy server and smolvla_base on CPU", "Neil-LabAI/logs/run_20261014_*", "Done"],
+      ["14 Oct 13:08", "Label with Claude", `${L.summary.attempts} attempts · ${L.summary.successes} picked up · $${L.labels.reduce((a, l) => a + l.cost_usd, 0).toFixed(2)} · ${L.summary.model}`, "output/classifier/ (branch claude/project-thread-hph8vb)", "Done"],
+      ["Athena 181436", "Fine-tune", "v1 pick_cup · 50 demos · 10,000 steps", "outputs/neil_181436/checkpoints/last/pretrained_model", "Done"],
+      ["Athena 181719", "Fine-tune", "final loss 0.09", "outputs/neil_181719/", "Done"],
+      ["Athena 182076", "Fine-tune", "v3 pick_cup_angle_182076 (angle actions)", "outputs/neil_182076/", "Done"],
+      ["15 Oct 09:47–09:59", "Evaluate on Neil", `v2 · ${L.rollouts.length} runs · ${RUNS.filter(r => r.outcome === "grasped").length} grasped · ${RUNS.filter(r => r.outcome === "missed_cup").length} missed · ${L.rollouts.length - RUNS.length} stopped`, "dashboard_sample_data/vla_rollouts/", "Done"],
+      ...queue.filter(j => j.status !== "Queued").map(j => [j.at, JTYPES[j.type]?.name || j.type, j.title + (j.jobid ? ` · job ${j.jobid}` : ""), "queued from this dashboard", j.status]),
+    ];
+    const pill = st => st === "Done" ? '<span class="pill2 ok">Done</span>' : st === "Failed" ? '<span class="pill2 bad">Failed</span>' : `<span class="pill2 ai"><span class="dot"></span>${st}</span>`;
+    $("#jb-hist").innerHTML = `<thead><tr><th>When</th><th>Job</th><th>What</th><th>Output</th><th>Status</th></tr></thead><tbody>` +
+      rows.map(r => `<tr><td class="mono" style="white-space:nowrap">${esc(r[0])}</td><td><b>${esc(r[1])}</b></td><td>${esc(r[2])}</td><td class="mono" style="font-size:12px">${esc(r[3])}</td><td>${pill(r[4])}</td></tr>`).join("") + "</tbody>";
+  }
+  function jbRender() { jFields(); jQueue(); jbSugg(); jbHist(); }
 
   // ---------- Page hooks from app.js ----------
   let rInit = false;
@@ -477,6 +755,8 @@
       if (v === "runs" && cur) requestAnimationFrame(() => { rSide(); rDraw(); });
       if (v === "labels") { labelsInit(); requestAnimationFrame(labelsRender); }
       if (v === "models") mRender();
+      if (v === "analysis") requestAnimationFrame(anRender);
+      if (v === "jobs") jbRender();
     },
   };
   let sig = "";
@@ -485,7 +765,7 @@
     if (s !== sig && $("#v-models").classList.contains("on")) { sig = s; mRender(); }
   }, 1000);
   (function loop() { oFrame(); rDraw(); requestAnimationFrame(loop); })();
-  addEventListener("resize", () => { if ($("#v-labels").classList.contains("on")) lHist(); if ($("#v-runs").classList.contains("on") && cur) rSide(); });
+  addEventListener("resize", () => { if ($("#v-labels").classList.contains("on")) lHist(); if ($("#v-runs").classList.contains("on") && cur) rSide(); if ($("#v-analysis").classList.contains("on")) anRender(); });
   oLoad(0); oRender();
   const cv = $(".tab.on")?.dataset.view; if (cv && P.LAB_VIEWS.includes(cv)) window.LAB.shown(cv);
 })();

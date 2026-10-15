@@ -1,0 +1,51 @@
+{
+  "fps": 10,
+  "steps": 246,
+  "duration_s": 24.6,
+  "t0": 1791967633.156808,
+  "late_ticks": 0,
+  "cameras": {
+    "pi": {
+      "url": "replay://session_20261014_105424/pi",
+      "rotation": 0,
+      "latency_s": 0.0,
+      "images_saved": 246,
+      "repeated_steps": 0,
+      "missing_steps": 0,
+      "repeated_pct": 0.0,
+      "age_ms": {
+        "median": 12.9,
+        "p95": 32.2
+      }
+    },
+    "external": {
+      "url": "replay://session_20261014_105424/external",
+      "rotation": 0,
+      "latency_s": 0.0,
+      "images_saved": 246,
+      "repeated_steps": 1,
+      "missing_steps": 0,
+      "repeated_pct": 0.41,
+      "age_ms": {
+        "median": 15.9,
+        "p95": 36.0
+      }
+    }
+  },
+  "skew_ms": {
+    "median": 10.6,
+    "p95": 31.5,
+    "max": 192.7
+  },
+  "extras": {
+    "motors": {
+      "missing_steps": 0,
+      "repeated_steps": 0,
+      "age_ms": {
+        "median": 13.0,
+        "p95": 34.3
+      }
+    }
+  },
+  "writer_error": null
+}

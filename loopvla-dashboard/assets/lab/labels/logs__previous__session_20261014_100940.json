@@ -1,0 +1,21 @@
+{
+  "name": "logs__previous__session_20261014_100940",
+  "path": "Neil LabAI-recorder/logs/previous/session_20261014_100940",
+  "kind": "session",
+  "task": "pick up the cup",
+  "duration_s": 5.2,
+  "label": null,
+  "success": false,
+  "confidence": 0.95,
+  "failure_category": "did_not_reach_cup",
+  "reason": "Throughout all front frames (0\u20135.1 s) no cup appears in front of the robot; it only creeps forward over an empty table, and arm (4\u00b0) and gripper (-65\u00b0) encoders never change, so nothing was grasped.",
+  "cup_final_state": "out_of_view",
+  "key_frame_s": 5.1,
+  "model": "claude-opus-5-5",
+  "usage": {
+    "input_tokens": 5900,
+    "output_tokens": 541,
+    "cost_usd": 0.0471544
+  },
+  "backend": "claude-code"
+}

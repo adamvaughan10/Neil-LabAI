@@ -1,0 +1,66 @@
+{
+  "server": "http://127.0.0.1:8020",
+  "server_info": {
+    "policy": "smolvla",
+    "checkpoint": "lerobot/smolvla_base",
+    "device": "cpu",
+    "input_features": {
+      "observation.state": [
+        6
+      ],
+      "observation.images.camera1": [
+        3,
+        256,
+        256
+      ],
+      "observation.images.camera2": [
+        3,
+        256,
+        256
+      ],
+      "observation.images.camera3": [
+        3,
+        256,
+        256
+      ]
+    },
+    "action_dim": 6,
+    "chunk_size": 50,
+    "served": 0
+  },
+  "spec": {
+    "task": "pick up the cup",
+    "images": {
+      "observation.images.camera1": {
+        "camera": "pi",
+        "rotation": 0
+      },
+      "observation.images.camera2": {
+        "camera": "external",
+        "rotation": 0
+      }
+    },
+    "state": [
+      "left_wheel.pos_deg",
+      "right_wheel.pos_deg",
+      "gripper.pos_deg",
+      "arm.pos_deg",
+      "const:0",
+      "const:0"
+    ],
+    "action": [
+      "out.0",
+      "out.1",
+      "out.2",
+      "out.3",
+      "out.4",
+      "out.5"
+    ]
+  },
+  "task": "pick up the cup",
+  "mode": "async",
+  "refill_at": 25,
+  "actions_per_chunk": null,
+  "replay": "logs/session_20261014_105424",
+  "dry_run": true
+}

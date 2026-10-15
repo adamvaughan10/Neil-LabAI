@@ -45,18 +45,22 @@
       <circle cx="20" cy="20" r="5" fill="#e0218a"/></svg>
     <span>Loop<b>VLA</b></span>
   </div>
-  <div class="mode lg" id="modeSwitch"><div class="knob" id="modeKnob"></div><button class="on" data-mode="pitch">Pitch</button><button data-mode="lab">Lab</button></div>
   <nav class="tabs lg">
     <div class="tab-pill" id="tabPill"></div>
-    <button class="tab on" data-view="loop">Loop</button>
-    <button class="tab" data-view="flow">Workflow</button>
-    <button class="tab" data-view="data">Data</button>
-    <button class="tab" data-view="brain">Brain</button>
-    <button class="tab" data-view="impact">Impact</button>
-    <button class="tab lab-tab" data-view="ops">Live loop</button>
-    <button class="tab lab-tab" data-view="runs">Runs</button>
-    <button class="tab lab-tab" data-view="labels">Labels</button>
-    <button class="tab lab-tab" data-view="models">Models</button>
+    <button class="tab on" data-view="overview">Overview</button>
+    <button class="tab" data-view="ops">Live</button>
+    <button class="tab" data-view="runs">Runs</button>
+    <button class="tab" data-view="analysis">Analysis</button>
+    <button class="tab" data-view="labels">Labels</button>
+    <button class="tab" data-view="jobs">Jobs</button>
+    <button class="tab" data-view="models">Models</button>
+  </nav>
+  <nav class="subtabs lg" aria-label="Overview pages">
+    <button class="sub on" data-view="loop">Loop</button>
+    <button class="sub" data-view="flow">Workflow</button>
+    <button class="sub" data-view="data">Data</button>
+    <button class="sub" data-view="brain">Brain</button>
+    <button class="sub" data-view="impact">Impact</button>
   </nav>
   <div class="right">
     <div class="live-pill lg"><i></i>Live</div>
@@ -238,8 +242,8 @@
   <div class="wrap">
     <div class="lab-head">
       <div><h2>Every <em>run</em>, step by step.</h2>
-        <p>The 97 teleoperated demos and the 5 VLA rollouts. Scrub through a run and compare what the model asked for, what reached the motors, and what the motors did.</p></div>
-      <div class="chips lg" id="rf"><button class="chip on" data-rf="all">All</button><button class="chip" data-rf="r">VLA rollouts</button><button class="chip" data-rf="d">Demos</button></div>
+        <p>97 teleoperated demos, 5 VLA rollouts and 9 pipeline tests. Scrub through a run, compare what the model asked for with what reached the motors and what the motors did, and open the original files.</p></div>
+      <div class="chips lg" id="rf"><button class="chip on" data-rf="all">All</button><button class="chip" data-rf="r">VLA rollouts</button><button class="chip" data-rf="d">Demos</button><button class="chip" data-rf="p">Pipeline tests</button></div>
     </div>
     <div class="runs2">
       <aside class="pane lg"><div class="rlist" id="rlist"></div></aside>
@@ -263,7 +267,44 @@
           <article class="pane lg"><h3>Run statistics <small>from the motor log</small></h3><div class="tiles" id="r-stats"></div></article>
           <article class="pane lg"><h3 id="r-side-h">Control loop timing</h3><div id="r-side"></div></article>
         </div>
+        <article class="pane lg"><h3>Original files and logs <small id="r-files-sub">—</small></h3><div id="r-files"></div></article>
       </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ================= ANALYSIS ================= -->
+<section class="view lab-view" id="v-analysis">
+  <div class="wrap">
+    <div class="lab-head">
+      <div><h2>Many runs <em>at once.</em></h2>
+        <p>Pick two groups of runs and compare them: timing, success, and every run's motor curves on one chart. Align the curves at the moment the gripper closes to see what happens around the grasp.</p></div>
+    </div>
+    <article class="pane lg">
+      <div class="cols-half" style="gap:16px">
+        <div class="fld">Group A <span class="sw a"></span><select id="an-a"></select></div>
+        <div class="fld">Group B <span class="sw b"></span><select id="an-b"></select></div>
+      </div>
+      <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:center;margin-top:12px;font-size:14px;font-weight:800">
+        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="an-align"> Align at gripper close</label>
+        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="an-each" checked> Show every run</label>
+        <span class="muted" id="an-n"></span>
+      </div>
+    </article>
+    <div class="cols-half">
+      <article class="pane lg"><h3>A vs. B <small>medians, with the middle half in brackets</small></h3><div class="tbl-wrap"><table class="t2" id="an-table"></table></div></article>
+      <article class="pane lg"><h3>Time to close the gripper <small>one dot per run</small></h3><canvas class="plain" id="an-dots" height="230"></canvas>
+        <div class="legend2"><span><i class="la"></i>Group A</span><span><i class="lb"></i>Group B</span><span>Bar: median</span></div></article>
+    </div>
+    <article class="pane lg"><h3>Motor curves <small id="an-curves-sub">thin: each run · thick: median</small></h3>
+      <div class="chans" id="an-chans"></div></article>
+    <div class="cols-half">
+      <article class="pane lg"><h3>Every run in A and B <small>click a row to open it in Runs</small></h3>
+        <div class="tbl-wrap" style="max-height:420px;overflow-y:auto"><table class="t2" id="an-runs"></table></div>
+        <div style="display:flex;gap:8px;margin-top:10px;align-items:center"><button class="btn2" id="an-csv">Copy as CSV</button><span class="muted" id="an-msg" style="font-size:13px;font-weight:800"></span></div></article>
+      <article class="pane lg"><h3>Policy server speed <small>pipeline tests, 14 Oct · inference.jsonl</small></h3>
+        <canvas class="plain" id="an-lat" height="200"></canvas><div id="an-lat-note"></div></article>
     </div>
   </div>
 </section>
@@ -305,28 +346,44 @@
   </div>
 </section>
 
-<!-- ================= LAB 9. MODELS ================= -->
+
+<!-- ================= JOBS ================= -->
+<section class="view lab-view" id="v-jobs">
+  <div class="wrap">
+    <div class="lab-head">
+      <div><h2>What runs <em>next.</em></h2>
+        <p>Queue the next recording, labeling, training or evaluation job. Each job is the exact command for this repo; copy it to the laptop or to Athena, then mark it running and done here. The queue is saved in this browser.</p></div>
+    </div>
+    <article class="pane lg"><h3>Suggested from the data <small>what the logs say to do next</small></h3><div class="sugg" id="jb-sugg"></div></article>
+    <div class="cols-2">
+      <article class="pane lg">
+        <h3>New job</h3>
+        <div class="chips lg" id="jb-types" style="margin-bottom:14px"></div>
+        <div class="form2" id="jb-form"></div>
+        <p class="eyebrow2">Command</p>
+        <div class="cmd" id="jb-cmd"></div>
+        <div style="display:flex;gap:8px;margin-top:12px;align-items:center;flex-wrap:wrap"><button class="btn2 primary" id="jb-add">Add to queue</button><button class="btn2" id="jb-copy">Copy command</button><span class="muted" id="jb-msg" style="font-size:13px;font-weight:800"></span></div>
+      </article>
+      <article class="pane lg">
+        <h3>Queue <small id="jb-count">—</small></h3>
+        <div class="queue" id="jb-queue"></div>
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn2" id="jb-script">Copy queued jobs as one script</button><button class="btn2" id="jb-clear">Remove finished</button></div>
+      </article>
+    </div>
+    <article class="pane lg"><h3>History <small>jobs that already ran, from the repo and the logs</small></h3><div class="tbl-wrap"><table class="t2" id="jb-hist"></table></div></article>
+  </div>
+</section>
+
+<!-- ================= MODELS ================= -->
 <section class="view lab-view" id="v-models">
   <div class="wrap">
     <div class="lab-head">
       <div><h2>Every <em>brain</em> Neil has run.</h2>
-        <p>Model versions, how they did on the robot, and how the newest one compares with the human demos it learned from.</p></div>
+        <p>Model versions, how they did on the robot, and how the one in production compares with the human demos it learned from.</p></div>
     </div>
     <div class="mcards" id="m-cards"></div>
-    <div class="cols-half">
-      <article class="pane lg"><h3>v2 on Neil vs. the human demos <small>all measured</small></h3><div class="tbl-wrap"><table class="t2" id="m-vs"></table></div>
-        <p class="muted" style="font-size:13px;font-weight:700;margin:8px 4px 0">v2: the 5 rollouts on 15 Oct. Demos: the 97 teleoperated demos from 14 Oct (motor log) and Claude's 50 verdicts on them.</p></article>
-      <article class="pane lg"><h3>Training jobs <small>Athena · lerobot 0.6.1 · SmolVLA</small></h3>
-        <div class="tbl-wrap"><table class="t2" id="m-jobs"></table></div>
-        <div class="form2" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-top:12px">
-          <label class="fld">Start from<select id="j-base"><option>lerobot/smolvla_base</option><option>v2 · handoff_pick_cup_pos2</option><option selected>v3 · pick_cup_angle_182076</option></select></label>
-          <label class="fld">Steps<input type="number" id="j-steps" value="10000" min="200" step="1000"></label>
-          <label class="fld">Batch<input type="number" id="j-batch" value="64" min="8" step="8"></label>
-        </div>
-        <div class="cmd" id="j-cmd" style="margin-top:12px"></div>
-        <div style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap"><button class="btn2 primary" id="j-go">Queue job</button><button class="btn2" id="j-copy">Copy command</button><span class="muted" id="j-msg" style="font-size:13px;font-weight:800"></span></div>
-      </article>
-    </div>
+    <article class="pane lg"><h3>v2 on Neil vs. the human demos <small>all measured</small></h3><div class="tbl-wrap"><table class="t2" id="m-vs"></table></div>
+      <p class="muted" style="font-size:13px;font-weight:700;margin:8px 4px 0">v2: the 5 rollouts on 15 Oct. Demos: the 97 teleoperated demos from 14 Oct (motor log) and Claude's 50 verdicts on them. Group-by-group comparisons are in Analysis.</p></article>
   </div>
 </section>
 

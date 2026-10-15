@@ -1,0 +1,43 @@
+{
+  "server": "http://127.0.0.1:8010",
+  "server_info": {
+    "policy": "dummy",
+    "checkpoint": null,
+    "device": "cpu",
+    "input_features": {},
+    "action_dim": 4,
+    "chunk_size": 50,
+    "served": 0
+  },
+  "spec": {
+    "task": "kick the ball",
+    "images": {
+      "observation.images.pi": {
+        "camera": "pi",
+        "rotation": 0
+      },
+      "observation.images.external": {
+        "camera": "external",
+        "rotation": 0
+      }
+    },
+    "state": [
+      "left_wheel.pos_deg",
+      "right_wheel.pos_deg",
+      "gripper.pos_deg",
+      "arm.pos_deg"
+    ],
+    "action": [
+      "left_wheel.pos_deg",
+      "right_wheel.pos_deg",
+      "gripper.pos_deg",
+      "arm.pos_deg"
+    ]
+  },
+  "task": "kick the ball",
+  "mode": "sync",
+  "refill_at": 0,
+  "actions_per_chunk": null,
+  "replay": "logs/session_20261013_144751",
+  "dry_run": true
+}

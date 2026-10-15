@@ -1,0 +1,21 @@
+{
+  "name": "logs__all_sessions__first_position__session_20261014_110724",
+  "path": "Neil LabAI-recorder/logs/all sessions/first position/session_20261014_110724",
+  "kind": "session",
+  "task": "pick up the cup",
+  "duration_s": 8.4,
+  "label": null,
+  "success": true,
+  "confidence": 0.88,
+  "failure_category": "none",
+  "reason": "The robot drove until the cup was between its jaws (2.4\u20134.7s) and closed the gripper to -56 by 5.9s. It then raised the arm to -24. At 7.1\u20138.3s the cup sits tilted in the jaws in the top view, and in the front view it fills the frame with the magenta gripper at the bottom.",
+  "cup_final_state": "held_lifted",
+  "key_frame_s": 8.3,
+  "model": "claude-opus-5-5",
+  "usage": {
+    "input_tokens": 8413,
+    "output_tokens": 347,
+    "cost_usd": 0.0633784
+  },
+  "backend": "claude-code"
+}
