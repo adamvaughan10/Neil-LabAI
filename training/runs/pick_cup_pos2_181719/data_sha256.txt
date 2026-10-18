@@ -1,0 +1,7 @@
+b4a6252fd50745dfb67717ffe1a2f88fd194ddca2ebb2bcbb4661348f9293d4f  ./data/chunk-000/file-000.parquet
+dce6772169fb146419eb333ea4a19d67660b509b6f67c6ac85498b75f55abf16  ./meta/episodes/chunk-000/file-000.parquet
+07c45200c1e074176268ad2983aa89d42000349ead9b38a4d59d2ca111c4123d  ./meta/info.json
+9beac5f3e1965ea7aca101fbdbdac7dd1a5691eb86fb340a62a4ecafc11ad1db  ./meta/stats.json
+22ad3c51d714aaa7769bbbf5c02ea2fb644c0ee1463b2c96a4636bab38a1a9de  ./meta/tasks.parquet
+fb6bc643ed0f847b564547488f32cdb38680ca43d3d24d4a2399176650fa9cec  ./videos/observation.images.camera1/chunk-000/file-000.mp4
+3adbf30231dc629273f7a4272dbbc3dda604b20f0bcc3bab4c6c93a21db38d70  ./videos/observation.images.camera2/chunk-000/file-000.mp4
