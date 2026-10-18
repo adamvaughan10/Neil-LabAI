@@ -73,6 +73,11 @@ MOTOR_STREAM_LATENCY_S = float(os.getenv("MOTOR_STREAM_LATENCY_S", "0"))
 # Synced recording rate. 15 fps is the highest where both cameras deliver a new frame
 # on (nearly) every step: the external camera tops out around 26 fps, with jitter.
 RECORD_FPS = float(os.getenv("RECORD_FPS", "15"))
+# Videos of policy runs (neil_robot/run_video.py), for people to watch. They have their own
+# rate, so the policy can keep the step rate it was trained at (pick_cup: 10 fps). 30 fps is the
+# Pi stream's own rate; the external camera's ~26 fps repeats about 1 frame in 8. Recordings
+# for training (sessions) keep one video frame per step.
+RUN_VIDEO_FPS = float(os.getenv("RUN_VIDEO_FPS", "30"))
 STREAM_CONNECT_TIMEOUT = float(os.getenv("STREAM_CONNECT_TIMEOUT", "10"))
 
 _ROOT =Path(__file__).resolve().parent.parent

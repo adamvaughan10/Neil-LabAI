@@ -118,6 +118,13 @@ Each run is also a recording, in `logs/run_<date>_<time>/`: the usual files, plu
 and `"policy"` in every `steps.jsonl` line, `inference.jsonl` (one line per request: latency,
 skipped actions) and `policy.json` (server, spec and settings).
 
+**A run's videos** (`pi.mp4`, `external.mp4`, `combined.mp4`) are at 30 fps (`RUN_VIDEO_FPS`,
+`--video-fps`), not one frame per step (15 fps, or the `pick_cup` data's 10 with `--fps 10`), which
+is too choppy to watch. `video.json` says how many frames each camera repeated. They're H.264 if
+the OpenCV build has it, else MPEG-4. The policy's inputs are still the per-step images.
+`inference_kit/run_policy.py` does the same, into `inference_kit/runs/run_<date>_<time>/`.
+Recordings for training keep one video frame per step.
+
 **Dry run for now:** actions are logged, never sent to the motors. Driving them needs a
 Pi-side controller that owns the Build HAT and streams motor state at the same time.
 
@@ -155,6 +162,7 @@ neil_robot/
   streams.py     live MJPEG streams: Pi camera (server started on the Pi) and the external camera
   video.py       turns frames into video.mp4 + frames/
   recorder.py    synced recording at a fixed rate; on_step lets a live consumer see every step
+  run_video.py   a policy run's videos: the cameras at 30 fps, apart from the policy's step rate
   observation.py recorder step -> policy observation (the observation spec)
   policy_client.py   HTTP client for the policy server
   policy_runner.py   real-time loop: observations out, action chunks back, queue + logging

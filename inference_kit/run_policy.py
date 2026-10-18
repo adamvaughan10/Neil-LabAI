@@ -5,14 +5,20 @@
 The model runs on this laptop (Apple GPU "mps", NVIDIA "cuda", or "cpu"). Every 50
 frames it plans the next 50 commands, which can take 1 to 2 s on a small laptop;
 the wheels stop during that pause. Press Ctrl+C to stop the robot at any time.
+A video of the run, for people to watch, goes to runs/run_<date>_<time>/ at 30 frames
+per second (--video-fps); the model itself still runs at FPS (10).
 NOT YET TESTED ON NEIL.
 """
 import argparse
 import time
+from pathlib import Path
 
 import torch
 
 from neil_io import FPS, Bridge, open_cameras, state_vector
+from run_video import RUN_VIDEO_FPS, RunVideo
+
+RUNS = Path(__file__).resolve().parent / "runs"
 
 
 def main():
@@ -22,6 +28,8 @@ def main():
     default_device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
     ap.add_argument("--device", default=default_device)
     ap.add_argument("--seconds", type=float, default=60)
+    ap.add_argument("--video-fps", type=float, default=RUN_VIDEO_FPS,
+                    help=f"frames per second of the video of the run, to watch (default {RUN_VIDEO_FPS}; 0: no video)")
     args = ap.parse_args()
 
     from lerobot.common.control_utils import predict_action
@@ -39,7 +47,11 @@ def main():
     state = bridge.hold()  # read the start pose without moving
     print("Start state (left, right, arm, grip):", state_vector(state).tolist())
     t_end = time.time() + args.seconds
+    video = None
     try:
+        if args.video_fps:
+            video = RunVideo({"front": front, "top": top}, RUNS / time.strftime("run_%Y%m%d_%H%M%S"),
+                             args.video_fps).start()
         while time.time() < t_end:
             t0 = time.time()
             obs = {
@@ -56,7 +68,12 @@ def main():
     except KeyboardInterrupt:
         pass
     finally:
-        bridge.stop()
+        try:
+            bridge.stop()  # the robot first
+        finally:
+            if video:
+                video.stop()
+                print(f"\nVideo of the run: {video.out_dir / 'side_by_side.mp4'}")
 
 
 if __name__ == "__main__":

@@ -1,5 +1,6 @@
 model/
 data/
+runs/
 .venv/
 __pycache__/
 style/

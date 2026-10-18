@@ -11,8 +11,10 @@ Start the policy server first (in the neil_vla env, see policy_server/README.md)
     python scripts/run_policy.py --server http://127.0.0.1:8001 --task "pick up the cup"
 
 Everything is recorded like stream_cameras.py does, into logs/run_<date>_<time>/:
-    pi/ external/ steps.jsonl info.json *.mp4    as a normal recording, plus per step
+    pi/ external/ steps.jsonl info.json          as a normal recording, plus per step
                                                  "action" (or null while waiting) and "policy"
+    pi.mp4 external.mp4 combined.mp4             the cameras at 30 fps (--video-fps), to watch:
+                                                 not one frame per step (video.json: repeats)
     inference.jsonl                              one line per request: latency, skipped actions
     policy.json                                  server info, observation spec, run settings
 """
@@ -32,6 +34,7 @@ from neil_robot.policy_client import DEFAULT_URL, PolicyClient, PolicyServerErro
 from neil_robot.policy_runner import PolicyRunner  # noqa: E402
 from neil_robot.recorder import SyncRecorder  # noqa: E402
 from neil_robot.replay import ReplaySession  # noqa: E402
+from neil_robot.run_video import RunVideo  # noqa: E402
 from neil_robot.streams import ExternalCameraStream, PiCameraStream  # noqa: E402
 
 
@@ -62,7 +65,9 @@ def main() -> int:
     ap.add_argument("--seconds", type=float, help="stop after this long (default: until Ctrl+C; replay: its length)")
     ap.add_argument("--fps", type=float, help="steps per second (default 15; replay: its own rate)")
     ap.add_argument("--replay", metavar="SESSION_DIR", help="use a recorded session instead of the robot")
-    ap.add_argument("--no-videos", action="store_true", help="don't make mp4s at the end")
+    ap.add_argument("--video-fps", type=float, default=config.RUN_VIDEO_FPS,
+                    help=f"frames per second of the mp4s, to watch (default {config.RUN_VIDEO_FPS:g})")
+    ap.add_argument("--no-videos", action="store_true", help="don't make mp4s")
     ap.add_argument("--allow-missing-images", action="store_true",
                     help="run even if the policy has image inputs the spec doesn't fill (testing only)")
     args = ap.parse_args()
@@ -100,7 +105,7 @@ def main() -> int:
     args.fps = args.fps or config.RECORD_FPS
 
     started = []
-    runner = rec = None
+    runner = rec = video = None
     try:
         for name, s in streams.items():
             print(f"Connecting to {name} camera ({s.url}) ...")
@@ -118,8 +123,9 @@ def main() -> int:
         runner = PolicyRunner(client, spec, mode=args.mode, refill_at=args.refill_at,
                               actions_per_chunk=args.actions_per_chunk, task=args.task)
         out_dir = config.LOGS_DIR / f"run_{time.strftime('%Y%m%d_%H%M%S')}"
+        # The mp4s come from RunVideo, at their own rate, not one frame per step.
         rec = SyncRecorder(streams, fps=args.fps, out_dir=out_dir, extras={"motors": motor_step} if motors else None,
-                           make_videos=not args.no_videos, on_step=runner.on_step)
+                           make_videos=False, on_step=runner.on_step)
         out_dir.mkdir(parents=True, exist_ok=True)
         (out_dir / "policy.json").write_text(json.dumps(
             {"server": args.server, "server_info": info, "spec": spec.to_dict(), "task": args.task or spec.task,
@@ -129,6 +135,8 @@ def main() -> int:
         if args.replay:
             session.t0 = clock.now() + 0.05  # the recorder's first tick: replay from step 0
         rec.start()
+        if args.video_fps and not args.no_videos:
+            video = RunVideo(streams, out_dir, fps=args.video_fps).start()
         print(f"Running ({args.mode}, DRY RUN: nothing moves) -> {out_dir}   Ctrl+C stops")
         try:
             while args.seconds is None or rec.elapsed < args.seconds:
@@ -142,6 +150,7 @@ def main() -> int:
             pass
         print("Stopping ...")
         rec, summary = None, rec.stop()  # first, so no steps are added after the end
+        video, video_summary = None, video.stop() if video else None
         runner.stop()                    # waits for a request still in flight, to log it
         lats = sorted(runner.latencies_ms)
         held = sum(1 for l in (out_dir / "steps.jsonl").read_text(encoding="utf-8").splitlines()
@@ -151,6 +160,9 @@ def main() -> int:
               f"{summary['steps']} steps, no chunk received ({runner.errors} failed requests); ",
               end="")
         print(f"{held} steps held while waiting.\nSaved to {out_dir}")
+        if video_summary:
+            print(f"Video at {video_summary['fps']:g} fps: {out_dir / 'combined.mp4'}"
+                  + (f"  ERROR: {video_summary['error']}" if video_summary["error"] else ""))
         return 0 if lats else 1
     except Exception as exc:  # noqa: BLE001
         print(f"Failed: {exc}")
@@ -160,6 +172,8 @@ def main() -> int:
             runner.stop()
         if rec:
             rec.stop()
+        if video:
+            video.stop()
         for s in started:
             s.stop()
         if motors:

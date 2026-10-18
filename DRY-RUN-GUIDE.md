@@ -20,7 +20,9 @@ Two programs, in two terminals:
 | `scripts/run_policy.py` | `neil_robot` | Reads Neil's cameras and motors, sends them to the server, logs the actions |
 
 Each run is saved in `logs/run_<date>_<time>/`: the camera images, `steps.jsonl` (with the model's
-action for each step), `inference.jsonl` (how long each request took) and the videos.
+action for each step), `inference.jsonl` (how long each request took) and the videos. The videos
+have 30 frames per second, smoother than the 15 steps per second the model gets; `combined.mp4`
+shows both cameras.
 
 ---
 
