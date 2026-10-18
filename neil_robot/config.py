@@ -38,6 +38,10 @@ ARM_SPEED_MIN, ARM_SPEED_MAX = 5, 15
 ARM_TEST_DEGREES = int(os.getenv("ARM_TEST_DEGREES", "30"))
 ARM_TEST_SPEED = int(os.getenv("ARM_TEST_SPEED", "10"))
 
+# ── gripper (port C) ──────────────────────────────────────────────────────────
+# As in lego-robot-mcp (control_gripper): a negative motor turn opens the gripper.
+GRIPPER_MOTOR_SIGN_OPEN = -1
+
 # ── camera (Pi Camera v1, OV5647) ─────────────────────────────────────────────
 CAMERA_WIDTH = int(os.getenv("CAMERA_WIDTH", "1296"))
 CAMERA_HEIGHT = int(os.getenv("CAMERA_HEIGHT", "972"))

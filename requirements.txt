@@ -2,3 +2,4 @@
 paramiko>=3.4
 opencv-python>=4.9
 numpy
+hidapi==0.15.0  # gamepad.py

@@ -60,6 +60,11 @@ Then run any script. Add `--help` to see its options.
 | `python scripts\sequence_test.py` | **yes** | Forward 0.5 s, backward 0.5 s, then arm up 30° and back down. Prints how far each motor turned. |
 | `python scripts\arm_test.py` | **yes** | Lowers the arm 30° and raises it back while recording video. |
 | `python scripts\motor_test.py` | **yes** | Turns each port 30° and back, asking before each. |
+| `python gamepad.py` | no | Prints the USB gamepad's D-pad and buttons live. |
+| `python scripts\gamepad_drive.py` | **yes** | Drives the robot from the gamepad: D-pad drives and rotates while held, X/B move the arm and Y/A the gripper a fixed angle per press. The Pi side is `pi/gamepad_server.py`. |
+| `python scripts\gamepad_drive.py --record` | **yes** | Same, and records the whole run as a synced recording (below) with the controller's target as `"action"` on every step. Ctrl-C stops and saves. |
+| `python scripts\record_replay.py` | **yes** | Records a session with `gamepad_drive.py --record` (Ctrl-C ends it), then replays it with `replay_session.py` and prints how closely it matched. |
+| `python scripts\replay_session.py logs\session_<date>_<time>` | **yes** | Re-sends a recorded session's Build HAT calls at their recorded times (`pi/replay_server.py` times them on the Pi), then compares the motors' measured speed and angle with the recording and saves `report.json` under `<session>\replays\`. `--dry-run` only lists the calls. |
 | `python scripts\run_policy.py` | no (dry run) | Runs a VLA policy in real time: every step's images and motor state go to the policy server, action chunks come back and are logged. `--replay <session>` runs it on a recording, without the robot. See below. |
 
 Before running anything that moves: lift the robot so the wheels spin freely (or give it about 30 cm of room)
@@ -101,6 +106,25 @@ second without driving them, and every step gets a `"motors"` entry:
 powered up), `abs_pos_deg` (-180..180) and `speed`, plus the reading's `age_ms`. `--no-motors`
 records cameras only. Only one program can use the Build HAT at a time: recording with motors
 fails with "HAT not found" while anything else (a gamepad driver, a motor test) has it open.
+
+**Recording while driving: `gamepad_drive.py --record`.** Same recording, but the motor readings come
+from the gamepad driver itself (`pi/gamepad_server.py`, 50 a second), and every step also gets
+`"action"`: the target the controller has set, formatted exactly like `"motors"` (same keys, raw motor
+terms, `seq` counts the controller's changes, `age_ms` is how long ago it last changed). Wheels are
+speed controlled, so their action has `speed` and `pos_deg: null`; the arm and gripper are angle
+controlled (one step per press), so theirs has `pos_deg` (the target encoder angle) and `speed: null`.
+`abs_pos_deg` is always null in the action.
+Every step also gets `"hat_commands"`: the Build HAT calls the Pi actually made, after the reverse delay
+and the arm's sag correction, in the `"motors"` format plus `degrees` and `call`. Wheels: `speed` is the
+speed the HAT is running them at (0 after `stop`). Arm and gripper: `degrees` sums every
+`run_for_degrees` made since the previous step (0 when none). `"new"` lists each call with its time.
+
+**For VLA training:** `python scripts\session_to_episode.py logs\session_* --out episodes` turns sessions into two
+datasets, `episodes\target` and `episodes\buttons` (`--action target hat buttons` picks which); it turns sessions into the SmolVLA pipeline's episode folders (DATA-CONTRACT.md, 10 fps,
+robot terms). Both actions are kept in every line as `target` and `hat`; `--action` picks which one
+goes in `action`. Every step of a recording also has `"gamepad"`: `vector` = `[dpad_x, dpad_y, X, A, B, Y]`
+(D-pad -1/0/1, + = right / up; a button is 1 if pressed at any moment since the previous step), which
+`--action buttons` uses (set the pipeline's `ACTION_FIELDS` to `dpad_x, dpad_y, x, a, b, y`).
 
 ### Running a VLA policy in real time
 
