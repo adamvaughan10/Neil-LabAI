@@ -6,5 +6,10 @@ logs/
 logs
 .env
 episodes/
+models/
 .DS_Store
 *.zip
+*.mp4
+*.safetensors
+vla_tests_*/
+presentation_media/

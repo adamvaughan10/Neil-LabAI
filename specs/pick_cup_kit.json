@@ -1,0 +1,11 @@
+{
+  "_comment": "The inference kit's pick_cup model (job 181436), fed as inference_kit/neil_io.py does: camera1 = Pi (front), camera2 = iPhone (top), state = [left wheel speed, right wheel speed, arm angle, gripper angle] in robot terms (+ forward / + arm down / + gripper open). Action = [left speed, right speed, arm target angle, gripper target angle], the commands pi_bridge.py takes. The model's config lists camera3 and a 6-value state (left over from smolvla_base); its normaliser has 4 state values, so 4 are sent.",
+  "task": "pick up the cup",
+  "images": {"observation.images.camera1": {"camera": "pi", "rotation": 0},
+             "observation.images.camera2": {"camera": "external", "rotation": 0}},
+  "state": ["-left_wheel.speed", "right_wheel.speed", "-arm.pos_deg", "-gripper.pos_deg"],
+  "action": ["left", "right", "arm_pos", "grip_pos"],
+  "action_mode": "v1",
+  "start_pose": [2, -15],
+  "checkpoint": "inference_kit/model"
+}
