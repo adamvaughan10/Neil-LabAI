@@ -106,13 +106,16 @@ class LeRobotPolicy:
         for key, img in images.items():
             if key not in self.input_features:
                 continue  # a camera the policy wasn't trained with
-            _, h, w = self.input_features[key]
-            img = resize(img, h, w)
+            if self.name != "smolvla":  # SmolVLA resizes with padding itself, keeping the aspect ratio
+                _, h, w = self.input_features[key]
+                img = resize(img, h, w)
             obs[key] = torch.from_numpy(img).permute(2, 0, 1).float().div(255).unsqueeze(0)
         if "observation.state" in self.input_features:
             want = self.input_features["observation.state"][0]
-            if state.shape[0] != want:
-                raise ValueError(f"policy needs a state of {want} values; got {state.shape[0]}")
+            # Shorter is fine: SmolVLA pads the state itself, and a fine-tuned checkpoint's
+            # config can keep the base model's longer size while its normaliser has the real one.
+            if state.shape[0] > want:
+                raise ValueError(f"policy takes a state of at most {want} values; got {state.shape[0]}")
             obs["observation.state"] = torch.from_numpy(state).float().unsqueeze(0)
         with torch.inference_mode():
             if self.pre is not None:          # lerobot >= 0.4: processors normalise and tokenise

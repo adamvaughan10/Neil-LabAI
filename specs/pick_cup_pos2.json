@@ -1,0 +1,13 @@
+{
+  "_comment": "models/handoff_pick_cup_pos2 (job 181719), per its README: cameras as pick_cup_kit.json; state = [left wheel speed, right wheel speed, -(arm.abs_pos_deg - 14), -(gripper.abs_pos_deg + 93)]; action = [left wheel degrees to go, right wheel degrees to go, arm target, gripper target] on the state's scale. action_range is the training min/max of each action value; start_pose is the open-gripper, low-arm pose its demos start in.",
+  "task": "pick up the cup",
+  "images": {"observation.images.camera1": {"camera": "pi", "rotation": 0},
+             "observation.images.camera2": {"camera": "external", "rotation": 0}},
+  "state": ["-left_wheel.speed", "right_wheel.speed", "-arm.abs_pos_deg+14", "-gripper.abs_pos_deg-93"],
+  "action": ["left_deg_to_go", "right_deg_to_go", "arm_pos", "grip_pos"],
+  "action_mode": "delta",
+  "action_range": [[-67, -110, -19, -81], [106, 80, 3, 5]],
+  "start_pose": [2, -23],
+  "abs_zero": [14, -93],
+  "checkpoint": "models/handoff_pick_cup_pos2/pretrained_model"
+}

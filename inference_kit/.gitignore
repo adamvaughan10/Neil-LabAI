@@ -1,6 +1,9 @@
 model/
 data/
-runs/
 .venv/
 __pycache__/
 style/
+runs/
+*.orig
+*.before_*
+*.jpg
