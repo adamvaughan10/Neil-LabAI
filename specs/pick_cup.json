@@ -1,0 +1,8 @@
+{
+  "_comment": "Fine-tuned pick_cup model. State as session_to_episode.py builds it: wheel speeds and arm/gripper encoder degrees in robot terms (+ forward / + arm down / + gripper open), so the mounting sign flips are applied here. Cameras: front = Pi, top = iPhone. Action is [left, right, arm, grip] (--action target) unless the checkpoint says otherwise.",
+  "task": "pick up the cup",
+  "images": {"observation.images.front": {"camera": "pi", "rotation": 0},
+             "observation.images.top": {"camera": "external", "rotation": 0}},
+  "state": ["-left_wheel.speed", "right_wheel.speed", "-arm.pos_deg", "-gripper.pos_deg"],
+  "action": ["left", "right", "arm", "grip"]
+}

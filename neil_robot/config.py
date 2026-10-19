@@ -38,6 +38,10 @@ ARM_SPEED_MIN, ARM_SPEED_MAX = 5, 15
 ARM_TEST_DEGREES = int(os.getenv("ARM_TEST_DEGREES", "30"))
 ARM_TEST_SPEED = int(os.getenv("ARM_TEST_SPEED", "10"))
 
+# ── gripper (port C) ──────────────────────────────────────────────────────────
+# As in lego-robot-mcp (control_gripper): a negative motor turn opens the gripper.
+GRIPPER_MOTOR_SIGN_OPEN = -1
+
 # ── camera (Pi Camera v1, OV5647) ─────────────────────────────────────────────
 CAMERA_WIDTH = int(os.getenv("CAMERA_WIDTH", "1296"))
 CAMERA_HEIGHT = int(os.getenv("CAMERA_HEIGHT", "972"))
@@ -60,7 +64,7 @@ PI_STREAM_WIDTH = int(os.getenv("PI_STREAM_WIDTH", "640"))
 PI_STREAM_HEIGHT = int(os.getenv("PI_STREAM_HEIGHT", "480"))
 PI_STREAM_FPS = int(os.getenv("PI_STREAM_FPS", "30"))
 # External camera: a phone IP-camera app serving MJPEG (plain http, not https).
-EXTERNAL_CAMERA_URL = os.getenv("EXTERNAL_CAMERA_URL", "http://132.68.34.87:8080/stream.mjpg")
+EXTERNAL_CAMERA_URL = os.getenv("EXTERNAL_CAMERA_URL", "http://132.68.34.85:8080/stream.mjpg")
 EXTERNAL_CAMERA_ROTATION = int(os.getenv("EXTERNAL_CAMERA_ROTATION", "0"))  # clockwise: 0/90/180/270
 # Capture-to-arrival delay of each camera, subtracted from frame timestamps so frames
 # taken at the same moment get the same timestamp. 0 until calibrated.

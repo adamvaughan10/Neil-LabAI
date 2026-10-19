@@ -1,0 +1,13 @@
+{
+  "_comment": "models/pick_cup_angle_182076 (job 182076, dataset pick_cup_angle). It came without a README; this layout is read from its normaliser stats: state = [left wheel angle since the run started, right wheel angle since the run started (+ = forward), -arm.abs_pos_deg, -gripper.abs_pos_deg]; action = [left wheel target angle, right wheel target angle, arm target, gripper target] on the state's scale. Its arm and gripper ranges equal pick_cup_pos2's with abs_pos_deg negated, and its action minus state averages pick_cup_pos2's degrees-to-go. Each wheel turns by target - measured angle.",
+  "task": "pick up the cup",
+  "images": {"observation.images.camera1": {"camera": "pi", "rotation": 0},
+             "observation.images.camera2": {"camera": "external", "rotation": 0}},
+  "state": ["-left_wheel.pos_deg@start", "right_wheel.pos_deg@start", "-arm.abs_pos_deg", "-gripper.abs_pos_deg"],
+  "action": ["left_target_deg", "right_target_deg", "arm_pos", "grip_pos"],
+  "action_mode": "angle",
+  "action_range": [[-187, -227, -33, 12], [649, 503, -11, 98]],
+  "start_pose": [-12, 70],
+  "abs_zero": [0, 0],
+  "checkpoint": "models/pick_cup_angle_182076/pretrained_model"
+}
