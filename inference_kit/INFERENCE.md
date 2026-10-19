@@ -12,9 +12,11 @@ This guide lets a teammate run the trained model on Neil. The model looks at bot
 | `model/` | The trained model (7 files, about 900 MB). Training: 50 episodes, 10,000 steps, job 181436. Not in GitHub, because it is too large. Step 2.6 copies it from Athena. |
 | `run_policy.py` | Drives Neil with the model. Runs on the laptop. |
 | `neil_io.py` | Connects the laptop to Neil's motors and both cameras. Used by `run_policy.py`. |
+| `run_video.py` | Saves a video of each run, for people to watch. Used by `run_policy.py`. |
 | `pi_bridge.py` | Runs on Neil's Raspberry Pi. Moves the motors and sends the motor readings. |
 | `check_model.py` | Tests the model on recorded frames, with no robot. |
 | `data/pick_cup/` | The training data (94 MB). Only `check_model.py` needs it. Not in GitHub. Step 2.7 copies it from Athena. |
+| `runs/` | Your runs, one folder for each run: what the model saw and did at each step, and the videos. Made by `run_policy.py`. Not in GitHub. |
 
 ## 2. Install Python (once)
 
@@ -113,6 +115,8 @@ python run_policy.py --policy model --seconds 30
 2. While it runs, the last command is shown: left wheel, right wheel, arm target, gripper target.
 3. About every 5 seconds, Neil stops for 1 to 2 seconds. That is normal: the model plans the next commands. A faster laptop makes this pause shorter.
 4. To stop at any time, press Ctrl+C. The wheels stop, and the arm and gripper hold their position.
+5. At the end, the program prints where it saved the video of the run, for example `runs/run_20261020_101500/side_by_side.mp4`. It shows both cameras side by side. `front.mp4` and `top.mp4` in the same folder show one camera each.
+   The video has 30 frames per second, but the model still works at 10, like the recordings. Why: people watch the video, and 10 frames per second looks jerky. For no video, add `--video-fps 0`.
 
 > [!WARNING]
 > If Neil drives the wrong way, or the gripper opens when it should close, press Ctrl+C. Then tell the team which motor did it. The motor directions are set at the top of `pi_bridge.py`.

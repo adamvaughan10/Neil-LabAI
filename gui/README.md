@@ -40,4 +40,6 @@ Then open http://127.0.0.1:8090. Without Neil, a recording stands in for it (dry
 
 `logs/gui_run_<date>_<time>/`, like `scripts/run_policy.py`: the images of both cameras,
 `steps.jsonl` (motor state, the model's action, and the command it became), `inference.jsonl`
-(each request's latency) and `policy.json` (server, spec, task, caps).
+(each request's latency) and `policy.json` (server, spec, task, caps). Also videos to watch:
+`pi.mp4`, `external.mp4` and `combined.mp4` (both side by side), at 30 fps while the model runs at
+10 (`RUN_VIDEO_FPS`, 0 = none), with `video.json`.
