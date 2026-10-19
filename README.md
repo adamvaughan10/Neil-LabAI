@@ -13,15 +13,19 @@ so nothing has to be deployed to the Pi.
 3. **Make a LeRobot dataset** from the recordings: [Making the dataset](#making-the-dataset).
 4. **Fine-tune SmolVLA** on Athena (needs an Athena account): [`training/README.md`](training/README.md)
    and [`ATHENA-QUICK.md`](ATHENA-QUICK.md).
-5. **Run the model** on the robot: [`inference_kit/INFERENCE.md`](inference_kit/INFERENCE.md). To test
-   it without moving the robot: [`DRY-RUN-GUIDE.md`](DRY-RUN-GUIDE.md).
+5. **Run the model** on the robot, from the command line (`inference_kit/run_policy.py`) or the browser
+   panel (`gui/`), with a dry run first: [`RUN-MODELS.md`](RUN-MODELS.md). Put your model in
+   `models/<name>/pretrained_model/` and run it like `pick_cup_pos2`: `--action-mode delta` on the
+   command line, or the spec `specs/pick_cup_pos2.json` in the panel.
 
 > [!NOTE]
-> Not in this repo yet: the newer gamepad controller that recorded the `pick_cup_pos2` dataset (it
-> moves the wheels by angle instead of speed), and an inference kit that can run that model
-> (`inference_kit/pi_bridge.py` takes wheel speeds only). Recordings made with this repo's
-> `gamepad_drive.py` give the speed format of the first model (`pick_cup`, job 181436), which
-> `inference_kit/` runs.
+> `gamepad_drive.py` records the wheels in one of two formats, and a model trained on them runs in the
+> matching `--action-mode`:
+> - `--wheels angle`: the wheels turn in degree steps, and the action is the degrees each wheel still has
+>   to turn. This is the format of `pick_cup_pos2` (job 181719), the run `training/README.md` reproduces.
+>   Run with `--action-mode delta`. This README records in this format.
+> - `--wheels speed` (the default): the action is the wheel speeds, as in the first model, `pick_cup`
+>   (job 181436). Run with `--action-mode v1`.
 
 ## Hardware
 
@@ -68,74 +72,94 @@ Also needed:
 
 ### Laptop
 
-```bash
-conda create -n neil_robot python=3.11
-conda activate neil_robot
-pip install -r requirements.txt
-```
+Two Python 3.12 environments in the repo folder, made with [uv](https://docs.astral.sh/uv/):
+`.venv` drives and records the robot, and `.venv-vla` has LeRobot 0.6.1 (the training version) for
+converting recordings and running models. [`RUN-MODELS.md`](RUN-MODELS.md) and the panel use the same two.
+No uv yet: `curl -LsSf https://astral.sh/uv/install.sh | sh` (macOS / Linux), or on Windows
+`powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`.
 
-Converting recordings needs LeRobot, in a second env, `neil_vla`: see
-[`policy_server/README.md`](policy_server/README.md). The inference kit sets up its own
-(`inference_kit/INFERENCE.md`).
+```bash
+uv venv .venv --python 3.12
+uv pip install --python .venv -r requirements.txt
+uv venv .venv-vla --python 3.12
+uv pip install --python .venv-vla -r policy_server/requirements.txt
+```
 
 ### Addresses
 
-The defaults are the lab network the team used (`132.68.34.x`) and Neil's own Wi-Fi (`192.168.8.x`).
-In another lab, set these in every new terminal:
+Most defaults are addresses in the lab the team used before (`132.68.34.x`). In another lab, set these in
+every new terminal:
 
 | What | Default | Env var | Used by |
 |------|---------|---------|---------|
-| Pi | `132.68.34.107`, user `rpi` | `RPI_HOST`, `RPI_USER` | `scripts/` |
-| Phone camera | `http://132.68.34.87:8080/stream.mjpg` | `EXTERNAL_CAMERA_URL` | `scripts/` |
+| Pi | `132.68.34.107`, user `rpi` | `RPI_HOST`, `RPI_USER` | `scripts/`, `gui/` |
+| Phone camera | `http://132.68.34.85:8080/stream.mjpg` | `EXTERNAL_CAMERA_URL` | `scripts/`, `gui/` |
 | Pi | `rpi@rpi.local` | `NEIL_PI` | `inference_kit/` |
 | Pi camera | `http://rpi.local:8765/` (the Pi's address, port 8765) | `NEIL_FRONT_URL` | `inference_kit/` |
-| Phone camera | `http://192.168.8.81:8080/stream.mjpeg` | `NEIL_TOP_URL` | `inference_kit/` |
+| Phone camera | `http://132.68.34.44:8080/stream.mjpg` | `NEIL_TOP_URL` | `inference_kit/` |
 
-macOS / Linux: `export RPI_HOST=192.168.1.23`. Windows (PowerShell): `$env:RPI_HOST = "192.168.1.23"`.
+All five from the Pi's and the phone's address. macOS / Linux:
+
+```bash
+export RPI_HOST=<pi address> EXTERNAL_CAMERA_URL=http://<phone address>:8080/stream.mjpg
+export NEIL_PI=rpi@$RPI_HOST NEIL_FRONT_URL=http://$RPI_HOST:8765/ NEIL_TOP_URL=$EXTERNAL_CAMERA_URL
+```
+
+Windows (PowerShell):
+
+```powershell
+$env:RPI_HOST = "<pi address>"; $env:EXTERNAL_CAMERA_URL = "http://<phone address>:8080/stream.mjpg"
+$env:NEIL_PI = "rpi@$env:RPI_HOST"; $env:NEIL_FRONT_URL = "http://$($env:RPI_HOST):8765/"; $env:NEIL_TOP_URL = $env:EXTERNAL_CAMERA_URL
+```
 
 The phone's URL is the one its camera app shows. On networks that allow it, the Pi also answers to
-`rpi.local`; otherwise find its address on the router, or run `hostname -I` on the Pi.
+`rpi.local`; otherwise find its address on the router, or run `hostname -I` on the Pi. If ssh doesn't
+find your key by itself, set `RPI_SSH_KEY` (`scripts/`, `gui/`) and `NEIL_SSH_KEY` (`inference_kit/`) to it.
 
 ### Every new terminal
 
 ```bash
 cd Neil-LabAI                # this repo
-conda activate neil_robot
+source .venv/bin/activate    # Windows: .venv\Scripts\activate
 ```
 
 Then set the addresses, and run any script. Add `--help` to see its options.
 
 ## Recording demos
 
-Each demo is one run of `gamepad_drive.py --record`: drive the robot through the task once, then press
-Ctrl-C. Each run is saved in its own `logs/session_<date>_<time>/` folder, and each folder becomes one
-episode of the dataset.
+Each demo is one run of `gamepad_drive.py --record --wheels angle`: drive the robot through the task once,
+then press Ctrl-C. Each run is saved in its own `logs/session_<date>_<time>/` folder, and each folder
+becomes one episode of the dataset.
 
 Before the first demo:
 1. `python scripts/check_pi.py` checks the Pi, the Build HAT and the camera (nothing moves).
 2. `python gamepad.py` shows the D-pad and buttons as you press them. Quit it with Ctrl-C before the next
    step: only one program can read the pad.
-3. Practise without recording: `python scripts/gamepad_drive.py`.
+3. Practise without recording: `python scripts/gamepad_drive.py --wheels angle`.
 
 | Control | What it does |
 |---------|--------------|
-| D-pad up / down | both wheels forward / backward, while held |
+| D-pad up / down | both wheels forward / backward, while held: 200 degrees a second (`--wheel-deg-s`) |
 | D-pad left / right | turn on the spot, counter-clockwise / clockwise, while held |
-| X | raise the arm (to `--arm-up`, default -20) |
-| B | lower the arm back to where it was when the run started |
+| X | raise the arm 20 degrees above its resting angle (`--arm-raise`) |
+| B | lower the arm to its resting angle (`--arm-down-abs`) |
 | Y / A | open / close the gripper, 10 degrees per press (`--grip-step`) |
 | Ctrl-C (laptop) | stop and save. The motors go limp, so the arm drops. |
+
+The arm's resting angle is the arm motor's absolute angle with the arm down (12, measured on Neil), so it
+is the same in every run. If the arm is rebuilt, measure it again: `abs_pos_deg` of `arm` in `steps.jsonl`.
 
 Record one demo:
 
 ```bash
-python scripts/gamepad_drive.py --record --fps 10
+python scripts/gamepad_drive.py --record --wheels angle
 ```
 
-- **Record at 10 fps.** The dataset keeps the recording's rate, and the team's models and `inference_kit/`
-  run at 10 fps. All episodes of one dataset must have the same rate.
-- **Start every demo from the same pose:** arm lowered, gripper open. B lowers the arm to where the run
-  started, and the model is later started from this pose too (`inference_kit/INFERENCE.md`, section 5).
+- **10 fps** (the default `--fps`). The dataset keeps the recording's rate, and the models and
+  `inference_kit/` run at 10 fps. All episodes of one dataset must have the same rate and `--wheels`.
+- **Start every demo from the same pose:** arm lowered (B), gripper open. `run_policy.py` later moves the
+  arm and gripper to the pose the team's demos started in (`abs_pos_deg` 12 for the arm, about -70 for the
+  gripper) before the model starts. Check the first step of a demo's `steps.jsonl` against it.
 - **Keep the scene fixed:** the same table, light and phone position in every demo, and later in every
   model run. The team's datasets had about 50 demos, with the cup at 5 positions.
 - **Delete the folder of a failed demo,** or leave it out when converting. Pauses at the start and end
@@ -143,10 +167,11 @@ python scripts/gamepad_drive.py --record --fps 10
 
 ## Making the dataset
 
-`training/convert_episodes.py` turns session folders into one LeRobot dataset. Run it in the `neil_vla`
-env, from the `training` folder:
+`training/convert_episodes.py` turns session folders into one LeRobot dataset. Run it in `.venv-vla`,
+from the `training` folder:
 
 ```bash
+source .venv-vla/bin/activate    # Windows: .venv-vla\Scripts\activate
 cd training
 python convert_episodes.py --name my_dataset --task "pick up the cup" ../logs/session_*
 ```
@@ -158,12 +183,16 @@ The dataset is written to `training/data/my_dataset` (not committed to git; a fo
 replaced). Give the model the same task sentence later. Then train it on Athena: `training/README.md`,
 steps 2 to 6, with your dataset name in place of `pick_cup_pos2`.
 
-From a recording made with this repo's `gamepad_drive.py`, each frame gets:
+From a recording made with `--wheels angle`, each frame gets:
 - `observation.state`: the motors' readings: left and right wheel speed, arm and gripper angle
-- `action`: what the controller asked for: left and right wheel speed, arm and gripper target angle
+- `action`: what the controller asked for: the degrees each wheel still has to turn, and the arm and
+  gripper target angles
 - `observation.images.camera1`: the Pi camera (640x480), and `camera2`: the phone (640x360)
 
-The converter's docstring has the units, signs, and the wheel-angle format of `pick_cup_pos2`.
+The arm and gripper angles are the motors' absolute angles on a fixed zero, the same in every session.
+From a `--wheels speed` recording, the wheel actions are speeds instead, and the arm and gripper use the
+encoder angle (`pos_deg`), as in `pick_cup`. The converter picks the format from the recording, and its
+docstring has the units and signs.
 
 ## Scripts
 
@@ -176,8 +205,8 @@ The converter's docstring has the units, signs, and the wheel-angle format of `p
 | `python scripts/arm_test.py` | **yes** | Lowers the arm 30° and raises it back while recording video. |
 | `python scripts/motor_test.py` | **yes** | Turns each port 30° and back, asking before each. |
 | `python gamepad.py` | no | Prints the USB gamepad's D-pad and buttons live. |
-| `python scripts/gamepad_drive.py` | **yes** | Drives the robot from the gamepad: D-pad drives and rotates while held, X/B move the arm and Y/A the gripper a fixed angle per press. The Pi side is `pi/gamepad_server.py`. |
-| `python scripts/gamepad_drive.py --record` | **yes** | Same, and records the whole run as a synced recording (below) with the controller's target as `"action"` on every step. Ctrl-C stops and saves. Add `--fps 10` for training data. |
+| `python scripts/gamepad_drive.py` | **yes** | Drives the robot from the gamepad: D-pad drives and rotates while held, X/B move the arm and Y/A the gripper a fixed angle per press. `--wheels speed` (the default) sets wheel speeds, ramped up and down over 1 s (`--ramp-up`, `--ramp-down`); `--wheels angle` turns the wheels in degree steps. The Pi side is `pi/gamepad_server.py`. |
+| `python scripts/gamepad_drive.py --record` | **yes** | Same, and records the whole run as a synced recording (below) with the controller's target as `"action"` on every step, at 10 fps (`--fps`). Ctrl-C stops and saves. |
 | `python scripts/record_replay.py` | **yes** | Records a session with `gamepad_drive.py --record` (Ctrl-C ends it), then replays it with `replay_session.py` and prints how closely it matched. |
 | `python scripts/replay_session.py logs/session_<date>_<time>` | **yes** | Re-sends a recorded session's Build HAT calls at their recorded times (`pi/replay_server.py` times them on the Pi), then compares the motors' measured speed and angle with the recording and saves `report.json` under `<session>/replays/`. `--dry-run` only lists the calls. |
 | `python scripts/run_policy.py` | no (dry run) | Runs a VLA policy in real time: every step's images and motor state go to the policy server, action chunks come back and are logged. `--replay <session>` runs it on a recording, without the robot. See below. |
@@ -225,23 +254,26 @@ fails with "HAT not found" while anything else (a gamepad driver, a motor test) 
 **Recording while driving: `gamepad_drive.py --record`.** Same recording, but the motor readings come
 from the gamepad driver itself (`pi/gamepad_server.py`, 50 a second), and every step also gets
 `"action"`: the target the controller has set, formatted exactly like `"motors"` (same keys, raw motor
-terms, `seq` counts the controller's changes, `age_ms` is how long ago it last changed). Wheels are
-speed controlled, so their action has `speed` and `pos_deg: null`; the arm and gripper are angle
-controlled (one step per press), so theirs has `pos_deg` (the target encoder angle) and `speed: null`.
-`abs_pos_deg` is always null in the action. `"action"` also has `vector`: the same target as four
-numbers in robot terms (+ = forward / arm down / gripper open), named in `names`; this is the dataset's action.
+terms, `seq` counts the controller's changes, `age_ms` is how long ago it last changed). With
+`--wheels speed` the wheels are speed controlled, so their action has `speed` and `pos_deg: null`; the arm
+and gripper are angle controlled (one step per press), so theirs has `pos_deg` (the target encoder angle)
+and `speed: null`. With `--wheels angle` the wheels are angle controlled too. `abs_pos_deg` is always null
+in the action. `"action"` also has `vector`: the same target as four numbers in robot terms (+ = forward /
+arm down / gripper open), named in `names` (`left_wheel.vel`, or `left_wheel.pos` for wheel target angles,
+wrapped to -180..180); `convert_episodes.py` makes the dataset's action from it.
 Every step also gets `"hat_commands"`: the Build HAT calls the Pi actually made, after the reverse delay
-and the arm's sag correction, in the `"motors"` format plus `degrees` and `call`. Wheels: `speed` is the
-speed the HAT is running them at (0 after `stop`). Arm and gripper: `degrees` sums every
-`run_for_degrees` made since the previous step (0 when none). `"new"` lists each call with its time.
+and the arm's sag correction, in the `"motors"` format plus `degrees` and `call`. Wheels with
+`--wheels speed`: `speed` is the speed the HAT is running them at (0 after `stop`). Everything angle
+controlled: `degrees` sums every `run_for_degrees` made since the previous step (0 when none). `"new"`
+lists each call with its time.
 And every step has `"gamepad"`: `vector` = `[dpad_x, dpad_y, X, A, B, Y]` (D-pad -1/0/1, + = right / up;
 a button is 1 if pressed at any moment since the previous step).
 
 `scripts/session_to_episode.py` turns sessions into episode folders for a separate SmolVLA pipeline
-(`vla-learning/smolvla-pipeline` and its `DATA-CONTRACT.md`, not in this repo), resampled to 10 fps,
-with `--action target`, `hat` or `buttons` choosing the action (for `buttons`, set the pipeline's
-`ACTION_FIELDS` to `dpad_x, dpad_y, x, a, b, y`). `training/` doesn't use it: `convert_episodes.py`
-reads the sessions directly.
+(`vla-learning/smolvla-pipeline` and its `DATA-CONTRACT.md`, not in this repo), at 10 fps (sessions at
+another rate are resampled), with `--action target`, `hat` or `buttons` choosing the action (for
+`buttons`, set the pipeline's `ACTION_FIELDS` to `dpad_x, dpad_y, x, a, b, y`). `training/` doesn't use
+it: `convert_episodes.py` reads the sessions directly.
 
 ### Running a VLA policy in real time
 
@@ -260,8 +292,8 @@ and `"policy"` in every `steps.jsonl` line, `inference.jsonl` (one line per requ
 skipped actions) and `policy.json` (server, spec and settings).
 
 **Dry run only:** `run_policy.py` logs the actions and never sends them to the motors. To let a
-model drive the robot, use `inference_kit/` ([`inference_kit/INFERENCE.md`](inference_kit/INFERENCE.md)):
-its `pi_bridge.py` runs on the Pi, owns the Build HAT, and sends back the motor state.
+model drive the robot, use `inference_kit/run_policy.py` or the panel ([`RUN-MODELS.md`](RUN-MODELS.md)):
+both run `inference_kit/pi_bridge.py` on the Pi, which owns the Build HAT and sends back the motor state.
 
 The **observation spec** says which camera feeds which policy image key and which motor
 values form the state vector. It must match the LeRobot dataset the policy was trained on.
@@ -304,11 +336,13 @@ neil_robot/
   replay.py      a recorded session served as if it were the live robot
 pi/              scripts the laptop runs on the Pi over SSH: gamepad_server.py (the motors, for
                  gamepad_drive.py) and replay_server.py (for replay_session.py)
-policy_server/   standalone policy server (LeRobot / SmolVLA, or --dummy), runs in the neil_vla env
+policy_server/   standalone policy server (LeRobot / SmolVLA, or --dummy), runs in .venv-vla
 scripts/         the command-line tools above
-specs/           observation specs for scripts/run_policy.py
+specs/           observation specs for scripts/run_policy.py and the panel, one per model
 training/        recordings -> LeRobot dataset, and the Athena training job (training/README.md)
-inference_kit/   runs a trained model on the robot (inference_kit/INFERENCE.md)
+inference_kit/   runs a trained model on the robot (RUN-MODELS.md)
+gui/             browser control panel for running a model (gui/README.md)
+models/          trained models, not in git (RUN-MODELS.md says where to get them)
 ```
 
 To add a new robot action, write its Pi-side script and a function for it in `hardware.py`, following
