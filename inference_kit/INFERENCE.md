@@ -16,7 +16,7 @@ This guide lets a teammate run the trained model on Neil. The model looks at bot
 | `pi_bridge.py` | Runs on Neil's Raspberry Pi. Moves the motors and sends the motor readings. |
 | `check_model.py` | Tests the model on recorded frames, with no robot. |
 | `data/pick_cup/` | The training data (94 MB). Only `check_model.py` needs it. Not in GitHub. Step 2.7 copies it from Athena. |
-| `runs/` | The videos of your runs, one folder for each run. Made by `run_policy.py`. Not in GitHub. |
+| `runs/` | Your runs, one folder for each run: what the model saw and did at each step, and the videos. Made by `run_policy.py`. Not in GitHub. |
 
 ## 2. Install Python (once)
 

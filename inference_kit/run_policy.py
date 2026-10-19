@@ -18,6 +18,9 @@
          target - measured (at most 120 degrees per command), as in delta mode.
 --replay plays a recorded run (images and motor readings) instead of Neil: nothing moves,
 and the commands Neil would get are printed and saved in runs/dryrun_*.
+Each run on Neil is saved in runs/run_<date>_<time>/: the images the model saw, steps.jsonl,
+run.json, and videos to watch (front.mp4, top.mp4, side_by_side.mp4), filmed at 30 frames a
+second (--video-fps) apart from the model's 10.
 
 The model runs on this laptop (Apple GPU "mps", NVIDIA "cuda", or "cpu"). Every --replan
 actions it plans again, which can take 1 to 2 s on a small laptop; the wheels stop
@@ -36,6 +39,7 @@ import numpy as np
 import torch
 
 from neil_io import ABS0, FPS, Bridge, delta_command, open_cameras, state_vector
+from run_video import RUN_VIDEO_FPS, RunVideo
 
 
 # Typical start pose in the recorded demos (recorder signs): arm low, gripper open.
@@ -156,6 +160,9 @@ def main():
     ap.add_argument("--replay", metavar="RUN_DIR",
                     help="dry run: play a recorded run (e.g. runs/run_20261014_142049) instead of Neil; nothing moves")
     ap.add_argument("--no-record", action="store_true", help="don't save the run in runs/")
+    ap.add_argument("--video-fps", type=float, default=RUN_VIDEO_FPS,
+                    help=f"frames per second of the run's videos, to watch (default {RUN_VIDEO_FPS}; 0: no video; "
+                         "none with --replay or --no-record)")
     args = ap.parse_args()
     delta = args.action_mode in ("delta", "angle")  # both send wheel moves in degrees
 
@@ -197,7 +204,7 @@ def main():
         state = bridge.hold()
     wheel0 = (state["left_deg"] or 0.0, state["right_deg"] or 0.0) if args.action_mode == "angle" else (0.0, 0.0)
     print("Start state (left, right, arm, grip):", state_vector(state, args.action_mode, wheel0).tolist())
-    out = None
+    out = video = None
     if not args.no_record:  # every step: both camera images as the model saw them, the state and the action
         out = Path("runs") / time.strftime(("dryrun_" if args.replay else "run_") + "%Y%m%d_%H%M%S")
         (out / "front").mkdir(parents=True)
@@ -209,6 +216,8 @@ def main():
     i = 0
     wheels, recent = [0.0, 0.0], []  # v1: speeds sent to the wheels; the model's recent wheel speeds
     try:
+        if out and args.video_fps and not args.replay:  # a dry run's images are the recorded ones
+            video = RunVideo({"front": front, "top": top}, out, args.video_fps).start()
         while time.time() < t_end and not getattr(bridge, "done", False):
             if args.pause and i and i % args.replan == 0:
                 print(f"\nStep {i}: paused {args.pause:g} s before the next plan")
@@ -251,10 +260,15 @@ def main():
     except KeyboardInterrupt:
         pass
     finally:
-        bridge.stop()
-        if out:
-            log.close()
-            print(f"\nSaved {i} steps to {out}")
+        try:
+            bridge.stop()  # the robot first
+        finally:
+            if out:
+                log.close()
+                print(f"\nSaved {i} steps to {out}")
+            if video:
+                video.stop()
+                print(f"Video of the run: {out / 'side_by_side.mp4'}")
 
 
 if __name__ == "__main__":

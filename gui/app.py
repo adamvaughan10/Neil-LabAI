@@ -26,7 +26,8 @@ Only one program can hold Neil's motors and Pi camera: stop the gamepad, the rec
 and run_policy.py before connecting, and press Disconnect here before running them.
 
 Every run is saved in logs/gui_run_<date>_<time>/ like run_policy.py's: images,
-steps.jsonl (each step's action and the command it became), inference.jsonl, policy.json.
+steps.jsonl (each step's action and the command it became), inference.jsonl, policy.json,
+and videos to watch at 30 fps (RUN_VIDEO_FPS; 0 = none): pi.mp4, external.mp4, combined.mp4.
 """
 from __future__ import annotations
 
@@ -61,6 +62,7 @@ from neil_robot.policy_runner import PolicyRunner  # noqa: E402
 from neil_robot.recorder import SyncRecorder  # noqa: E402
 from neil_robot.replay import ReplaySession  # noqa: E402
 from neil_robot.rpi_client import RPiClient  # noqa: E402
+from neil_robot.run_video import RunVideo  # noqa: E402
 from neil_robot.streams import ExternalCameraStream, MjpegStream, PiCameraStream  # noqa: E402
 
 log = logging.getLogger("gui")
@@ -343,6 +345,7 @@ class Run:
         self.out_dir: Path | None = None
         self.runner: PolicyRunner | None = None
         self.rec: SyncRecorder | None = None
+        self.video: RunVideo | None = None
         self.client: PolicyClient | None = None
         self.step, self.action, self.command, self.obs_error = None, None, None, None
         self.history: deque = deque(maxlen=100)
@@ -419,6 +422,8 @@ class Run:
                 raise RuntimeError("stopped while starting")
             rec.start()
             self.rec, self.status = rec, "running"
+            if config.RUN_VIDEO_FPS:  # the videos come from RunVideo at their own rate, not one frame per step
+                self.video = RunVideo(cams, self.out_dir).start()
             ctl.note(f"run started: {'DRIVE' if self.drive else 'dry run'}, {self.mode}, task {self.task!r}")
         except Exception as exc:  # noqa: BLE001
             self.error = str(exc)
@@ -452,6 +457,8 @@ class Run:
                 ctl.leave_drive()  # the motors first
             if self.rec:
                 self.rec.stop()
+            if self.video:
+                self.video.stop()
             if self.runner:
                 self.runner.stop()
             if self.client:

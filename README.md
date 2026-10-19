@@ -289,7 +289,8 @@ skipped actions) and `policy.json` (server, spec and settings).
 `--video-fps`), not one frame per step (15 fps, or the `pick_cup` data's 10 with `--fps 10`), which
 is too choppy to watch. `video.json` says how many frames each camera repeated. They're H.264 if
 the OpenCV build has it, else MPEG-4. The policy's inputs are still the per-step images.
-`inference_kit/run_policy.py` does the same, into `inference_kit/runs/run_<date>_<time>/`.
+The panel does the same in `logs/gui_run_<date>_<time>/`, and `inference_kit/run_policy.py` in
+`inference_kit/runs/run_<date>_<time>/` (`front.mp4`, `top.mp4`, `side_by_side.mp4`).
 Recordings for training ([Recording demos](#recording-demos)) keep one video frame per step.
 
 **Dry run only:** `run_policy.py` logs the actions and never sends them to the motors. To let a

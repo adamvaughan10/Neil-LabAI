@@ -104,7 +104,8 @@ Without Neil, a recorded session stands in for it (dry run only):
 .venv/bin/python gui/app.py --replay logs/session_20261014_113509
 ```
 
-Each run is saved in `logs/gui_run_<date>_<time>/`. More detail: [gui/README.md](gui/README.md).
+Each run is saved in `logs/gui_run_<date>_<time>/`, with a video to watch, `combined.mp4` (both
+cameras, 30 frames a second). More detail: [gui/README.md](gui/README.md).
 
 ## 5. Run from the command line
 
@@ -139,6 +140,10 @@ second and plans again every `--replan` actions (default 10, every second). Usef
 `--replay runs/run_<date>_<time>` dry-runs a saved run without Neil; `--no-record` does not save
 the run in `runs/`; `--deadband` (delta and angle) ignores wheel moves under that many degrees.
 `--help` lists the rest.
+
+Each run is saved in `inference_kit/runs/run_<date>_<time>/`, with videos to watch:
+`side_by_side.mp4` (both cameras), `front.mp4` and `top.mp4`. They have 30 frames a second while
+the model runs at 10 (`--video-fps`; 0 = no video).
 
 ## 6. If something looks wrong
 
