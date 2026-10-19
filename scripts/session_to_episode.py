@@ -14,10 +14,11 @@ Then check_episodes.py and convert_to_lerobot.py from the pipeline take it from 
 --action picks what goes in "action" (one dataset per choice; the same frames, state and
 videos in each), all in robot terms (+ = forward /
 arm down / gripper open, the mounting sign flips applied):
-    target  the controller's target: wheel speeds, arm and gripper target angles (degrees)
-    hat     the Build HAT calls the Pi made: the wheel speeds the HAT was running (after the
-            reverse delay), and the degrees of every run_for_degrees issued during that frame
-            for the arm and gripper (0 when none)
+    target  the controller's target: wheel, arm and gripper target angles (degrees)
+    hat     the Build HAT calls the Pi made: the degrees of every run_for_degrees issued
+            during that frame (0 when none)
+Sessions recorded with gamepad_drive.py's old speed mode have wheel speeds instead: the
+target speeds, and the speeds the HAT was running (after the reverse delay).
     buttons which gamepad buttons were pressed, as a 6-number vector
             [dpad_x, dpad_y, X, A, B, Y]: dpad_x left -1 / right +1, dpad_y up +1 / down -1,
             buttons 1 if pressed at any moment during the frame, else 0. The action keys are
@@ -26,11 +27,11 @@ arm down / gripper open, the mounting sign flips applied):
 All three are kept in every line anyway, as "target", "hat" and "buttons", so any of them
 can be trained on later.
 
-state is the measured motors: wheel speeds (or angles), arm and gripper angles (robot terms).
+state is the measured motors: wheel angles (or speeds), arm and gripper angles (robot terms).
 Arm and gripper angles are the motors' absolute angles where the session has them, so they
 mean the same position in every session, whenever the Build HAT was powered up. Wheel angles
-(--wheels angle sessions) are degrees turned since the episode's first frame, counting on
-past a full turn with no jump (--wheel-angles wrapped: the absolute angle, -180..180).
+are degrees turned since the episode's first frame, counting on past a full turn with no
+jump (--wheel-angles wrapped: the absolute angle, -180..180).
 Sessions recorded at the pipeline's 10 fps (gamepad_drive.py --record's default) become
 one frame per step. Sessions at another rate are resampled: each frame takes the nearest
 recorded step (button presses and arm/gripper degrees from skipped steps are added to it).
@@ -124,7 +125,7 @@ def convert(session: Path, out: Path, action: str, task: str, success: bool, fps
             def angle(role, pos):
                 return robot(role, pos + offset(role))
 
-            # Recorded with gamepad_drive.py --wheels angle: wheels are angle targets, like the gripper.
+            # Wheels recorded as angle targets, like the gripper (older sessions have speeds).
             wheel_angles = a["left_wheel"]["pos_deg"] is not None
             if wheel_angles:
                 if wheel_angles_as == "wrapped":
@@ -208,7 +209,7 @@ def main() -> int:
     ap.add_argument("--failed", action="store_true", help="mark these episodes success=false")
     ap.add_argument("--fps", type=float, default=10, help="the pipeline's frame rate")
     ap.add_argument("--wheel-angles", choices=("since-start", "wrapped"), default="since-start",
-                    help="--wheels angle sessions: wheel angles as degrees turned since the episode started "
+                    help="wheel angles as degrees turned since the episode started "
                          "(default; no jump at a full turn) or the absolute angle wrapped to -180..180")
     args = ap.parse_args()
     for action in args.action:

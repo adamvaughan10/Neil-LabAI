@@ -19,13 +19,10 @@ so nothing has to be deployed to the Pi.
    command line, or the spec `specs/pick_cup_pos2.json` in the panel.
 
 > [!NOTE]
-> `gamepad_drive.py` records the wheels in one of two formats, and a model trained on them runs in the
-> matching `--action-mode`:
-> - `--wheels angle`: the wheels turn in degree steps, and the action is the degrees each wheel still has
->   to turn. This is the format of `pick_cup_pos2` (job 181719), the run `training/README.md` reproduces.
->   Run with `--action-mode delta`. This README records in this format.
-> - `--wheels speed` (the default): the action is the wheel speeds, as in the first model, `pick_cup`
->   (job 181436). Run with `--action-mode v1`.
+> `gamepad_drive.py` turns the wheels in degree steps, and the dataset's action is the degrees each wheel
+> still has to turn. That is the format of `pick_cup_pos2` (job 181719), the run `training/README.md`
+> reproduces, which is why your model runs like it. The first model, `pick_cup` (job 181436), was recorded
+> with wheel speeds, a mode the controller no longer has, and runs with `--action-mode v1`.
 
 ## Hardware
 
@@ -127,7 +124,7 @@ Then set the addresses, and run any script. Add `--help` to see its options.
 
 ## Recording demos
 
-Each demo is one run of `gamepad_drive.py --record --wheels angle`: drive the robot through the task once,
+Each demo is one run of `gamepad_drive.py --record`: drive the robot through the task once,
 then press Ctrl-C. Each run is saved in its own `logs/session_<date>_<time>/` folder, and each folder
 becomes one episode of the dataset.
 
@@ -135,7 +132,7 @@ Before the first demo:
 1. `python scripts/check_pi.py` checks the Pi, the Build HAT and the camera (nothing moves).
 2. `python gamepad.py` shows the D-pad and buttons as you press them. Quit it with Ctrl-C before the next
    step: only one program can read the pad.
-3. Practise without recording: `python scripts/gamepad_drive.py --wheels angle`.
+3. Practise without recording: `python scripts/gamepad_drive.py`.
 
 | Control | What it does |
 |---------|--------------|
@@ -152,11 +149,11 @@ is the same in every run. If the arm is rebuilt, measure it again: `abs_pos_deg`
 Record one demo:
 
 ```bash
-python scripts/gamepad_drive.py --record --wheels angle
+python scripts/gamepad_drive.py --record
 ```
 
 - **10 fps** (the default `--fps`). The dataset keeps the recording's rate, and the models and
-  `inference_kit/` run at 10 fps. All episodes of one dataset must have the same rate and `--wheels`.
+  `inference_kit/` run at 10 fps. All episodes of one dataset must have the same rate.
 - **Start every demo from the same pose:** arm lowered (B), gripper open. `run_policy.py` later moves the
   arm and gripper to the pose the team's demos started in (`abs_pos_deg` 12 for the arm, about -70 for the
   gripper) before the model starts. Check the first step of a demo's `steps.jsonl` against it.
@@ -183,16 +180,16 @@ The dataset is written to `training/data/my_dataset` (not committed to git; a fo
 replaced). Give the model the same task sentence later. Then train it on Athena: `training/README.md`,
 steps 2 to 6, with your dataset name in place of `pick_cup_pos2`.
 
-From a recording made with `--wheels angle`, each frame gets:
+Each frame gets:
 - `observation.state`: the motors' readings: left and right wheel speed, arm and gripper angle
 - `action`: what the controller asked for: the degrees each wheel still has to turn, and the arm and
   gripper target angles
 - `observation.images.camera1`: the Pi camera (640x480), and `camera2`: the phone (640x360)
 
 The arm and gripper angles are the motors' absolute angles on a fixed zero, the same in every session.
-From a `--wheels speed` recording, the wheel actions are speeds instead, and the arm and gripper use the
-encoder angle (`pos_deg`), as in `pick_cup`. The converter picks the format from the recording, and its
-docstring has the units and signs.
+The converter's docstring has the units and signs. It also converts older recordings with wheel speeds
+(`left_wheel.vel` in `steps.jsonl`) into `pick_cup`'s format, but won't mix them with new ones in one
+dataset.
 
 ## Scripts
 
@@ -205,7 +202,7 @@ docstring has the units and signs.
 | `python scripts/arm_test.py` | **yes** | Lowers the arm 30° and raises it back while recording video. |
 | `python scripts/motor_test.py` | **yes** | Turns each port 30° and back, asking before each. |
 | `python gamepad.py` | no | Prints the USB gamepad's D-pad and buttons live. |
-| `python scripts/gamepad_drive.py` | **yes** | Drives the robot from the gamepad: D-pad drives and rotates while held, X/B move the arm and Y/A the gripper a fixed angle per press. `--wheels speed` (the default) sets wheel speeds, ramped up and down over 1 s (`--ramp-up`, `--ramp-down`); `--wheels angle` turns the wheels in degree steps. The Pi side is `pi/gamepad_server.py`. |
+| `python scripts/gamepad_drive.py` | **yes** | Drives the robot from the gamepad: D-pad drives and rotates while held, turning the wheels in degree steps (200 a second, `--wheel-deg-s`); X/B move the arm and Y/A the gripper a fixed angle per press. The Pi side is `pi/gamepad_server.py`. |
 | `python scripts/gamepad_drive.py --record` | **yes** | Same, and records the whole run as a synced recording (below) with the controller's target as `"action"` on every step, at 10 fps (`--fps`). Ctrl-C stops and saves. |
 | `python scripts/record_replay.py` | **yes** | Records a session with `gamepad_drive.py --record` (Ctrl-C ends it), then replays it with `replay_session.py` and prints how closely it matched. |
 | `python scripts/replay_session.py logs/session_<date>_<time>` | **yes** | Re-sends a recorded session's Build HAT calls at their recorded times (`pi/replay_server.py` times them on the Pi), then compares the motors' measured speed and angle with the recording and saves `report.json` under `<session>/replays/`. `--dry-run` only lists the calls. |
@@ -254,18 +251,15 @@ fails with "HAT not found" while anything else (a gamepad driver, a motor test) 
 **Recording while driving: `gamepad_drive.py --record`.** Same recording, but the motor readings come
 from the gamepad driver itself (`pi/gamepad_server.py`, 50 a second), and every step also gets
 `"action"`: the target the controller has set, formatted exactly like `"motors"` (same keys, raw motor
-terms, `seq` counts the controller's changes, `age_ms` is how long ago it last changed). With
-`--wheels speed` the wheels are speed controlled, so their action has `speed` and `pos_deg: null`; the arm
-and gripper are angle controlled (one step per press), so theirs has `pos_deg` (the target encoder angle)
-and `speed: null`. With `--wheels angle` the wheels are angle controlled too. `abs_pos_deg` is always null
-in the action. `"action"` also has `vector`: the same target as four numbers in robot terms (+ = forward /
-arm down / gripper open), named in `names` (`left_wheel.vel`, or `left_wheel.pos` for wheel target angles,
-wrapped to -180..180); `convert_episodes.py` makes the dataset's action from it.
-Every step also gets `"hat_commands"`: the Build HAT calls the Pi actually made, after the reverse delay
-and the arm's sag correction, in the `"motors"` format plus `degrees` and `call`. Wheels with
-`--wheels speed`: `speed` is the speed the HAT is running them at (0 after `stop`). Everything angle
-controlled: `degrees` sums every `run_for_degrees` made since the previous step (0 when none). `"new"`
-lists each call with its time.
+terms, `seq` counts the controller's changes, `age_ms` is how long ago it last changed). Every motor is
+angle controlled (the wheels in steps while the D-pad is held, the arm and gripper a move per press), so
+the action has `pos_deg` (the target encoder angle) and `speed: null`; `abs_pos_deg` is always null in the
+action. `"action"` also has `vector`: the same target as four numbers in robot terms (+ = forward / arm
+down / gripper open), named in `names` (`left_wheel.pos`, `right_wheel.pos`, `arm.pos`, `grip.pos`; the
+wheel angles wrap to -180..180); `convert_episodes.py` makes the dataset's action from it.
+Every step also gets `"hat_commands"`: the Build HAT calls the Pi actually made, after the arm's sag
+correction, in the `"motors"` format plus `degrees` and `call`: `degrees` sums every `run_for_degrees`
+made since the previous step (0 when none). `"new"` lists each call with its time.
 And every step has `"gamepad"`: `vector` = `[dpad_x, dpad_y, X, A, B, Y]` (D-pad -1/0/1, + = right / up;
 a button is 1 if pressed at any moment since the previous step).
 

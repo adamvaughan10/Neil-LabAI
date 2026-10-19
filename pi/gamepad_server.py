@@ -1,18 +1,19 @@
 """
 Runs ON THE PI. scripts/gamepad_drive.py sends this file over SSH and starts it,
-then writes one JSON command per line to its stdin whenever a button changes:
+then writes one JSON command per line to its stdin as the gamepad is used:
 
-    {"drive": [left, right]}   wheel motor speeds, -100..100; [0, 0] stops them
+    {"wheel_deg": [left, right]}  turn each wheel by this many degrees, like the gripper.
+                               The steps add up to a target angle per wheel; each move turns
+                               a wheel from where it really is to that target, both wheels
+                               starting together.
     {"arm": degrees}           turn the arm motor by this many degrees, then hold
     {"grip": degrees}          turn the gripper motor by this many degrees, then hold
-    {"wheel_deg": [left, right]}  turn each wheel by this many degrees, like the gripper
-                               (scripts/gamepad_drive.py --wheels angle). The steps add up to a
-                               target angle per wheel; each move turns a wheel from where it
-                               really is to that target, both wheels starting together.
+    {"drive": [left, right]}   wheel motor speeds, -100..100; [0, 0] stops them
+                               (scripts/model_motor_test.py; gamepad_drive.py doesn't send it)
 
 Speeds and degrees are raw motor values: the laptop applies the mounting sign flips.
-When one wheel now turns opposite to the direction it last turned (even if it has
-stopped since) and the other wheel doesn't, the other wheel waits
+With "drive", when one wheel now turns opposite to the direction it last turned (even
+if it has stopped since) and the other wheel doesn't, the other wheel waits
 settings["reverse_delay"] seconds while the reversing wheel takes up its gear slack.
 E.g. forward, then left: the right wheel waits. Forward then back: no wait.
 If settings["state_hz"] is set, it also prints each motor's measured speed and
@@ -65,7 +66,7 @@ def call(motor, name, blocking=False, **args):
 last_dir = {left: 0, right: 0}  # direction each wheel last turned: -1, +1, or 0 = never
 running = {left: 0, right: 0}  # speed each wheel was last set to
 delayed = None  # (wheel, speed, when) waiting for the other wheel to reverse
-wheel_target = {}  # --wheels angle: encoder angle each wheel is being turned to (set at startup)
+wheel_target = {}  # wheel_deg: encoder angle each wheel is being turned to (set at startup)
 pending_lock = threading.Lock()
 CATCH_UP = 3
 wake = threading.Event()
@@ -117,8 +118,8 @@ def drive(speeds):
     if delayed:
         wheel, speed, when = delayed
         if speeds[wheel] * speed > 0:
-            # Still waiting for the other wheel to reverse (a ramping laptop sends a new
-            # speed many times a second): keep waiting, with the newest speed.
+            # Still waiting for the other wheel to reverse, and a new speed came for the
+            # waiting wheel: keep waiting, with the newest speed.
             delayed = (wheel, speeds[wheel], when)
             for other, s in speeds.items():
                 if other is not wheel:
