@@ -6,7 +6,7 @@ inputs and outputs, and how fast it answers, before you let it drive Neil.
 
 > [!IMPORTANT]
 > To actually drive Neil with the model today, follow `INFERENCE-GUIDE.md` (Qiqian's pipeline).
-> Its code is on Athena (`/vla/code/`), not in this repo, and it drives the motors with `pi_bridge.py`.
+> Its code is in this repo, in `inference_kit/`, and it drives the motors with `pi_bridge.py`.
 
 ---
 

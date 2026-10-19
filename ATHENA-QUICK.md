@@ -58,7 +58,7 @@ rsync copies only new and changed files. If the copy stops, run the same command
 
 ## 4. Update the scripts
 
-The scripts are in our GitHub repo, in the folder `vla/athena/`. Change them on your Mac, not on Athena.
+The scripts are in our GitHub repo, in the folder `training/athena/`. `training/README.md` shows how to reproduce the pick_cup_pos2 run. Change them on your Mac, not on Athena.
 
 1. Get the newest code:
    ```bash
@@ -73,7 +73,7 @@ The scripts are in our GitHub repo, in the folder `vla/athena/`. Change them on 
    ```
 4. Copy the scripts to Athena. Run this from the repo folder on the Mac:
    ```bash
-   rsync -av vla/athena/ your.name@athena.technion.ac.il:/rg/belinkov_prj/qiu.qiqian/vla/jobs/
+   rsync -av training/athena/ your.name@athena.technion.ac.il:/rg/belinkov_prj/qiu.qiqian/vla/jobs/
    ```
 
 ---

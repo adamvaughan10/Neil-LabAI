@@ -1,0 +1,18 @@
+#!/bin/bash
+# Full training (pick_cup_pos2, job 181719): sbatch --qos=12h_4g --time=12:00:00 train_neil.job 10000 32 pick_cup_pos2
+# Short test:    sbatch --qos=2h_2g --time=00:30:00 train_neil.job 200 8 pick_cup_pos2
+# Other project folder: VLA=/path/to/vla sbatch ... (default: the team folder below)
+#SBATCH --job-name=neil_smolvla
+#SBATCH --partition=a100-public
+#SBATCH --qos=12h_4g
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --gres=gpu:1
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=64G
+#SBATCH --time=06:00:00
+#SBATCH --output=%x_%j.log
+
+echo "Job $SLURM_JOB_ID on $(hostname) at $(date)"
+bash ${VLA:-/rg/belinkov_prj/qiu.qiqian/vla}/jobs/train.sh "$@"
+echo "Done at $(date)"
