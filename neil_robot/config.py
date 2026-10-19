@@ -64,7 +64,7 @@ PI_STREAM_WIDTH = int(os.getenv("PI_STREAM_WIDTH", "640"))
 PI_STREAM_HEIGHT = int(os.getenv("PI_STREAM_HEIGHT", "480"))
 PI_STREAM_FPS = int(os.getenv("PI_STREAM_FPS", "30"))
 # External camera: a phone IP-camera app serving MJPEG (plain http, not https).
-EXTERNAL_CAMERA_URL = os.getenv("EXTERNAL_CAMERA_URL", "http://132.68.34.87:8080/stream.mjpg")
+EXTERNAL_CAMERA_URL = os.getenv("EXTERNAL_CAMERA_URL", "http://132.68.34.85:8080/stream.mjpg")
 EXTERNAL_CAMERA_ROTATION = int(os.getenv("EXTERNAL_CAMERA_ROTATION", "0"))  # clockwise: 0/90/180/270
 # Capture-to-arrival delay of each camera, subtracted from frame timestamps so frames
 # taken at the same moment get the same timestamp. 0 until calibrated.
