@@ -1,0 +1,237 @@
+Job 267586 on n309 at Thu Oct 22 01:27:45 PM IDT 2026
+INIT=cold steps=200 batch=8 lr=1e-4 output=/rg/belinkov_prj/qiu.qiqian/vla/outputs/lina_lina_pick_cup_pos2_cold_267586
+Thu Oct 22 13:27:45 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 595.71.05              Driver Version: 595.71.05      CUDA Version: 13.2     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA A100-SXM4-40GB          On  |   00000000:B7:00.0 Off |                    0 |
+| N/A   35C    P0             52W /  400W |       0MiB /  40960MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+WARNING:lerobot.utils.import_utils:Could not load libtorchcodec. Likely causes:
+          1. FFmpeg is not properly installed in your environment. We support
+             versions 4, 5, 6 and 7.
+          2. The PyTorch version (2.8.0+cu128) is not compatible with
+             this version of TorchCodec. Refer to the version compatibility
+             table:
+             https://github.com/pytorch/torchcodec?tab=readme-ov-file#installing-torchcodec.
+          3. Another runtime dependency; see exceptions below.
+        The following exceptions were raised as we tried to load libtorchcodec:
+        
+[start of libtorchcodec loading traceback]
+FFmpeg version 7: libavutil.so.59: cannot open shared object file: No such file or directory
+FFmpeg version 6: libavutil.so.58: cannot open shared object file: No such file or directory
+FFmpeg version 5: libavutil.so.57: cannot open shared object file: No such file or directory
+FFmpeg version 4: libavutil.so.56: cannot open shared object file: No such file or directory
+[end of libtorchcodec loading traceback].
+'torchcodec' is installed but cannot be loaded (see the error above). Falling back to 'pyav' as a default decoder.
+INFO 2026-10-22 13:29:21 ot_train.py:272 {'batch_size': 8,
+ 'checkpoint_path': None,
+ 'cudnn_deterministic': False,
+ 'dataloader_multiprocessing_context': 'spawn',
+ 'dataset': {'depth_output_unit': 'mm',
+             'episodes': None,
+             'eval_split': 0.1,
+             'image_transforms': {'enable': True,
+                                  'max_num_transforms': 3,
+                                  'random_order': True,
+                                  'tfs': {'affine': {'kwargs': {'degrees': [-5.0,
+                                                                            5.0],
+                                                                'translate': [0.05,
+                                                                              0.05]},
+                                                     'type': 'RandomAffine',
+                                                     'weight': 1.0},
+                                          'brightness': {'kwargs': {'brightness': [0.8,
+                                                                                   1.2]},
+                                                         'type': 'ColorJitter',
+                                                         'weight': 1.0},
+                                          'contrast': {'kwargs': {'contrast': [0.8,
+                                                                               1.2]},
+                                                       'type': 'ColorJitter',
+                                                       'weight': 1.0},
+                                          'hue': {'kwargs': {'hue': [-0.05,
+                                                                     0.05]},
+                                                  'type': 'ColorJitter',
+                                                  'weight': 1.0},
+                                          'saturation': {'kwargs': {'saturation': [0.5,
+                                                                                   1.5]},
+                                                         'type': 'ColorJitter',
+                                                         'weight': 1.0},
+                                          'sharpness': {'kwargs': {'sharpness': [0.5,
+                                                                                 1.5]},
+                                                        'type': 'SharpnessJitter',
+                                                        'weight': 1.0}}},
+             'repo_id': 'local/lina_pick_cup_pos2',
+             'repo_type': 'dataset',
+             'return_uint8': False,
+             'revision': None,
+             'root': '/rg/belinkov_prj/qiu.qiqian/vla/data/lina_pick_cup_pos2',
+             'streaming': False,
+             'use_imagenet_stats': True,
+             'video_backend': 'pyav'},
+ 'env': None,
+ 'env_eval_freq': 20000,
+ 'eval': {'batch_size': 50,
+          'n_episodes': 50,
+          'recording': False,
+          'recording_private': False,
+          'recording_repo_id': None,
+          'use_async_envs': True},
+ 'eval_steps': 100,
+ 'job': {'detach': False,
+         'image': 'huggingface/lerobot-gpu:latest',
+         'tags': [],
+         'target': None,
+         'timeout': '2d'},
+ 'job_name': 'lina_lina_pick_cup_pos2_cold_267586',
+ 'log_freq': 20,
+ 'max_eval_samples': 0,
+ 'num_workers': 8,
+ 'optimizer': {'betas': [0.9, 0.95],
+               'eps': 1e-08,
+               'grad_clip_norm': 10.0,
+               'lr': 0.0001,
+               'type': 'adamw',
+               'weight_decay': 1e-10},
+ 'output_dir': '/rg/belinkov_prj/qiu.qiqian/vla/outputs/lina_lina_pick_cup_pos2_cold_267586',
+ 'peft': None,
+ 'persistent_workers': True,
+ 'policy': {'adapt_to_pi_aloha': False,
+            'add_image_special_tokens': False,
+            'attention_mode': 'cross_attn',
+            'chunk_size': 50,
+            'compile_mode': 'max-autotune',
+            'compile_model': False,
+            'device': 'cuda',
+            'empty_cameras': 0,
+            'expert_width_multiplier': 0.75,
+            'freeze_vision_encoder': True,
+            'input_features': {'observation.images.camera1': {'shape': [3,
+                                                                        256,
+                                                                        256],
+                                                              'type': <FeatureType.VISUAL: 'VISUAL'>},
+                               'observation.images.camera2': {'shape': [3,
+                                                                        256,
+                                                                        256],
+                                                              'type': <FeatureType.VISUAL: 'VISUAL'>},
+                               'observation.images.camera3': {'shape': [3,
+                                                                        256,
+                                                                        256],
+                                                              'type': <FeatureType.VISUAL: 'VISUAL'>},
+                               'observation.state': {'shape': [6],
+                                                     'type': <FeatureType.STATE: 'STATE'>}},
+            'license': None,
+            'load_vlm_weights': True,
+            'max_action_dim': 32,
+            'max_period': 4.0,
+            'max_state_dim': 32,
+            'min_period': 0.004,
+            'n_action_steps': 50,
+            'n_obs_steps': 1,
+            'normalization_mapping': {'ACTION': <NormalizationMode.MEAN_STD: 'MEAN_STD'>,
+                                      'STATE': <NormalizationMode.MEAN_STD: 'MEAN_STD'>,
+                                      'VISUAL': <NormalizationMode.IDENTITY: 'IDENTITY'>},
+            'num_expert_layers': 0,
+            'num_steps': 10,
+            'num_vlm_layers': 16,
+            'optimizer_betas': [0.9, 0.95],
+            'optimizer_eps': 1e-08,
+            'optimizer_grad_clip_norm': 10.0,
+            'optimizer_lr': 0.0001,
+            'optimizer_weight_decay': 1e-10,
+            'output_features': {'action': {'shape': [6],
+                                           'type': <FeatureType.ACTION: 'ACTION'>}},
+            'pad_language_to': 'max_length',
+            'prefix_length': 0,
+            'pretrained_path': 'lerobot/smolvla_base',
+            'pretrained_revision': None,
+            'private': None,
+            'push_to_hub': False,
+            'repo_id': None,
+            'resize_imgs_with_padding': [512, 512],
+            'rtc_config': None,
+            'scheduler_decay_lr': 2.5e-06,
+            'scheduler_decay_steps': 30000,
+            'scheduler_warmup_steps': 1000,
+            'self_attn_every_n_layers': 2,
+            'tags': None,
+            'tokenizer_max_length': 48,
+            'train_expert_only': True,
+            'train_state_proj': True,
+            'type': 'smolvla',
+            'use_amp': False,
+            'use_cache': True,
+            'use_delta_joint_actions_aloha': False,
+            'use_peft': False,
+            'vlm_model_name': 'HuggingFaceTB/SmolVLM2-500M-Video-Instruct'},
+ 'prefetch_factor': 4,
+ 'rename_map': {},
+ 'resume': False,
+ 'reward_model': None,
+ 'sample_weighting': None,
+ 'save_checkpoint': True,
+ 'save_checkpoint_to_hub': False,
+ 'save_freq': 200,
+ 'scheduler': {'decay_lr': 2.5e-06,
+               'num_decay_steps': 30000,
+               'num_warmup_steps': 1000,
+               'peak_lr': 0.0001,
+               'type': 'cosine_decay_with_warmup'},
+ 'seed': 1000,
+ 'steps': 200,
+ 'tolerance_s': 0.0001,
+ 'use_policy_training_preset': True,
+ 'wandb': {'add_tags': True,
+           'disable_artifact': False,
+           'enable': True,
+           'entity': None,
+           'mode': 'offline',
+           'notes': None,
+           'project': 'lerobot',
+           'run_id': None}}
+INFO 2026-10-22 13:29:53 db_utils.py:121 Logs will be synced with wandb.
+INFO 2026-10-22 13:29:53 db_utils.py:122 Track this run --> None
+INFO 2026-10-22 13:29:54 ot_train.py:298 Creating dataset
+INFO 2026-10-22 13:29:54 /factory.py:181 Train/eval split: 42 train, 5 eval (eval_split=0.1, 1 tasks)
+INFO 2026-10-22 13:29:55 ot_train.py:324 Creating policy
+`torch_dtype` is deprecated! Use `dtype` instead!
+Loading  HuggingFaceTB/SmolVLM2-500M-Video-Instruct weights ...
+Loading weights:   0%|          | 0/489 [00:00<?, ?it/s]Loading weights:   0%|          | 1/489 [00:05<41:10,  5.06s/it]Loading weights:  19%|█▉        | 95/489 [00:05<00:15, 25.04it/s]Loading weights:  24%|██▍       | 119/489 [00:06<00:14, 26.36it/s]Loading weights:  27%|██▋       | 134/489 [00:06<00:12, 27.42it/s]Loading weights:  29%|██▉       | 144/489 [00:06<00:11, 28.76it/s]Loading weights:  31%|███       | 152/489 [00:07<00:11, 29.19it/s]Loading weights:  33%|███▎      | 159/489 [00:07<00:11, 29.58it/s]Loading weights:  34%|███▍      | 167/489 [00:07<00:09, 32.23it/s]Loading weights:  35%|███▌      | 173/489 [00:07<00:09, 34.04it/s]Loading weights:  36%|███▋      | 178/489 [00:07<00:08, 35.55it/s]Loading weights:  37%|███▋      | 183/489 [00:07<00:08, 36.55it/s]Loading weights:  38%|███▊      | 188/489 [00:07<00:08, 36.78it/s]Loading weights:  40%|███▉      | 194/489 [00:08<00:09, 29.59it/s]Loading weights:  42%|████▏     | 205/489 [00:08<00:06, 42.47it/s]Loading weights:  43%|████▎     | 212/489 [00:08<00:06, 42.47it/s]Loading weights:  45%|████▍     | 219/489 [00:08<00:05, 47.23it/s]Loading weights:  46%|████▋     | 227/489 [00:08<00:05, 50.52it/s]Loading weights:  48%|████▊     | 233/489 [00:08<00:06, 41.71it/s]Loading weights:  49%|████▉     | 240/489 [00:09<00:06, 40.96it/s]Loading weights:  51%|█████     | 250/489 [00:09<00:04, 51.76it/s]Loading weights:  53%|█████▎    | 258/489 [00:09<00:03, 57.85it/s]Loading weights:  54%|█████▍    | 266/489 [00:09<00:03, 62.67it/s]Loading weights:  56%|█████▌    | 275/489 [00:09<00:03, 62.70it/s]Loading weights:  58%|█████▊    | 285/489 [00:09<00:02, 69.41it/s]Loading weights:  70%|██████▉   | 341/489 [00:09<00:00, 193.34it/s]Loading weights:  94%|█████████▍| 461/489 [00:09<00:00, 439.57it/s]Loading weights: 100%|██████████| 489/489 [00:09<00:00, 49.18it/s] 
+INFO 2026-10-22 13:30:13 ot_train.py:402 Creating optimizer and scheduler
+INFO 2026-10-22 13:30:13 hedulers.py:155 Auto-scaling LR scheduler: num_training_steps (200) < num_decay_steps (30000). Scaling warmup: 1000 → 6, decay: 30000 → 200 (scale factor: 0.007)
+INFO 2026-10-22 13:30:13 ot_train.py:434 Output dir: /rg/belinkov_prj/qiu.qiqian/vla/outputs/lina_lina_pick_cup_pos2_cold_267586
+INFO 2026-10-22 13:30:13 ot_train.py:441 cfg.steps=200 (200)
+INFO 2026-10-22 13:30:13 ot_train.py:442 dataset.num_frames=4600 (5K)
+INFO 2026-10-22 13:30:13 ot_train.py:443 dataset.num_episodes=42
+INFO 2026-10-22 13:30:13 ot_train.py:446 Effective batch size: 8 x 1 = 8
+INFO 2026-10-22 13:30:13 ot_train.py:447 num_learnable_params=99880992 (100M)
+INFO 2026-10-22 13:30:13 ot_train.py:448 num_total_params=450046176 (450M)
+INFO 2026-10-22 13:30:13 ot_train.py:597 Start offline training on a fixed dataset, with effective batch size: 8
+Reducing the number of VLM layers to 16 ...
+INFO 2026-10-22 13:32:08 ot_train.py:641 step:20 smpl:160 ep:1 epch:0.03 loss:1.448 grdn:10.892 lr:8.8e-05 updt_s:0.335 data_s:5.371 smp/s:1 mem_gb:2.93 losses_after_forward:1.349 losses_after_in_ep_bound:1.173 losses_after_rm_padding:1.173
+INFO 2026-10-22 13:32:12 ot_train.py:641 step:40 smpl:320 ep:3 epch:0.07 loss:0.991 grdn:7.987 lr:9.4e-05 updt_s:0.197 data_s:0.004 smp/s:40 mem_gb:2.95 losses_after_forward:0.871 losses_after_in_ep_bound:0.768 losses_after_rm_padding:0.768
+INFO 2026-10-22 13:32:16 ot_train.py:641 step:60 smpl:480 ep:4 epch:0.10 loss:0.948 grdn:6.360 lr:8.5e-05 updt_s:0.193 data_s:0.003 smp/s:41 mem_gb:2.95 losses_after_forward:0.864 losses_after_in_ep_bound:0.774 losses_after_rm_padding:0.774
+INFO 2026-10-22 13:32:20 ot_train.py:641 step:80 smpl:640 ep:6 epch:0.14 loss:0.828 grdn:5.988 lr:7.3e-05 updt_s:0.192 data_s:0.003 smp/s:41 mem_gb:2.95 losses_after_forward:0.713 losses_after_in_ep_bound:0.649 losses_after_rm_padding:0.649
+INFO 2026-10-22 13:32:24 ot_train.py:641 step:100 smpl:800 ep:7 epch:0.17 loss:0.761 grdn:5.852 lr:5.8e-05 updt_s:0.195 data_s:0.004 smp/s:40 mem_gb:2.95 losses_after_forward:0.661 losses_after_in_ep_bound:0.599 losses_after_rm_padding:0.599
+INFO 2026-10-22 13:34:24 ot_train.py:673 step 100: eval_loss=0.6576
+INFO 2026-10-22 13:34:28 ot_train.py:641 step:120 smpl:960 ep:9 epch:0.21 loss:0.720 grdn:5.200 lr:4.3e-05 updt_s:0.190 data_s:0.004 smp/s:41 mem_gb:2.97 losses_after_forward:0.616 losses_after_in_ep_bound:0.540 losses_after_rm_padding:0.540
+INFO 2026-10-22 13:34:32 ot_train.py:641 step:140 smpl:1K ep:10 epch:0.24 loss:0.733 grdn:5.023 lr:2.9e-05 updt_s:0.194 data_s:0.004 smp/s:40 mem_gb:2.97 losses_after_forward:0.620 losses_after_in_ep_bound:0.570 losses_after_rm_padding:0.570
+INFO 2026-10-22 13:34:36 ot_train.py:641 step:160 smpl:1K ep:12 epch:0.28 loss:0.669 grdn:4.064 lr:1.7e-05 updt_s:0.194 data_s:0.004 smp/s:40 mem_gb:2.97 losses_after_forward:0.547 losses_after_in_ep_bound:0.497 losses_after_rm_padding:0.497
+INFO 2026-10-22 13:34:40 ot_train.py:641 step:180 smpl:1K ep:13 epch:0.31 loss:0.666 grdn:4.351 lr:7.8e-06 updt_s:0.195 data_s:0.004 smp/s:40 mem_gb:2.97 losses_after_forward:0.557 losses_after_in_ep_bound:0.506 losses_after_rm_padding:0.506
+INFO 2026-10-22 13:34:43 ot_train.py:641 step:200 smpl:2K ep:15 epch:0.35 loss:0.695 grdn:4.188 lr:3.2e-06 updt_s:0.189 data_s:0.003 smp/s:42 mem_gb:2.97 losses_after_forward:0.584 losses_after_in_ep_bound:0.545 losses_after_rm_padding:0.545
+INFO 2026-10-22 13:34:49 ot_train.py:673 step 200: eval_loss=0.6069
+INFO 2026-10-22 13:34:49 ot_train.py:687 Checkpoint policy after step 200
+INFO 2026-10-22 13:34:54 ot_train.py:770 End of training
+Done at Thu Oct 22 01:34:59 PM IDT 2026

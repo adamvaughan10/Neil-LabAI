@@ -1,0 +1,28 @@
+NODE=n306 job 267658 at Thu Oct 22 02:33:20 PM IDT 2026: serving /rg/belinkov_prj/qiu.qiqian/vla/outputs/lina_green_cup_warm_267613/checkpoints/001000/pretrained_model on port 8002
+2026-10-22 14:33:22,828 INFO loading /rg/belinkov_prj/qiu.qiqian/vla/outputs/lina_green_cup_warm_267613/checkpoints/001000/pretrained_model on cuda ...
+`torch_dtype` is deprecated! Use `dtype` instead!
+Loading  HuggingFaceTB/SmolVLM2-500M-Video-Instruct weights ...
+Loading weights:   0%|          | 0/489 [00:00<?, ?it/s]Loading weights:   5%|▍         | 23/489 [00:00<00:02, 204.04it/s]Loading weights:  10%|█         | 51/489 [00:00<00:01, 244.78it/s]Loading weights:  18%|█▊        | 87/489 [00:00<00:01, 295.70it/s]Loading weights:  25%|██▌       | 124/489 [00:00<00:01, 321.53it/s]Loading weights:  32%|███▏      | 158/489 [00:00<00:01, 321.07it/s]Loading weights:  40%|███▉      | 195/489 [00:00<00:00, 333.03it/s]Loading weights:  47%|████▋     | 232/489 [00:00<00:00, 343.81it/s]Loading weights:  55%|█████▌    | 271/489 [00:00<00:00, 353.23it/s]Loading weights:  68%|██████▊   | 333/489 [00:00<00:00, 429.63it/s]Loading weights:  84%|████████▍ | 413/489 [00:01<00:00, 539.44it/s]Loading weights: 100%|██████████| 489/489 [00:01<00:00, 435.12it/s]
+2026-10-22 14:35:07,547 INFO loaded smolvla in 104.7 s: inputs {'observation.state': [6], 'observation.images.camera1': [3, 256, 256], 'observation.images.camera2': [3, 256, 256], 'observation.images.camera3': [3, 256, 256]}, 50 actions of 4 values
+2026-10-22 14:35:07,547 INFO serving smolvla on http://0.0.0.0:8002
+2026-10-22 14:35:21,814 INFO step 0: 50 actions in 2581 ms
+2026-10-22 14:35:25,987 INFO step 65: 50 actions in 249 ms
+2026-10-22 14:36:27,331 INFO step 0: 50 actions in 249 ms
+2026-10-22 14:36:31,528 INFO step 42: 50 actions in 249 ms
+2026-10-22 14:36:35,529 INFO step 82: 50 actions in 248 ms
+2026-10-22 14:36:39,529 INFO step 122: 50 actions in 250 ms
+2026-10-22 14:36:43,532 INFO step 162: 50 actions in 251 ms
+2026-10-22 14:36:47,538 INFO step 202: 50 actions in 255 ms
+2026-10-22 14:38:05,196 INFO step 0: 50 actions in 248 ms
+2026-10-22 14:38:09,394 INFO step 42: 50 actions in 248 ms
+2026-10-22 14:38:13,395 INFO step 82: 50 actions in 247 ms
+2026-10-22 14:38:17,394 INFO step 122: 50 actions in 248 ms
+2026-10-22 14:38:21,395 INFO step 162: 50 actions in 249 ms
+2026-10-22 14:38:25,393 INFO step 202: 50 actions in 246 ms
+2026-10-22 14:39:04,351 INFO step 0: 50 actions in 251 ms
+2026-10-22 14:39:08,546 INFO step 42: 50 actions in 247 ms
+2026-10-22 14:39:12,548 INFO step 82: 50 actions in 248 ms
+2026-10-22 14:39:16,549 INFO step 122: 50 actions in 247 ms
+2026-10-22 14:39:20,549 INFO step 162: 50 actions in 249 ms
+2026-10-22 14:39:24,549 INFO step 202: 50 actions in 250 ms
+slurmstepd: error: *** JOB 267658 ON n306 CANCELLED AT 2026-10-22T16:33:29 DUE TO TIME LIMIT ***
