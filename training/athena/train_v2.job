@@ -1,0 +1,21 @@
+#!/bin/bash
+# New-task training (train_v2.sh has the details):
+#   sbatch train_v2.job <dataset_name> cold          10000 steps from lerobot/smolvla_base
+#   sbatch train_v2.job <dataset_name> warm          5000 steps from the pos2 weights
+# Short test (200 steps):
+#   TEST=1 sbatch --qos=2h_2g --time=00:30:00 train_v2.job <dataset_name> warm
+# Other project folder: VLA=/path/to/vla sbatch ... (default: the team folder below)
+#SBATCH --job-name=lina_v2
+#SBATCH --partition=a100-public
+#SBATCH --qos=12h_4g
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --gres=gpu:1
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=64G
+#SBATCH --time=12:00:00
+#SBATCH --output=%x_%j.log
+
+echo "Job $SLURM_JOB_ID on $(hostname) at $(date)"
+bash ${VLA:-/rg/belinkov_prj/qiu.qiqian/vla}/jobs/lina/train_v2.sh "$@" || { echo "FAILED at $(date)"; exit 1; }
+echo "Done at $(date)"

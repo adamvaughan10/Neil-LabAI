@@ -1,0 +1,24 @@
+#!/bin/bash
+# Serve a trained model on an Athena GPU, for the laptop's control panel or run_policy.py:
+#   sbatch serve_policy.job [checkpoint folder]       (default: our copy of the pos2 weights)
+# Then on the laptop, with NODE from `squeue -u $USER` (or the first line of serve_policy_JOBID.log):
+#   ssh -N -L 8000:NODE:${PORT:-8001} athena      (PORT=8002 sbatch ... for a second model)
+# and in the panel: "Or use a server that is already running" -> http://127.0.0.1:8000 -> Use.
+# scancel the job when done: the GPU is billed while it runs.
+#SBATCH --job-name=serve_policy
+#SBATCH --partition=a100-public,l40s-shared
+#SBATCH --qos=2h_2g
+#SBATCH --gres=gpu:1
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=32G
+#SBATCH --time=02:00:00
+#SBATCH --output=%x_%j.log
+
+VLA=${VLA:-/rg/belinkov_prj/qiu.qiqian/vla}
+CKPT=${1:-$VLA/shared/lina/pos2_weights/pretrained_model}
+echo "NODE=$(hostname) job $SLURM_JOB_ID at $(date): serving $CKPT on port ${PORT:-8001}"
+# Same Python as train_v2.sh: the team .venv's own python points into a home folder others can't read
+export PYTHONPATH=$VLA/.venv/lib/python3.12/site-packages
+export HF_HOME=$VLA/hf HF_HUB_OFFLINE=1
+$VLA/python/cpython-3.12.15-linux-x86_64-gnu/bin/python3.12 $VLA/jobs/lina/policy_server/server.py \
+  --checkpoint "$CKPT" --device cuda --host 0.0.0.0 --port ${PORT:-8001}
