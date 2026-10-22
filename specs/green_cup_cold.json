@@ -1,0 +1,50 @@
+{
+  "_comment": "green_cup cold-start model (Athena job 267612, checkpoint 002000): smolvla_base fine-tuned on 49 green-cup demos (2026-10-22). Same state and action as pick_cup_pos2.json and green_cup_warm.json. action_range is this model's training min/max (green_cup data only; the warm model's range also covers pos2's data).",
+  "task": "pick up the green cup",
+  "images": {
+    "observation.images.camera1": {
+      "camera": "pi",
+      "rotation": 0
+    },
+    "observation.images.camera2": {
+      "camera": "external",
+      "rotation": 0
+    }
+  },
+  "state": [
+    "-left_wheel.speed",
+    "right_wheel.speed",
+    "-arm.abs_pos_deg+14",
+    "-gripper.abs_pos_deg-93"
+  ],
+  "action": [
+    "left_deg_to_go",
+    "right_deg_to_go",
+    "arm_pos",
+    "grip_pos"
+  ],
+  "action_mode": "delta",
+  "action_range": [
+    [
+      -139,
+      -76,
+      -19,
+      -78
+    ],
+    [
+      172,
+      116,
+      3,
+      5
+    ]
+  ],
+  "start_pose": [
+    2,
+    -23
+  ],
+  "abs_zero": [
+    14,
+    -93
+  ],
+  "checkpoint": "athena:outputs/lina_green_cup_cold_267612/checkpoints/002000/pretrained_model"
+}
