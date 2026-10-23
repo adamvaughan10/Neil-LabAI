@@ -350,3 +350,7 @@ models/          trained models, not in git (RUN-MODELS.md says where to get the
 
 To add a new robot action, write its Pi-side script and a function for it in `hardware.py`, following
 `drive_and_arm_sequence`, then call it from a script.
+
+## Authors
+
+- Adam Vaughan ([@adamvaughan10](https://github.com/adamvaughan10))
