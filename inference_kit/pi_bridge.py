@@ -19,7 +19,7 @@ Commands for the delta model (models/handoff_pick_cup_pos2), see its README:
           + = forward. Like run_for_degrees(deg, speed=30), but each command replaces
           the previous move instead of queueing after it (buildhat queues non-blocking
           run_for_degrees calls). 0 stops the wheel where it is. A command with the same
-          "seq" as the last one does not move the target again (the GUI resends commands).
+          "seq" as the last one does not move the target again.
           Any command with "left"/"right" speeds, or none of these keys, cancels the move.
       arm_abs/grip_abs: arm and gripper targets as raw abs_pos_deg (the motor's own
           fixed zero, which survives Build HAT restarts, unlike pos_deg).

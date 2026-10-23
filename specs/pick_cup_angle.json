@@ -4,10 +4,5 @@
   "images": {"observation.images.camera1": {"camera": "pi", "rotation": 0},
              "observation.images.camera2": {"camera": "external", "rotation": 0}},
   "state": ["-left_wheel.pos_deg@start", "right_wheel.pos_deg@start", "-arm.abs_pos_deg", "-gripper.abs_pos_deg"],
-  "action": ["left_target_deg", "right_target_deg", "arm_pos", "grip_pos"],
-  "action_mode": "angle",
-  "action_range": [[-187, -227, -33, 12], [649, 503, -11, 98]],
-  "start_pose": [-12, 70],
-  "abs_zero": [0, 0],
-  "checkpoint": "models/pick_cup_angle_182076/pretrained_model"
+  "action": ["left_target_deg", "right_target_deg", "arm_pos", "grip_pos"]
 }

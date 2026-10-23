@@ -13,10 +13,9 @@ so nothing has to be deployed to the Pi.
 3. **Make a LeRobot dataset** from the recordings: [Making the dataset](#making-the-dataset).
 4. **Fine-tune SmolVLA** on Athena (needs an Athena account): [`training/README.md`](training/README.md)
    and [`ATHENA-QUICK.md`](ATHENA-QUICK.md).
-5. **Run the model** on the robot, from the command line (`inference_kit/run_policy.py`) or the browser
-   panel (`gui/`), with a dry run first: [`RUN-MODELS.md`](RUN-MODELS.md). Put your model in
-   `models/<name>/pretrained_model/` and run it like `pick_cup_pos2`: `--action-mode delta` on the
-   command line, or the spec `specs/pick_cup_pos2.json` in the panel.
+5. **Run the model** on the robot with `inference_kit/run_policy.py`: [`RUN-MODELS.md`](RUN-MODELS.md).
+   Put your model in `models/<name>/pretrained_model/` and run it like `pick_cup_pos2`, with
+   `--action-mode delta`.
 
 > [!NOTE]
 > `gamepad_drive.py` turns the wheels in degree steps, and the dataset's action is the degrees each wheel
@@ -71,7 +70,7 @@ Also needed:
 
 Two Python 3.12 environments in the repo folder, made with [uv](https://docs.astral.sh/uv/):
 `.venv` drives and records the robot, and `.venv-vla` has LeRobot 0.6.1 (the training version) for
-converting recordings and running models. [`RUN-MODELS.md`](RUN-MODELS.md) and the panel use the same two.
+converting recordings and running models. [`RUN-MODELS.md`](RUN-MODELS.md) uses the same `.venv-vla`.
 No uv yet: `curl -LsSf https://astral.sh/uv/install.sh | sh` (macOS / Linux), or on Windows
 `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`.
 
@@ -89,8 +88,8 @@ every new terminal:
 
 | What | Default | Env var | Used by |
 |------|---------|---------|---------|
-| Pi | `132.68.34.107`, user `rpi` | `RPI_HOST`, `RPI_USER` | `scripts/`, `gui/` |
-| Phone camera | `http://132.68.34.85:8080/stream.mjpg` | `EXTERNAL_CAMERA_URL` | `scripts/`, `gui/` |
+| Pi | `132.68.34.107`, user `rpi` | `RPI_HOST`, `RPI_USER` | `scripts/` |
+| Phone camera | `http://132.68.34.85:8080/stream.mjpg` | `EXTERNAL_CAMERA_URL` | `scripts/` |
 | Pi | `rpi@rpi.local` | `NEIL_PI` | `inference_kit/` |
 | Pi camera | `http://rpi.local:8765/` (the Pi's address, port 8765) | `NEIL_FRONT_URL` | `inference_kit/` |
 | Phone camera | `http://132.68.34.44:8080/stream.mjpg` | `NEIL_TOP_URL` | `inference_kit/` |
@@ -111,7 +110,7 @@ $env:NEIL_PI = "rpi@$env:RPI_HOST"; $env:NEIL_FRONT_URL = "http://$($env:RPI_HOS
 
 The phone's URL is the one its camera app shows. On networks that allow it, the Pi also answers to
 `rpi.local`; otherwise find its address on the router, or run `hostname -I` on the Pi. If ssh doesn't
-find your key by itself, set `RPI_SSH_KEY` (`scripts/`, `gui/`) and `NEIL_SSH_KEY` (`inference_kit/`) to it.
+find your key by itself, set `RPI_SSH_KEY` (`scripts/`) and `NEIL_SSH_KEY` (`inference_kit/`) to it.
 
 ### Every new terminal
 
@@ -289,13 +288,13 @@ skipped actions) and `policy.json` (server, spec and settings).
 `--video-fps`), not one frame per step (15 fps, or the `pick_cup` data's 10 with `--fps 10`), which
 is too choppy to watch. `video.json` says how many frames each camera repeated. They're H.264 if
 the OpenCV build has it, else MPEG-4. The policy's inputs are still the per-step images.
-The panel does the same in `logs/gui_run_<date>_<time>/`, and `inference_kit/run_policy.py` in
-`inference_kit/runs/run_<date>_<time>/` (`front.mp4`, `top.mp4`, `side_by_side.mp4`).
+`inference_kit/run_policy.py` does the same in `inference_kit/runs/run_<date>_<time>/` (`front.mp4`,
+`top.mp4`, `side_by_side.mp4`).
 Recordings for training ([Recording demos](#recording-demos)) keep one video frame per step.
 
 **Dry run only:** `run_policy.py` logs the actions and never sends them to the motors. To let a
-model drive the robot, use `inference_kit/run_policy.py` or the panel ([`RUN-MODELS.md`](RUN-MODELS.md)):
-both run `inference_kit/pi_bridge.py` on the Pi, which owns the Build HAT and sends back the motor state.
+model drive the robot, use `inference_kit/run_policy.py` ([`RUN-MODELS.md`](RUN-MODELS.md)): it runs
+`inference_kit/pi_bridge.py` on the Pi, which owns the Build HAT and sends back the motor state.
 
 The **observation spec** says which camera feeds which policy image key and which motor
 values form the state vector. It must match the LeRobot dataset the policy was trained on.
@@ -341,10 +340,9 @@ pi/              scripts the laptop runs on the Pi over SSH: gamepad_server.py (
                  gamepad_drive.py) and replay_server.py (for replay_session.py)
 policy_server/   standalone policy server (LeRobot / SmolVLA, or --dummy), runs in .venv-vla
 scripts/         the command-line tools above
-specs/           observation specs for scripts/run_policy.py and the panel, one per model
+specs/           observation specs for scripts/run_policy.py, one per model
 training/        recordings -> LeRobot dataset, and the Athena training job (training/README.md)
 inference_kit/   runs a trained model on the robot (RUN-MODELS.md)
-gui/             browser control panel for running a model (gui/README.md)
 models/          trained models, not in git (RUN-MODELS.md says where to get them)
 ```
 

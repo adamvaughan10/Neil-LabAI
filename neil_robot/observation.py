@@ -27,16 +27,6 @@ A trailing "+<number>" or "-<number>" adds that number after the sign is applied
 "-arm.abs_pos_deg+14" is -(abs_pos_deg - 14). A trailing "@start" counts the value from its
 first reading in the run: "-left_wheel.pos_deg@start" is the wheel angle since the run began.
 
-"action_mode" says how the GUI turns the policy's 4 action values into motor commands:
-"v1" (default) = wheel speeds and arm/gripper target angles; "delta" = wheel degrees still
-to turn and arm/gripper targets on the abs_pos_deg scale (models/handoff_pick_cup_pos2);
-"angle" = wheel target angles on the state's wheel scale, arm/gripper as in delta
-(models/pick_cup_angle_182076). For both, "abs_zero" ([arm, grip]) gives the arm/gripper
-scale: value = abs_zero - abs_pos_deg.
-"action_range" ([min list, max list]) clips each action value to its training range,
-"start_pose" ([arm, grip], robot terms) is where a drive run's warm-up puts the arm and
-gripper, and "checkpoint" names the model the spec is for (the page picks it with that model).
-
 Images go out as the camera's own JPEG bytes: nothing is decoded or re-encoded here.
 """
 from __future__ import annotations
@@ -62,11 +52,6 @@ class ObservationSpec:
     images: dict[str, dict]           # policy key -> {"camera": name, "rotation": deg}
     state: list[str]                  # "<role>.<field>" per state dimension
     action: list[str] = field(default_factory=list)
-    action_mode: str = "v1"
-    action_range: list | None = None    # [mins, maxes] of the training actions
-    start_pose: list | None = None      # [arm, grip] for the warm-up, robot terms
-    checkpoint: str | None = None
-    abs_zero: list | None = None        # delta/angle: [arm, grip], value = abs_zero - abs_pos_deg
     _start: dict = field(default_factory=dict, repr=False)  # first reading of each "@start" entry
 
     @classmethod
@@ -86,14 +71,10 @@ class ObservationSpec:
     @classmethod
     def load(cls, path) -> "ObservationSpec":
         d = json.loads(Path(path).read_text(encoding="utf-8"))
-        return cls(task=d["task"], images=d["images"], state=d["state"], action=d.get("action", []),
-                   action_mode=d.get("action_mode", "v1"), action_range=d.get("action_range"),
-                   start_pose=d.get("start_pose"), checkpoint=d.get("checkpoint"), abs_zero=d.get("abs_zero"))
+        return cls(task=d["task"], images=d["images"], state=d["state"], action=d.get("action", []))
 
     def to_dict(self) -> dict:
-        return {"task": self.task, "images": self.images, "state": self.state, "action": self.action,
-                "action_mode": self.action_mode, "action_range": self.action_range,
-                "start_pose": self.start_pose, "checkpoint": self.checkpoint, "abs_zero": self.abs_zero}
+        return {"task": self.task, "images": self.images, "state": self.state, "action": self.action}
 
     @property
     def cameras(self) -> set[str]:
