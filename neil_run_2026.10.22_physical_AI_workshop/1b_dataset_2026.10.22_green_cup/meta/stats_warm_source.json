@@ -1,0 +1,13 @@
+{
+    "mean_std": "new",
+    "min_max": "union of pos2 and this dataset",
+    "ref": "C:\\Users\\lina3\\Desktop\\Technion\\Neil - Physical AI\\Neil-LabAI\\models\\handoff_pick_cup_pos2\\pretrained_model",
+    "outside": [
+        "observation.state[0] left speed",
+        "observation.state[1] right speed",
+        "observation.state[2] arm",
+        "observation.state[3] gripper",
+        "action[0] left deg to go",
+        "action[1] right deg to go"
+    ]
+}
