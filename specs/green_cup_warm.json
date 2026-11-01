@@ -1,0 +1,13 @@
+{
+  "_comment": "green_cup warm-start model (Athena job 267613, checkpoint 001000): pos2's weights fine-tuned on 49 green-cup demos (2026-10-22). Same state and action as pick_cup_pos2.json (wheel degrees to go, arm and gripper on the 14 / -93 zero). action_range is this model's training min/max (the new demos turn the wheels further than pos2's). Served from an Athena GPU (training/athena/serve_policy.job, port 8002 via an SSH tunnel), so the checkpoint path below is a label, not a local folder.",
+  "task": "pick up the green cup",
+  "images": {"observation.images.camera1": {"camera": "pi", "rotation": 0},
+             "observation.images.camera2": {"camera": "external", "rotation": 0}},
+  "state": ["-left_wheel.speed", "right_wheel.speed", "-arm.abs_pos_deg+14", "-gripper.abs_pos_deg-93"],
+  "action": ["left_deg_to_go", "right_deg_to_go", "arm_pos", "grip_pos"],
+  "action_mode": "delta",
+  "action_range": [[-139, -110, -19, -81], [172, 116, 3, 5]],
+  "start_pose": [2, -23],
+  "abs_zero": [14, -93],
+  "checkpoint": "athena:outputs/lina_green_cup_warm_267613/checkpoints/001000/pretrained_model"
+}

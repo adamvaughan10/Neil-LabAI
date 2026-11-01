@@ -1,0 +1,75 @@
+{
+  "fps": 10,
+  "steps": 97,
+  "duration_s": 9.7,
+  "t0": 1792663339.7725387,
+  "late_ticks": 0,
+  "cameras": {
+    "pi": {
+      "url": "http://132.68.34.107:8765/",
+      "rotation": 0,
+      "latency_s": 0.0,
+      "images_saved": 97,
+      "repeated_steps": 0,
+      "missing_steps": 0,
+      "repeated_pct": 0.0,
+      "age_ms": {
+        "median": 17.4,
+        "p95": 35.5
+      }
+    },
+    "external": {
+      "url": "http://132.68.34.66:8080/stream.mjpg",
+      "rotation": 0,
+      "latency_s": 0.0,
+      "images_saved": 97,
+      "repeated_steps": 0,
+      "missing_steps": 0,
+      "repeated_pct": 0.0,
+      "age_ms": {
+        "median": 19.8,
+        "p95": 41.5
+      }
+    }
+  },
+  "skew_ms": {
+    "median": 12.3,
+    "p95": 31.1,
+    "max": 42.2
+  },
+  "extras": {
+    "motors": {
+      "missing_steps": 0,
+      "repeated_steps": 0,
+      "age_ms": {
+        "median": 21.4,
+        "p95": 50.7
+      }
+    },
+    "action": {
+      "missing_steps": 0,
+      "repeated_steps": 58,
+      "age_ms": {
+        "median": 136.7,
+        "p95": 1031.6
+      }
+    },
+    "hat_commands": {
+      "missing_steps": 9,
+      "repeated_steps": 42,
+      "age_ms": {
+        "median": 87.6,
+        "p95": 893.9
+      }
+    },
+    "gamepad": {
+      "missing_steps": 0,
+      "repeated_steps": 50,
+      "age_ms": {
+        "median": 108.0,
+        "p95": 993.3
+      }
+    }
+  },
+  "writer_error": null
+}

@@ -1,0 +1,12 @@
+value                           pos2 min..max   pos2 mean+-std |     new min..max    new mean+-std  inside  frames outside
+state[0] left speed            -31.0..35.0        2.9+-8.6     |   -61.0..37.0        2.7+-7.7      NO      8 of 5128
+state[1] right speed           -32.0..33.0        2.5+-8.7     |   -23.0..37.0        3.2+-7.3      NO      3 of 5128
+state[2] arm                   -34.0..12.0       -2.5+-9.6     |   -34.0..14.0       -1.8+-12.4     NO      409 of 5128
+state[3] gripper               -69.0..-3.0      -40.2+-15.7    |   -68.0..5.0       -37.4+-21.3     NO      44 of 5128
+action[0] left deg to go       -67.0..106.0       6.9+-21.2    |  -139.0..172.0       6.8+-19.2     NO      12 of 5128
+action[1] right deg to go     -110.0..80.0        5.5+-23.9    |   -76.0..116.0       9.4+-21.1     NO      16 of 5128
+action[2] arm target           -19.0..3.0        -3.5+-9.0     |   -19.0..3.0        -3.9+-8.9      yes     0 of 5128
+action[3] gripper target       -81.0..5.0       -43.2+-19.1    |   -78.0..5.0       -40.8+-25.5     yes     0 of 5128
+
+Outside pos2's range: observation.state[0] left speed, observation.state[1] right speed, observation.state[2] arm, observation.state[3] gripper, action[0] left deg to go, action[1] right deg to go
+Warm run uses new's mean/std (outside pos2's range: observation.state[0] left speed, observation.state[1] right speed, observation.state[2] arm, observation.state[3] gripper, action[0] left deg to go, action[1] right deg to go); min/max cover both datasets.

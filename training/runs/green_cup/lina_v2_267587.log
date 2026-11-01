@@ -1,0 +1,273 @@
+Job 267587 on n305 at Thu Oct 22 01:32:28 PM IDT 2026
+Building /rg/belinkov_prj/qiu.qiqian/vla/data/lina_pick_cup_pos2_warm
+INIT=warm steps=200 batch=8 lr=5e-5 output=/rg/belinkov_prj/qiu.qiqian/vla/outputs/lina_lina_pick_cup_pos2_warm_267587
+Thu Oct 22 13:32:28 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 595.71.05              Driver Version: 595.71.05      CUDA Version: 13.2     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA A100-SXM4-40GB          On  |   00000000:47:00.0 Off |                    0 |
+| N/A   26C    P0             54W /  400W |       0MiB /  40960MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+WARNING:lerobot.utils.import_utils:Could not load libtorchcodec. Likely causes:
+          1. FFmpeg is not properly installed in your environment. We support
+             versions 4, 5, 6 and 7.
+          2. The PyTorch version (2.8.0+cu128) is not compatible with
+             this version of TorchCodec. Refer to the version compatibility
+             table:
+             https://github.com/pytorch/torchcodec?tab=readme-ov-file#installing-torchcodec.
+          3. Another runtime dependency; see exceptions below.
+        The following exceptions were raised as we tried to load libtorchcodec:
+        
+[start of libtorchcodec loading traceback]
+FFmpeg version 7: libavutil.so.59: cannot open shared object file: No such file or directory
+FFmpeg version 6: libavutil.so.58: cannot open shared object file: No such file or directory
+FFmpeg version 5: libavutil.so.57: cannot open shared object file: No such file or directory
+FFmpeg version 4: libavutil.so.56: cannot open shared object file: No such file or directory
+[end of libtorchcodec loading traceback].
+'torchcodec' is installed but cannot be loaded (see the error above). Falling back to 'pyav' as a default decoder.
+INFO 2026-10-22 13:34:26 ot_train.py:272 {'batch_size': 8,
+ 'checkpoint_path': None,
+ 'cudnn_deterministic': False,
+ 'dataloader_multiprocessing_context': 'spawn',
+ 'dataset': {'depth_output_unit': 'mm',
+             'episodes': None,
+             'eval_split': 0.1,
+             'image_transforms': {'enable': True,
+                                  'max_num_transforms': 3,
+                                  'random_order': True,
+                                  'tfs': {'affine': {'kwargs': {'degrees': [-5.0,
+                                                                            5.0],
+                                                                'translate': [0.05,
+                                                                              0.05]},
+                                                     'type': 'RandomAffine',
+                                                     'weight': 1.0},
+                                          'brightness': {'kwargs': {'brightness': [0.8,
+                                                                                   1.2]},
+                                                         'type': 'ColorJitter',
+                                                         'weight': 1.0},
+                                          'contrast': {'kwargs': {'contrast': [0.8,
+                                                                               1.2]},
+                                                       'type': 'ColorJitter',
+                                                       'weight': 1.0},
+                                          'hue': {'kwargs': {'hue': [-0.05,
+                                                                     0.05]},
+                                                  'type': 'ColorJitter',
+                                                  'weight': 1.0},
+                                          'saturation': {'kwargs': {'saturation': [0.5,
+                                                                                   1.5]},
+                                                         'type': 'ColorJitter',
+                                                         'weight': 1.0},
+                                          'sharpness': {'kwargs': {'sharpness': [0.5,
+                                                                                 1.5]},
+                                                        'type': 'SharpnessJitter',
+                                                        'weight': 1.0}}},
+             'repo_id': 'local/lina_pick_cup_pos2',
+             'repo_type': 'dataset',
+             'return_uint8': False,
+             'revision': None,
+             'root': '/rg/belinkov_prj/qiu.qiqian/vla/data/lina_pick_cup_pos2_warm',
+             'streaming': False,
+             'use_imagenet_stats': True,
+             'video_backend': 'pyav'},
+ 'env': None,
+ 'env_eval_freq': 20000,
+ 'eval': {'batch_size': 50,
+          'n_episodes': 50,
+          'recording': False,
+          'recording_private': False,
+          'recording_repo_id': None,
+          'use_async_envs': True},
+ 'eval_steps': 100,
+ 'job': {'detach': False,
+         'image': 'huggingface/lerobot-gpu:latest',
+         'tags': [],
+         'target': None,
+         'timeout': '2d'},
+ 'job_name': 'lina_lina_pick_cup_pos2_warm_267587',
+ 'log_freq': 20,
+ 'max_eval_samples': 0,
+ 'num_workers': 8,
+ 'optimizer': {'betas': [0.9, 0.95],
+               'eps': 1e-08,
+               'grad_clip_norm': 10.0,
+               'lr': 5e-05,
+               'type': 'adamw',
+               'weight_decay': 1e-10},
+ 'output_dir': '/rg/belinkov_prj/qiu.qiqian/vla/outputs/lina_lina_pick_cup_pos2_warm_267587',
+ 'peft': None,
+ 'persistent_workers': True,
+ 'policy': {'adapt_to_pi_aloha': False,
+            'add_image_special_tokens': False,
+            'attention_mode': 'cross_attn',
+            'chunk_size': 50,
+            'compile_mode': 'max-autotune',
+            'compile_model': False,
+            'device': 'cuda',
+            'empty_cameras': 0,
+            'expert_width_multiplier': 0.75,
+            'freeze_vision_encoder': True,
+            'input_features': {'observation.images.camera1': {'shape': [3,
+                                                                        256,
+                                                                        256],
+                                                              'type': <FeatureType.VISUAL: 'VISUAL'>},
+                               'observation.images.camera2': {'shape': [3,
+                                                                        256,
+                                                                        256],
+                                                              'type': <FeatureType.VISUAL: 'VISUAL'>},
+                               'observation.images.camera3': {'shape': [3,
+                                                                        256,
+                                                                        256],
+                                                              'type': <FeatureType.VISUAL: 'VISUAL'>},
+                               'observation.state': {'shape': [6],
+                                                     'type': <FeatureType.STATE: 'STATE'>}},
+            'license': None,
+            'load_vlm_weights': True,
+            'max_action_dim': 32,
+            'max_period': 4.0,
+            'max_state_dim': 32,
+            'min_period': 0.004,
+            'n_action_steps': 50,
+            'n_obs_steps': 1,
+            'normalization_mapping': {'ACTION': <NormalizationMode.MEAN_STD: 'MEAN_STD'>,
+                                      'STATE': <NormalizationMode.MEAN_STD: 'MEAN_STD'>,
+                                      'VISUAL': <NormalizationMode.IDENTITY: 'IDENTITY'>},
+            'num_expert_layers': 0,
+            'num_steps': 10,
+            'num_vlm_layers': 16,
+            'optimizer_betas': [0.9, 0.95],
+            'optimizer_eps': 1e-08,
+            'optimizer_grad_clip_norm': 10.0,
+            'optimizer_lr': 5e-05,
+            'optimizer_weight_decay': 1e-10,
+            'output_features': {'action': {'shape': [4],
+                                           'type': <FeatureType.ACTION: 'ACTION'>}},
+            'pad_language_to': 'max_length',
+            'prefix_length': 0,
+            'pretrained_path': '/rg/belinkov_prj/qiu.qiqian/vla/shared/lina/pos2_weights/pretrained_model',
+            'pretrained_revision': None,
+            'private': None,
+            'push_to_hub': False,
+            'repo_id': None,
+            'resize_imgs_with_padding': [512, 512],
+            'rtc_config': None,
+            'scheduler_decay_lr': 1.25e-06,
+            'scheduler_decay_steps': 30000,
+            'scheduler_warmup_steps': 1000,
+            'self_attn_every_n_layers': 2,
+            'tags': None,
+            'tokenizer_max_length': 48,
+            'train_expert_only': True,
+            'train_state_proj': True,
+            'type': 'smolvla',
+            'use_amp': False,
+            'use_cache': True,
+            'use_delta_joint_actions_aloha': False,
+            'use_peft': False,
+            'vlm_model_name': 'HuggingFaceTB/SmolVLM2-500M-Video-Instruct'},
+ 'prefetch_factor': 4,
+ 'rename_map': {},
+ 'resume': False,
+ 'reward_model': None,
+ 'sample_weighting': None,
+ 'save_checkpoint': True,
+ 'save_checkpoint_to_hub': False,
+ 'save_freq': 200,
+ 'scheduler': {'decay_lr': 1.25e-06,
+               'num_decay_steps': 30000,
+               'num_warmup_steps': 1000,
+               'peak_lr': 5e-05,
+               'type': 'cosine_decay_with_warmup'},
+ 'seed': 1000,
+ 'steps': 200,
+ 'tolerance_s': 0.0001,
+ 'use_policy_training_preset': True,
+ 'wandb': {'add_tags': True,
+           'disable_artifact': False,
+           'enable': True,
+           'entity': None,
+           'mode': 'offline',
+           'notes': None,
+           'project': 'lerobot',
+           'run_id': None}}
+INFO 2026-10-22 13:35:03 db_utils.py:121 Logs will be synced with wandb.
+INFO 2026-10-22 13:35:03 db_utils.py:122 Track this run --> None
+INFO 2026-10-22 13:35:03 ot_train.py:298 Creating dataset
+INFO 2026-10-22 13:35:04 /factory.py:181 Train/eval split: 42 train, 5 eval (eval_split=0.1, 1 tasks)
+INFO 2026-10-22 13:35:05 ot_train.py:324 Creating policy
+`torch_dtype` is deprecated! Use `dtype` instead!
+Loading  HuggingFaceTB/SmolVLM2-500M-Video-Instruct weights ...
+Loading weights:   0%|          | 0/489 [00:00<?, ?it/s]Loading weights:   0%|          | 1/489 [00:00<02:37,  3.09it/s]Loading weights:   7%|▋         | 33/489 [00:00<00:04, 92.39it/s]Loading weights:  12%|█▏        | 61/489 [00:00<00:02, 145.88it/s]Loading weights:  19%|█▊        | 91/489 [00:00<00:02, 187.04it/s]Loading weights:  25%|██▍       | 122/489 [00:00<00:01, 220.35it/s]Loading weights:  32%|███▏      | 155/489 [00:00<00:01, 247.01it/s]Loading weights:  38%|███▊      | 186/489 [00:00<00:01, 264.94it/s]Loading weights:  45%|████▌     | 221/489 [00:01<00:00, 289.41it/s]Loading weights:  52%|█████▏    | 252/489 [00:01<00:00, 292.38it/s]Loading weights:  59%|█████▉    | 289/489 [00:01<00:00, 307.05it/s]Loading weights:  71%|███████▏  | 349/489 [00:01<00:00, 387.75it/s]Loading weights:  87%|████████▋ | 423/489 [00:01<00:00, 482.74it/s]Loading weights: 100%|██████████| 489/489 [00:01<00:00, 307.70it/s]
+Traceback (most recent call last):
+  File "/rg/belinkov_prj/qiu.qiqian/vla/.venv/lib/python3.12/site-packages/lerobot/processor/pipeline.py", line 1146, in _instantiate_step
+    return step_class(**merged_cfg)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<string>", line 11, in __init__
+  File "/rg/belinkov_prj/qiu.qiqian/vla/.venv/lib/python3.12/site-packages/lerobot/processor/normalize_processor.py", line 136, in __post_init__
+    self._tensor_stats = to_tensor(self.stats, device=self.device, dtype=self.dtype)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/rg/belinkov_prj/qiu.qiqian/vla/python/cpython-3.12.15-linux-x86_64-gnu/lib/python3.12/functools.py", line 912, in wrapper
+    return dispatch(args[0].__class__)(*args, **kw)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/rg/belinkov_prj/qiu.qiqian/vla/.venv/lib/python3.12/site-packages/lerobot/processor/converters.py", line 123, in _
+    result[key] = to_tensor(
+                  ^^^^^^^^^^
+  File "/rg/belinkov_prj/qiu.qiqian/vla/python/cpython-3.12.15-linux-x86_64-gnu/lib/python3.12/functools.py", line 912, in wrapper
+    return dispatch(args[0].__class__)(*args, **kw)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/rg/belinkov_prj/qiu.qiqian/vla/.venv/lib/python3.12/site-packages/lerobot/processor/converters.py", line 131, in _
+    result[key] = to_tensor(
+                  ^^^^^^^^^^
+  File "/rg/belinkov_prj/qiu.qiqian/vla/python/cpython-3.12.15-linux-x86_64-gnu/lib/python3.12/functools.py", line 912, in wrapper
+    return dispatch(args[0].__class__)(*args, **kw)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/rg/belinkov_prj/qiu.qiqian/vla/.venv/lib/python3.12/site-packages/lerobot/processor/converters.py", line 83, in _
+    tensor = torch.from_numpy(value)
+             ^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: can't convert np.ndarray of type numpy.str_. The only supported types are: float64, float32, float16, complex64, complex128, int64, int32, int16, int8, uint64, uint32, uint16, uint8, and bool.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/rg/belinkov_prj/qiu.qiqian/vla/.venv/lib/python3.12/site-packages/lerobot/scripts/lerobot_train.py", line 810, in <module>
+    main()
+  File "/rg/belinkov_prj/qiu.qiqian/vla/.venv/lib/python3.12/site-packages/lerobot/scripts/lerobot_train.py", line 806, in main
+    train()
+  File "/rg/belinkov_prj/qiu.qiqian/vla/.venv/lib/python3.12/site-packages/lerobot/configs/parser.py", line 436, in wrapper_inner
+    response = fn(cfg, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/rg/belinkov_prj/qiu.qiqian/vla/.venv/lib/python3.12/site-packages/lerobot/scripts/lerobot_train.py", line 394, in train
+    preprocessor, postprocessor = make_pre_post_processors(
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/rg/belinkov_prj/qiu.qiqian/vla/.venv/lib/python3.12/site-packages/lerobot/policies/factory.py", line 200, in make_pre_post_processors
+    preprocessor = PolicyProcessorPipeline.from_pretrained(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/rg/belinkov_prj/qiu.qiqian/vla/.venv/lib/python3.12/site-packages/lerobot/processor/pipeline.py", line 742, in from_pretrained
+    steps, validated_overrides = cls._build_steps_with_overrides(
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/rg/belinkov_prj/qiu.qiqian/vla/.venv/lib/python3.12/site-packages/lerobot/processor/pipeline.py", line 993, in _build_steps_with_overrides
+    steps, remaining_override_keys = cls._build_steps_from_config(loaded_config, overrides)
+                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/rg/belinkov_prj/qiu.qiqian/vla/.venv/lib/python3.12/site-packages/lerobot/processor/pipeline.py", line 1022, in _build_steps_from_config
+    processor_step = cls._instantiate_step(step_entry, step_class, step_key, overrides)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/rg/belinkov_prj/qiu.qiqian/vla/.venv/lib/python3.12/site-packages/lerobot/processor/pipeline.py", line 1149, in _instantiate_step
+    raise ValueError(
+ValueError: Failed to instantiate processor step 'normalizer_processor' with config: {'eps': 1e-08, 'features': {'observation.state': {'type': 'STATE', 'shape': [6]}, 'observation.images.camera1': {'type': 'VISUAL', 'shape': [3, 256, 256]}, 'observation.images.camera2': {'type': 'VISUAL', 'shape': [3, 256, 256]}, 'observation.images.camera3': {'type': 'VISUAL', 'shape': [3, 256, 256]}, 'action': {'type': 'ACTION', 'shape': [4]}}, 'norm_map': {'VISUAL': 'IDENTITY', 'STATE': 'MEAN_STD', 'ACTION': 'MEAN_STD'}}. Error: can't convert np.ndarray of type numpy.str_. The only supported types are: float64, float32, float16, complex64, complex128, int64, int32, int16, int8, uint64, uint32, uint16, uint8, and bool.
+Reducing the number of VLM layers to 16 ...
+Loading weights from local directory
+Done at Thu Oct 22 01:35:20 PM IDT 2026

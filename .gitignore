@@ -13,3 +13,9 @@ models/
 *.safetensors
 vla_tests_*/
 presentation_media/
+
+# Workshop run folders: keep their videos and the small normalizer files (the model weights stay out)
+!neil_run_*/**/*.mp4
+!neil_run_*/**/policy_*processor*.safetensors
+!neil_run_*/**/meta/episodes/
+!neil_run_*/**/*_chosen/model.safetensors

@@ -1,0 +1,291 @@
+Job 267613 on n309 at Thu Oct 22 01:53:21 PM IDT 2026
+Building /rg/belinkov_prj/qiu.qiqian/vla/data/green_cup_warm
+INIT=warm steps=5000 batch=32 lr=5e-5 output=/rg/belinkov_prj/qiu.qiqian/vla/outputs/lina_green_cup_warm_267613
+Thu Oct 22 13:53:22 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 595.71.05              Driver Version: 595.71.05      CUDA Version: 13.2     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA A100-SXM4-40GB          On  |   00000000:BD:00.0 Off |                    0 |
+| N/A   39C    P0             52W /  400W |       0MiB /  40960MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+WARNING:lerobot.utils.import_utils:Could not load libtorchcodec. Likely causes:
+          1. FFmpeg is not properly installed in your environment. We support
+             versions 4, 5, 6 and 7.
+          2. The PyTorch version (2.8.0+cu128) is not compatible with
+             this version of TorchCodec. Refer to the version compatibility
+             table:
+             https://github.com/pytorch/torchcodec?tab=readme-ov-file#installing-torchcodec.
+          3. Another runtime dependency; see exceptions below.
+        The following exceptions were raised as we tried to load libtorchcodec:
+        
+[start of libtorchcodec loading traceback]
+FFmpeg version 7: libavutil.so.59: cannot open shared object file: No such file or directory
+FFmpeg version 6: libavutil.so.58: cannot open shared object file: No such file or directory
+FFmpeg version 5: libavutil.so.57: cannot open shared object file: No such file or directory
+FFmpeg version 4: libavutil.so.56: cannot open shared object file: No such file or directory
+[end of libtorchcodec loading traceback].
+'torchcodec' is installed but cannot be loaded (see the error above). Falling back to 'pyav' as a default decoder.
+INFO 2026-10-22 13:54:53 ot_train.py:272 {'batch_size': 32,
+ 'checkpoint_path': None,
+ 'cudnn_deterministic': False,
+ 'dataloader_multiprocessing_context': 'spawn',
+ 'dataset': {'depth_output_unit': 'mm',
+             'episodes': None,
+             'eval_split': 0.1,
+             'image_transforms': {'enable': True,
+                                  'max_num_transforms': 3,
+                                  'random_order': True,
+                                  'tfs': {'affine': {'kwargs': {'degrees': [-5.0,
+                                                                            5.0],
+                                                                'translate': [0.05,
+                                                                              0.05]},
+                                                     'type': 'RandomAffine',
+                                                     'weight': 1.0},
+                                          'brightness': {'kwargs': {'brightness': [0.8,
+                                                                                   1.2]},
+                                                         'type': 'ColorJitter',
+                                                         'weight': 1.0},
+                                          'contrast': {'kwargs': {'contrast': [0.8,
+                                                                               1.2]},
+                                                       'type': 'ColorJitter',
+                                                       'weight': 1.0},
+                                          'hue': {'kwargs': {'hue': [-0.05,
+                                                                     0.05]},
+                                                  'type': 'ColorJitter',
+                                                  'weight': 1.0},
+                                          'saturation': {'kwargs': {'saturation': [0.5,
+                                                                                   1.5]},
+                                                         'type': 'ColorJitter',
+                                                         'weight': 1.0},
+                                          'sharpness': {'kwargs': {'sharpness': [0.5,
+                                                                                 1.5]},
+                                                        'type': 'SharpnessJitter',
+                                                        'weight': 1.0}}},
+             'repo_id': 'local/green_cup',
+             'repo_type': 'dataset',
+             'return_uint8': False,
+             'revision': None,
+             'root': '/rg/belinkov_prj/qiu.qiqian/vla/data/green_cup_warm',
+             'streaming': False,
+             'use_imagenet_stats': True,
+             'video_backend': 'pyav'},
+ 'env': None,
+ 'env_eval_freq': 20000,
+ 'eval': {'batch_size': 50,
+          'n_episodes': 50,
+          'recording': False,
+          'recording_private': False,
+          'recording_repo_id': None,
+          'use_async_envs': True},
+ 'eval_steps': 500,
+ 'job': {'detach': False,
+         'image': 'huggingface/lerobot-gpu:latest',
+         'tags': [],
+         'target': None,
+         'timeout': '2d'},
+ 'job_name': 'lina_green_cup_warm_267613',
+ 'log_freq': 100,
+ 'max_eval_samples': 0,
+ 'num_workers': 8,
+ 'optimizer': {'betas': [0.9, 0.95],
+               'eps': 1e-08,
+               'grad_clip_norm': 10.0,
+               'lr': 5e-05,
+               'type': 'adamw',
+               'weight_decay': 1e-10},
+ 'output_dir': '/rg/belinkov_prj/qiu.qiqian/vla/outputs/lina_green_cup_warm_267613',
+ 'peft': None,
+ 'persistent_workers': True,
+ 'policy': {'adapt_to_pi_aloha': False,
+            'add_image_special_tokens': False,
+            'attention_mode': 'cross_attn',
+            'chunk_size': 50,
+            'compile_mode': 'max-autotune',
+            'compile_model': False,
+            'device': 'cuda',
+            'empty_cameras': 0,
+            'expert_width_multiplier': 0.75,
+            'freeze_vision_encoder': True,
+            'input_features': {'observation.images.camera1': {'shape': [3,
+                                                                        256,
+                                                                        256],
+                                                              'type': <FeatureType.VISUAL: 'VISUAL'>},
+                               'observation.images.camera2': {'shape': [3,
+                                                                        256,
+                                                                        256],
+                                                              'type': <FeatureType.VISUAL: 'VISUAL'>},
+                               'observation.images.camera3': {'shape': [3,
+                                                                        256,
+                                                                        256],
+                                                              'type': <FeatureType.VISUAL: 'VISUAL'>},
+                               'observation.state': {'shape': [6],
+                                                     'type': <FeatureType.STATE: 'STATE'>}},
+            'license': None,
+            'load_vlm_weights': True,
+            'max_action_dim': 32,
+            'max_period': 4.0,
+            'max_state_dim': 32,
+            'min_period': 0.004,
+            'n_action_steps': 50,
+            'n_obs_steps': 1,
+            'normalization_mapping': {'ACTION': <NormalizationMode.MEAN_STD: 'MEAN_STD'>,
+                                      'STATE': <NormalizationMode.MEAN_STD: 'MEAN_STD'>,
+                                      'VISUAL': <NormalizationMode.IDENTITY: 'IDENTITY'>},
+            'num_expert_layers': 0,
+            'num_steps': 10,
+            'num_vlm_layers': 16,
+            'optimizer_betas': [0.9, 0.95],
+            'optimizer_eps': 1e-08,
+            'optimizer_grad_clip_norm': 10.0,
+            'optimizer_lr': 5e-05,
+            'optimizer_weight_decay': 1e-10,
+            'output_features': {'action': {'shape': [4],
+                                           'type': <FeatureType.ACTION: 'ACTION'>}},
+            'pad_language_to': 'max_length',
+            'prefix_length': 0,
+            'pretrained_path': '/rg/belinkov_prj/qiu.qiqian/vla/shared/lina/pos2_weights/pretrained_model',
+            'pretrained_revision': None,
+            'private': None,
+            'push_to_hub': False,
+            'repo_id': None,
+            'resize_imgs_with_padding': [512, 512],
+            'rtc_config': None,
+            'scheduler_decay_lr': 1.25e-06,
+            'scheduler_decay_steps': 30000,
+            'scheduler_warmup_steps': 1000,
+            'self_attn_every_n_layers': 2,
+            'tags': None,
+            'tokenizer_max_length': 48,
+            'train_expert_only': True,
+            'train_state_proj': True,
+            'type': 'smolvla',
+            'use_amp': False,
+            'use_cache': True,
+            'use_delta_joint_actions_aloha': False,
+            'use_peft': False,
+            'vlm_model_name': 'HuggingFaceTB/SmolVLM2-500M-Video-Instruct'},
+ 'prefetch_factor': 4,
+ 'rename_map': {},
+ 'resume': False,
+ 'reward_model': None,
+ 'sample_weighting': None,
+ 'save_checkpoint': True,
+ 'save_checkpoint_to_hub': False,
+ 'save_freq': 1000,
+ 'scheduler': {'decay_lr': 1.25e-06,
+               'num_decay_steps': 30000,
+               'num_warmup_steps': 1000,
+               'peak_lr': 5e-05,
+               'type': 'cosine_decay_with_warmup'},
+ 'seed': 1000,
+ 'steps': 5000,
+ 'tolerance_s': 0.0001,
+ 'use_policy_training_preset': True,
+ 'wandb': {'add_tags': True,
+           'disable_artifact': False,
+           'enable': True,
+           'entity': None,
+           'mode': 'offline',
+           'notes': None,
+           'project': 'lerobot',
+           'run_id': None}}
+INFO 2026-10-22 13:55:22 db_utils.py:121 Logs will be synced with wandb.
+INFO 2026-10-22 13:55:22 db_utils.py:122 Track this run --> None
+INFO 2026-10-22 13:55:22 ot_train.py:298 Creating dataset
+INFO 2026-10-22 13:55:23 /factory.py:181 Train/eval split: 44 train, 5 eval (eval_split=0.1, 1 tasks)
+INFO 2026-10-22 13:55:24 ot_train.py:324 Creating policy
+`torch_dtype` is deprecated! Use `dtype` instead!
+Loading  HuggingFaceTB/SmolVLM2-500M-Video-Instruct weights ...
+Loading weights:   0%|          | 0/489 [00:00<?, ?it/s]Loading weights:  59%|█████▉    | 289/489 [00:00<00:00, 2868.60it/s]Loading weights: 100%|██████████| 489/489 [00:00<00:00, 3613.01it/s]
+INFO 2026-10-22 13:55:33 ot_train.py:402 Creating optimizer and scheduler
+INFO 2026-10-22 13:55:33 hedulers.py:155 Auto-scaling LR scheduler: num_training_steps (5000) < num_decay_steps (30000). Scaling warmup: 1000 → 166, decay: 30000 → 5000 (scale factor: 0.167)
+INFO 2026-10-22 13:55:33 ot_train.py:434 Output dir: /rg/belinkov_prj/qiu.qiqian/vla/outputs/lina_green_cup_warm_267613
+INFO 2026-10-22 13:55:33 ot_train.py:441 cfg.steps=5000 (5K)
+INFO 2026-10-22 13:55:33 ot_train.py:442 dataset.num_frames=4617 (5K)
+INFO 2026-10-22 13:55:33 ot_train.py:443 dataset.num_episodes=44
+INFO 2026-10-22 13:55:33 ot_train.py:446 Effective batch size: 32 x 1 = 32
+INFO 2026-10-22 13:55:33 ot_train.py:447 num_learnable_params=99880992 (100M)
+INFO 2026-10-22 13:55:33 ot_train.py:448 num_total_params=450046176 (450M)
+INFO 2026-10-22 13:55:33 ot_train.py:597 Start offline training on a fixed dataset, with effective batch size: 32
+Reducing the number of VLM layers to 16 ...
+Loading weights from local directory
+INFO 2026-10-22 13:58:12 ot_train.py:641 step:100 smpl:3K ep:30 epch:0.69 loss:1.078 grdn:6.727 lr:1.5e-05 updt_s:0.360 data_s:1.221 smp/s:20 mem_gb:7.83 losses_after_forward:0.881 losses_after_in_ep_bound:0.830 losses_after_rm_padding:0.830
+INFO 2026-10-22 13:59:02 ot_train.py:641 step:200 smpl:6K ep:61 epch:1.39 loss:0.449 grdn:2.750 lr:4.4e-05 updt_s:0.343 data_s:0.158 smp/s:64 mem_gb:7.79 losses_after_forward:0.364 losses_after_in_ep_bound:0.344 losses_after_rm_padding:0.344
+INFO 2026-10-22 13:59:53 ot_train.py:641 step:300 smpl:10K ep:91 epch:2.08 loss:0.373 grdn:2.429 lr:5.0e-05 updt_s:0.342 data_s:0.161 smp/s:64 mem_gb:7.79 losses_after_forward:0.303 losses_after_in_ep_bound:0.287 losses_after_rm_padding:0.287
+INFO 2026-10-22 14:00:42 ot_train.py:641 step:400 smpl:13K ep:122 epch:2.77 loss:0.334 grdn:2.482 lr:4.9e-05 updt_s:0.349 data_s:0.133 smp/s:66 mem_gb:7.84 losses_after_forward:0.272 losses_after_in_ep_bound:0.257 losses_after_rm_padding:0.257
+INFO 2026-10-22 14:01:32 ot_train.py:641 step:500 smpl:16K ep:152 epch:3.47 loss:0.312 grdn:2.218 lr:4.9e-05 updt_s:0.343 data_s:0.157 smp/s:64 mem_gb:7.79 losses_after_forward:0.252 losses_after_in_ep_bound:0.240 losses_after_rm_padding:0.240
+INFO 2026-10-22 14:03:22 ot_train.py:673 step 500: eval_loss=0.7791
+INFO 2026-10-22 14:04:03 ot_train.py:641 step:600 smpl:19K ep:183 epch:4.16 loss:0.311 grdn:2.252 lr:4.9e-05 updt_s:0.329 data_s:0.076 smp/s:79 mem_gb:7.97 losses_after_forward:0.252 losses_after_in_ep_bound:0.239 losses_after_rm_padding:0.239
+INFO 2026-10-22 14:04:52 ot_train.py:641 step:700 smpl:22K ep:213 epch:4.85 loss:0.289 grdn:2.041 lr:4.8e-05 updt_s:0.350 data_s:0.137 smp/s:66 mem_gb:8.02 losses_after_forward:0.234 losses_after_in_ep_bound:0.222 losses_after_rm_padding:0.222
+INFO 2026-10-22 14:05:42 ot_train.py:641 step:800 smpl:26K ep:244 epch:5.54 loss:0.277 grdn:2.054 lr:4.7e-05 updt_s:0.343 data_s:0.155 smp/s:64 mem_gb:7.97 losses_after_forward:0.223 losses_after_in_ep_bound:0.212 losses_after_rm_padding:0.212
+INFO 2026-10-22 14:06:33 ot_train.py:641 step:900 smpl:29K ep:274 epch:6.24 loss:0.275 grdn:2.077 lr:4.7e-05 updt_s:0.340 data_s:0.162 smp/s:64 mem_gb:7.97 losses_after_forward:0.222 losses_after_in_ep_bound:0.212 losses_after_rm_padding:0.212
+INFO 2026-10-22 14:07:21 ot_train.py:641 step:1K smpl:32K ep:305 epch:6.93 loss:0.258 grdn:2.143 lr:4.6e-05 updt_s:0.356 data_s:0.124 smp/s:67 mem_gb:8.02 losses_after_forward:0.208 losses_after_in_ep_bound:0.198 losses_after_rm_padding:0.198
+INFO 2026-10-22 14:07:28 ot_train.py:673 step 1000: eval_loss=0.9010
+INFO 2026-10-22 14:07:28 ot_train.py:687 Checkpoint policy after step 1000
+INFO 2026-10-22 14:08:21 ot_train.py:641 step:1K smpl:35K ep:335 epch:7.62 loss:0.261 grdn:1.992 lr:4.5e-05 updt_s:0.334 data_s:0.143 smp/s:67 mem_gb:7.97 losses_after_forward:0.210 losses_after_in_ep_bound:0.201 losses_after_rm_padding:0.201
+INFO 2026-10-22 14:09:12 ot_train.py:641 step:1K smpl:38K ep:366 epch:8.32 loss:0.242 grdn:1.898 lr:4.4e-05 updt_s:0.346 data_s:0.166 smp/s:63 mem_gb:7.97 losses_after_forward:0.194 losses_after_in_ep_bound:0.186 losses_after_rm_padding:0.186
+INFO 2026-10-22 14:10:00 ot_train.py:641 step:1K smpl:42K ep:396 epch:9.01 loss:0.242 grdn:2.022 lr:4.3e-05 updt_s:0.350 data_s:0.122 smp/s:68 mem_gb:8.02 losses_after_forward:0.196 losses_after_in_ep_bound:0.187 losses_after_rm_padding:0.187
+INFO 2026-10-22 14:10:51 ot_train.py:641 step:1K smpl:45K ep:427 epch:9.70 loss:0.236 grdn:1.787 lr:4.2e-05 updt_s:0.344 data_s:0.165 smp/s:63 mem_gb:7.97 losses_after_forward:0.192 losses_after_in_ep_bound:0.183 losses_after_rm_padding:0.183
+INFO 2026-10-22 14:11:42 ot_train.py:641 step:2K smpl:48K ep:457 epch:10.40 loss:0.227 grdn:1.870 lr:4.1e-05 updt_s:0.336 data_s:0.170 smp/s:63 mem_gb:7.97 losses_after_forward:0.182 losses_after_in_ep_bound:0.173 losses_after_rm_padding:0.173
+INFO 2026-10-22 14:11:49 ot_train.py:673 step 1500: eval_loss=0.8430
+INFO 2026-10-22 14:12:34 ot_train.py:641 step:2K smpl:51K ep:488 epch:11.09 loss:0.231 grdn:1.816 lr:3.9e-05 updt_s:0.341 data_s:0.109 smp/s:71 mem_gb:7.97 losses_after_forward:0.186 losses_after_in_ep_bound:0.179 losses_after_rm_padding:0.179
+INFO 2026-10-22 14:13:24 ot_train.py:641 step:2K smpl:54K ep:518 epch:11.78 loss:0.222 grdn:1.785 lr:3.8e-05 updt_s:0.352 data_s:0.144 smp/s:65 mem_gb:8.02 losses_after_forward:0.179 losses_after_in_ep_bound:0.171 losses_after_rm_padding:0.171
+INFO 2026-10-22 14:14:14 ot_train.py:641 step:2K smpl:58K ep:549 epch:12.48 loss:0.220 grdn:1.855 lr:3.7e-05 updt_s:0.341 data_s:0.153 smp/s:65 mem_gb:7.97 losses_after_forward:0.177 losses_after_in_ep_bound:0.168 losses_after_rm_padding:0.168
+INFO 2026-10-22 14:15:05 ot_train.py:641 step:2K smpl:61K ep:579 epch:13.17 loss:0.219 grdn:1.849 lr:3.5e-05 updt_s:0.337 data_s:0.175 smp/s:63 mem_gb:7.97 losses_after_forward:0.177 losses_after_in_ep_bound:0.170 losses_after_rm_padding:0.170
+INFO 2026-10-22 14:15:55 ot_train.py:641 step:2K smpl:64K ep:610 epch:13.86 loss:0.211 grdn:1.712 lr:3.4e-05 updt_s:0.344 data_s:0.144 smp/s:66 mem_gb:8.02 losses_after_forward:0.170 losses_after_in_ep_bound:0.162 losses_after_rm_padding:0.162
+INFO 2026-10-22 14:16:02 ot_train.py:673 step 2000: eval_loss=0.9385
+INFO 2026-10-22 14:16:02 ot_train.py:687 Checkpoint policy after step 2000
+INFO 2026-10-22 14:16:55 ot_train.py:641 step:2K smpl:67K ep:640 epch:14.55 loss:0.212 grdn:1.742 lr:3.2e-05 updt_s:0.322 data_s:0.135 smp/s:70 mem_gb:7.97 losses_after_forward:0.171 losses_after_in_ep_bound:0.163 losses_after_rm_padding:0.163
+INFO 2026-10-22 14:17:47 ot_train.py:641 step:2K smpl:70K ep:671 epch:15.25 loss:0.207 grdn:1.806 lr:3.1e-05 updt_s:0.396 data_s:0.122 smp/s:62 mem_gb:7.97 losses_after_forward:0.167 losses_after_in_ep_bound:0.160 losses_after_rm_padding:0.160
+INFO 2026-10-22 14:18:36 ot_train.py:641 step:2K smpl:74K ep:701 epch:15.94 loss:0.202 grdn:1.736 lr:2.9e-05 updt_s:0.390 data_s:0.096 smp/s:66 mem_gb:8.02 losses_after_forward:0.163 losses_after_in_ep_bound:0.156 losses_after_rm_padding:0.156
+INFO 2026-10-22 14:19:28 ot_train.py:641 step:2K smpl:77K ep:732 epch:16.63 loss:0.205 grdn:1.746 lr:2.8e-05 updt_s:0.343 data_s:0.169 smp/s:62 mem_gb:7.97 losses_after_forward:0.165 losses_after_in_ep_bound:0.157 losses_after_rm_padding:0.157
+INFO 2026-10-22 14:20:17 ot_train.py:641 step:2K smpl:80K ep:762 epch:17.33 loss:0.197 grdn:1.757 lr:2.6e-05 updt_s:0.339 data_s:0.152 smp/s:65 mem_gb:7.97 losses_after_forward:0.158 losses_after_in_ep_bound:0.151 losses_after_rm_padding:0.151
+INFO 2026-10-22 14:20:25 ot_train.py:673 step 2500: eval_loss=1.0056
+INFO 2026-10-22 14:21:08 ot_train.py:641 step:3K smpl:83K ep:793 epch:18.02 loss:0.197 grdn:1.733 lr:2.5e-05 updt_s:0.355 data_s:0.073 smp/s:75 mem_gb:8.02 losses_after_forward:0.158 losses_after_in_ep_bound:0.151 losses_after_rm_padding:0.151
+INFO 2026-10-22 14:21:59 ot_train.py:641 step:3K smpl:86K ep:823 epch:18.71 loss:0.199 grdn:1.732 lr:2.3e-05 updt_s:0.346 data_s:0.159 smp/s:63 mem_gb:7.97 losses_after_forward:0.162 losses_after_in_ep_bound:0.154 losses_after_rm_padding:0.154
+INFO 2026-10-22 14:22:48 ot_train.py:641 step:3K smpl:90K ep:854 epch:19.41 loss:0.194 grdn:1.645 lr:2.2e-05 updt_s:0.344 data_s:0.145 smp/s:66 mem_gb:7.97 losses_after_forward:0.156 losses_after_in_ep_bound:0.148 losses_after_rm_padding:0.148
+INFO 2026-10-22 14:23:35 ot_train.py:641 step:3K smpl:93K ep:884 epch:20.10 loss:0.192 grdn:1.691 lr:2.0e-05 updt_s:0.341 data_s:0.123 smp/s:69 mem_gb:7.97 losses_after_forward:0.155 losses_after_in_ep_bound:0.148 losses_after_rm_padding:0.148
+INFO 2026-10-22 14:24:27 ot_train.py:641 step:3K smpl:96K ep:915 epch:20.79 loss:0.188 grdn:1.618 lr:1.9e-05 updt_s:0.349 data_s:0.168 smp/s:62 mem_gb:8.02 losses_after_forward:0.153 losses_after_in_ep_bound:0.145 losses_after_rm_padding:0.145
+INFO 2026-10-22 14:24:34 ot_train.py:673 step 3000: eval_loss=1.0072
+INFO 2026-10-22 14:24:34 ot_train.py:687 Checkpoint policy after step 3000
+INFO 2026-10-22 14:25:24 ot_train.py:641 step:3K smpl:99K ep:945 epch:21.49 loss:0.192 grdn:1.651 lr:1.7e-05 updt_s:0.321 data_s:0.108 smp/s:74 mem_gb:7.97 losses_after_forward:0.154 losses_after_in_ep_bound:0.147 losses_after_rm_padding:0.147
+INFO 2026-10-22 14:26:15 ot_train.py:641 step:3K smpl:102K ep:976 epch:22.18 loss:0.194 grdn:1.717 lr:1.6e-05 updt_s:0.342 data_s:0.161 smp/s:64 mem_gb:7.97 losses_after_forward:0.157 losses_after_in_ep_bound:0.150 losses_after_rm_padding:0.150
+INFO 2026-10-22 14:27:02 ot_train.py:641 step:3K smpl:106K ep:1K epch:22.87 loss:0.189 grdn:1.637 lr:1.5e-05 updt_s:0.357 data_s:0.116 smp/s:68 mem_gb:8.02 losses_after_forward:0.152 losses_after_in_ep_bound:0.145 losses_after_rm_padding:0.145
+INFO 2026-10-22 14:27:55 ot_train.py:641 step:3K smpl:109K ep:1K epch:23.57 loss:0.186 grdn:1.583 lr:1.3e-05 updt_s:0.342 data_s:0.176 smp/s:62 mem_gb:7.97 losses_after_forward:0.150 losses_after_in_ep_bound:0.143 losses_after_rm_padding:0.143
+INFO 2026-10-22 14:28:44 ot_train.py:641 step:4K smpl:112K ep:1K epch:24.26 loss:0.184 grdn:1.568 lr:1.2e-05 updt_s:0.342 data_s:0.152 smp/s:65 mem_gb:7.97 losses_after_forward:0.149 losses_after_in_ep_bound:0.142 losses_after_rm_padding:0.142
+INFO 2026-10-22 14:28:52 ot_train.py:673 step 3500: eval_loss=1.0397
+INFO 2026-10-22 14:29:36 ot_train.py:641 step:4K smpl:115K ep:1K epch:24.95 loss:0.181 grdn:1.564 lr:1.1e-05 updt_s:0.353 data_s:0.084 smp/s:73 mem_gb:8.02 losses_after_forward:0.146 losses_after_in_ep_bound:0.139 losses_after_rm_padding:0.139
+INFO 2026-10-22 14:30:25 ot_train.py:641 step:4K smpl:118K ep:1K epch:25.64 loss:0.187 grdn:1.613 lr:9.5e-06 updt_s:0.341 data_s:0.152 smp/s:65 mem_gb:7.97 losses_after_forward:0.150 losses_after_in_ep_bound:0.143 losses_after_rm_padding:0.143
+INFO 2026-10-22 14:31:15 ot_train.py:641 step:4K smpl:122K ep:1K epch:26.34 loss:0.183 grdn:1.591 lr:8.4e-06 updt_s:0.338 data_s:0.154 smp/s:65 mem_gb:7.97 losses_after_forward:0.149 losses_after_in_ep_bound:0.141 losses_after_rm_padding:0.141
+INFO 2026-10-22 14:32:04 ot_train.py:641 step:4K smpl:125K ep:1K epch:27.03 loss:0.184 grdn:1.557 lr:7.3e-06 updt_s:0.349 data_s:0.139 smp/s:66 mem_gb:8.02 losses_after_forward:0.149 losses_after_in_ep_bound:0.142 losses_after_rm_padding:0.142
+INFO 2026-10-22 14:32:55 ot_train.py:641 step:4K smpl:128K ep:1K epch:27.72 loss:0.182 grdn:1.620 lr:6.4e-06 updt_s:0.338 data_s:0.163 smp/s:64 mem_gb:7.97 losses_after_forward:0.147 losses_after_in_ep_bound:0.140 losses_after_rm_padding:0.140
+INFO 2026-10-22 14:33:02 ot_train.py:673 step 4000: eval_loss=1.0380
+INFO 2026-10-22 14:33:02 ot_train.py:687 Checkpoint policy after step 4000
+INFO 2026-10-22 14:33:51 ot_train.py:641 step:4K smpl:131K ep:1K epch:28.42 loss:0.185 grdn:1.605 lr:5.5e-06 updt_s:0.319 data_s:0.095 smp/s:77 mem_gb:7.97 losses_after_forward:0.149 losses_after_in_ep_bound:0.141 losses_after_rm_padding:0.141
+INFO 2026-10-22 14:34:39 ot_train.py:641 step:4K smpl:134K ep:1K epch:29.11 loss:0.181 grdn:1.555 lr:4.6e-06 updt_s:0.346 data_s:0.134 smp/s:67 mem_gb:8.02 losses_after_forward:0.147 losses_after_in_ep_bound:0.140 losses_after_rm_padding:0.140
+INFO 2026-10-22 14:35:29 ot_train.py:641 step:4K smpl:138K ep:1K epch:29.80 loss:0.180 grdn:1.543 lr:3.9e-06 updt_s:0.339 data_s:0.162 smp/s:64 mem_gb:7.97 losses_after_forward:0.145 losses_after_in_ep_bound:0.138 losses_after_rm_padding:0.138
+INFO 2026-10-22 14:36:20 ot_train.py:641 step:4K smpl:141K ep:1K epch:30.50 loss:0.184 grdn:1.573 lr:3.3e-06 updt_s:0.338 data_s:0.167 smp/s:63 mem_gb:7.97 losses_after_forward:0.149 losses_after_in_ep_bound:0.142 losses_after_rm_padding:0.142
+INFO 2026-10-22 14:37:10 ot_train.py:641 step:4K smpl:144K ep:1K epch:31.19 loss:0.180 grdn:1.568 lr:2.7e-06 updt_s:0.336 data_s:0.156 smp/s:65 mem_gb:7.97 losses_after_forward:0.144 losses_after_in_ep_bound:0.137 losses_after_rm_padding:0.137
+INFO 2026-10-22 14:37:17 ot_train.py:673 step 4500: eval_loss=1.0612
+INFO 2026-10-22 14:38:01 ot_train.py:641 step:5K smpl:147K ep:1K epch:31.88 loss:0.183 grdn:1.585 lr:2.2e-06 updt_s:0.350 data_s:0.080 smp/s:74 mem_gb:8.02 losses_after_forward:0.147 losses_after_in_ep_bound:0.140 losses_after_rm_padding:0.140
+INFO 2026-10-22 14:38:51 ot_train.py:641 step:5K smpl:150K ep:1K epch:32.58 loss:0.183 grdn:1.545 lr:1.8e-06 updt_s:0.340 data_s:0.158 smp/s:64 mem_gb:7.97 losses_after_forward:0.148 losses_after_in_ep_bound:0.141 losses_after_rm_padding:0.141
+INFO 2026-10-22 14:39:40 ot_train.py:641 step:5K smpl:154K ep:1K epch:33.27 loss:0.181 grdn:1.563 lr:1.6e-06 updt_s:0.341 data_s:0.149 smp/s:65 mem_gb:7.97 losses_after_forward:0.146 losses_after_in_ep_bound:0.138 losses_after_rm_padding:0.138
+INFO 2026-10-22 14:40:30 ot_train.py:641 step:5K smpl:157K ep:1K epch:33.96 loss:0.184 grdn:1.559 lr:1.4e-06 updt_s:0.344 data_s:0.150 smp/s:65 mem_gb:8.02 losses_after_forward:0.149 losses_after_in_ep_bound:0.141 losses_after_rm_padding:0.141
+INFO 2026-10-22 14:41:20 ot_train.py:641 step:5K smpl:160K ep:2K epch:34.65 loss:0.181 grdn:1.517 lr:1.3e-06 updt_s:0.339 data_s:0.158 smp/s:64 mem_gb:7.97 losses_after_forward:0.145 losses_after_in_ep_bound:0.138 losses_after_rm_padding:0.138
+INFO 2026-10-22 14:41:28 ot_train.py:673 step 5000: eval_loss=1.0371
+INFO 2026-10-22 14:41:28 ot_train.py:687 Checkpoint policy after step 5000
+INFO 2026-10-22 14:41:35 ot_train.py:770 End of training
+Done at Thu Oct 22 02:41:40 PM IDT 2026

@@ -1,0 +1,26 @@
+NODE=n321 job 267654 at Thu Oct 22 02:24:57 PM IDT 2026: serving /rg/belinkov_prj/qiu.qiqian/vla/shared/lina/pos2_weights/pretrained_model on port 8001
+2026-10-22 14:24:59,613 INFO loading /rg/belinkov_prj/qiu.qiqian/vla/shared/lina/pos2_weights/pretrained_model on cuda ...
+`torch_dtype` is deprecated! Use `dtype` instead!
+Loading  HuggingFaceTB/SmolVLM2-500M-Video-Instruct weights ...
+Loading weights:   0%|          | 0/489 [00:00<?, ?it/s]Loading weights:   0%|          | 1/489 [00:00<01:16,  6.39it/s]Loading weights:   8%|▊         | 38/489 [00:00<00:02, 175.59it/s]Loading weights:  14%|█▍        | 68/489 [00:00<00:01, 221.15it/s]Loading weights:  20%|█▉        | 97/489 [00:00<00:01, 243.91it/s]Loading weights:  27%|██▋       | 130/489 [00:00<00:01, 272.87it/s]Loading weights:  33%|███▎      | 159/489 [00:00<00:01, 272.18it/s]Loading weights:  40%|███▉      | 195/489 [00:00<00:00, 295.60it/s]Loading weights:  47%|████▋     | 230/489 [00:00<00:00, 308.84it/s]Loading weights:  54%|█████▍    | 266/489 [00:00<00:00, 322.91it/s]Loading weights:  65%|██████▍   | 317/489 [00:01<00:00, 367.79it/s]Loading weights:  80%|███████▉  | 391/489 [00:01<00:00, 473.50it/s]Loading weights:  96%|█████████▌| 469/489 [00:01<00:00, 552.16it/s]Loading weights: 100%|██████████| 489/489 [00:01<00:00, 369.16it/s]
+2026-10-22 14:26:56,948 INFO loaded smolvla in 117.3 s: inputs {'observation.state': [6], 'observation.images.camera1': [3, 256, 256], 'observation.images.camera2': [3, 256, 256], 'observation.images.camera3': [3, 256, 256]}, 50 actions of 4 values
+2026-10-22 14:26:56,949 INFO serving smolvla on http://0.0.0.0:8001
+2026-10-22 14:27:39,815 INFO step 0: 50 actions in 2758 ms
+2026-10-22 14:27:39,951 INFO step 1: 50 actions in 126 ms
+2026-10-22 14:27:40,099 INFO step 2: 50 actions in 128 ms
+2026-10-22 14:29:52,932 INFO step 0: 50 actions in 124 ms
+2026-10-22 14:29:57,027 INFO step 41: 50 actions in 122 ms
+2026-10-22 14:30:01,026 INFO step 81: 50 actions in 124 ms
+2026-10-22 14:30:55,410 INFO step 0: 50 actions in 122 ms
+2026-10-22 14:30:59,504 INFO step 41: 50 actions in 118 ms
+2026-10-22 14:31:03,507 INFO step 81: 50 actions in 120 ms
+2026-10-22 14:31:07,506 INFO step 121: 50 actions in 117 ms
+2026-10-22 14:31:11,507 INFO step 161: 50 actions in 120 ms
+2026-10-22 14:31:15,505 INFO step 201: 50 actions in 118 ms
+2026-10-22 14:33:55,791 INFO step 0: 50 actions in 119 ms
+2026-10-22 14:33:59,889 INFO step 41: 50 actions in 118 ms
+2026-10-22 14:34:03,889 INFO step 81: 50 actions in 117 ms
+2026-10-22 14:34:07,890 INFO step 121: 50 actions in 118 ms
+2026-10-22 14:34:11,891 INFO step 161: 50 actions in 118 ms
+2026-10-22 14:34:15,891 INFO step 201: 50 actions in 118 ms
+slurmstepd: error: *** JOB 267654 ON n321 CANCELLED AT 2026-10-22T16:24:59 DUE TO TIME LIMIT ***

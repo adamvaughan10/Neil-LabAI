@@ -1,0 +1,7 @@
+# Scripts that run on Linux (the Pi, Athena) must keep LF line endings, also when checked out on Windows
+*.sh text eol=lf
+*.job text eol=lf
+# Videos and camera frames of the run folders go through Git LFS
+neil_run_*/**/*.mp4 filter=lfs diff=lfs merge=lfs -text
+neil_run_*/**/*.jpg filter=lfs diff=lfs merge=lfs -text
+neil_run_*/**/model.safetensors filter=lfs diff=lfs merge=lfs -text
