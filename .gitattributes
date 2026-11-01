@@ -4,3 +4,4 @@
 # Videos and camera frames of the run folders go through Git LFS
 neil_run_*/**/*.mp4 filter=lfs diff=lfs merge=lfs -text
 neil_run_*/**/*.jpg filter=lfs diff=lfs merge=lfs -text
+neil_run_*/**/model.safetensors filter=lfs diff=lfs merge=lfs -text

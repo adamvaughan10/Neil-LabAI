@@ -5,8 +5,8 @@ turned them into a LeRobot dataset, trained a cold and a warm model on Athena, a
 Results and explanations: `result_run_physical_AI_WS.ipynb` (`result_run_physical_AI_WS.html` is the same notebook
 with its outputs, so you can open it in a browser).
 
-The videos and camera frames (`*.mp4`, `*.jpg`) are stored with Git LFS. Run `git lfs install` before cloning, or
-`git lfs pull` after.
+The videos, camera frames and model weights (`*.mp4`, `*.jpg`, `model.safetensors`) are stored with Git LFS. Run
+`git lfs install` before cloning, or `git lfs pull` after.
 
 | Folder | What | Made by |
 |---|---|---|
@@ -17,16 +17,18 @@ The videos and camera frames (`*.mp4`, `*.jpg`) are stored with Git LFS. Run `gi
 | `4_inference_2026.10.22` | Videos of all 10 times a model ran on Neil that day, one folder per run, named by number, time, weights, mode and outcome. Its README has the table. | the control panel (`logs/gui_run_20261022_*`) |
 | `result_run_physical_AI_WS.ipynb` / `.html` | The results notebook: data, training curves, cold vs warm, inference runs, the chosen weights. | |
 
-## The weights are not in git
+## Which weights are in git
 
-Each `model.safetensors` is 900 MB, so the weight folders here hold only the small files: `config.json`,
-`train_config.json`, and the pre/post-processor files with the normalizer stats. The full checkpoints are on Athena:
+Each `model.safetensors` is 900 MB, so only the two chosen checkpoints have theirs here: `warm_batch1000_chosen` and
+`cold_batch2000_chosen` are complete. `warm_batch5000_final` and `cold_batch10000_final` hold only the small files:
+`config.json`, `train_config.json`, and the pre/post-processor files with the normalizer stats. All the full
+checkpoints are on Athena:
 
 - warm: `/rg/belinkov_prj/qiu.qiqian/vla/outputs/lina_green_cup_warm_267613/checkpoints/<step>/pretrained_model`
 - cold: `/rg/belinkov_prj/qiu.qiqian/vla/outputs/lina_green_cup_cold_267612/checkpoints/<step>/pretrained_model`
 
-To use one, put its `model.safetensors` into the matching folder here. A complete `pretrained_model` folder (7 files)
-loads with LeRobot 0.6.1, or serves with `policy_server/server.py --checkpoint <folder>` (on a GPU:
+To use a final checkpoint, put its `model.safetensors` into the matching folder here. A complete `pretrained_model`
+folder (7 files) loads with LeRobot 0.6.1, or serves with `policy_server/server.py --checkpoint <folder>` (on a GPU:
 `training/athena/serve_policy.job <folder>`). Run it with the task "pick up the green cup" and the spec
 `specs/green_cup_warm.json` (warm) or `specs/green_cup_cold.json` (cold). The two specs differ only in
 `action_range`, which is each model's own training min/max.

@@ -18,3 +18,4 @@ presentation_media/
 !neil_run_*/**/*.mp4
 !neil_run_*/**/policy_*processor*.safetensors
 !neil_run_*/**/meta/episodes/
+!neil_run_*/**/*_chosen/model.safetensors
