@@ -13,6 +13,8 @@ so nothing has to be deployed to the Pi.
 3. **Make a LeRobot dataset** from the recordings: [Making the dataset](#making-the-dataset).
 4. **Fine-tune SmolVLA** on Athena (needs an Athena account): [`training/README.md`](training/README.md)
    and [`ATHENA-QUICK.md`](ATHENA-QUICK.md).
+   No Athena account? Rent an A100 on Vast.ai instead: [`docs/setup.md`](docs/setup.md), which also lists
+   what to buy to build Neil.
 5. **Run the model** on the robot with `inference_kit/run_policy.py`: [`RUN-MODELS.md`](RUN-MODELS.md).
    Put your model in `models/<name>/pretrained_model/` and run it like `pick_cup_pos2`, with
    `--action-mode delta`.
