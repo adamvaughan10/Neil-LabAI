@@ -66,6 +66,25 @@ Vast.ai's own guides: [Quickstart](https://docs.vast.ai/quickstart), [SSH connec
 3. Sort by price and pick a host around **$0.70–1.00 per hour**. Before renting, check the host's bandwidth price. Some hosts charge per GB for transfers, and we move about 3 GB (base model plus checkpoints).
 4. Click **Rent**. After a minute or two the instance shows as running on the **Instances** page. Click its SSH button to copy the command, which looks like `ssh -p 41234 root@203.0.113.7`.
 
+### Quick connection test (recommended, ~5 minutes)
+
+Before spending hours on a run, check the whole chain with one command from your laptop, in the repo folder:
+
+```bash
+bash training/vast/smoke_test.sh <PORT> <IP> /path/to/pick_cup_pos2
+```
+
+It runs six checks and stops at the first one that fails, with a hint on what to do:
+
+1. **SSH** connects to the instance.
+2. **GPU** is visible (`nvidia-smi` prints its name and memory).
+3. **Training software** imports and sees the GPU. If it's missing, the script installs it first (section 2.3, about 10 minutes the first time).
+4. **Base model** (`smolvla_base` and SmolVLM2) is downloaded.
+5. **Dataset** uploads, and for `pick_cup_pos2` all 7 files match the checksums of job 181719 (section 2.4).
+6. **Training** runs for 20 steps at batch 8 and saves a checkpoint. It prints how long that took.
+
+When it ends with `All checks passed`, the instance is ready and you can go straight to section 2.5. The test costs a few cents. If you're not training right away, destroy the instance.
+
 ### 2.3 Install the training software (on the instance, ~10 minutes)
 
 These are the same versions as `training/athena/setup_env.sh`, which trained job 181719.
