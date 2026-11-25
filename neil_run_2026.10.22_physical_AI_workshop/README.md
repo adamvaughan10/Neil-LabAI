@@ -2,8 +2,8 @@
 
 SmolVLA on Neil, new task "pick up the green cup": everything from the workshop day. We recorded the demos,
 turned them into a LeRobot dataset, trained a cold and a warm model on Athena, and ran the models on Neil.
-Results and explanations: `result_run_physical_AI_WS.ipynb` (`result_run_physical_AI_WS.html` is the same notebook
-with its outputs, so you can open it in a browser).
+Results and explanations: `result_run_physical_AI_WS.ipynb` (saved without outputs; run it to see the plots and
+tables).
 
 The videos, camera frames and model weights (`*.mp4`, `*.jpg`, `model.safetensors`) are stored with Git LFS. Run
 `git lfs install` before cloning, or `git lfs pull` after.
@@ -15,7 +15,7 @@ The videos, camera frames and model weights (`*.mp4`, `*.jpg`, `model.safetensor
 | `2_warm_start_weights` | Warm run (Athena job 267613, started from pos2, 5000 batches). `warm_batch1000_chosen`: lowest `eval_loss` of the saved checkpoints (0.901), the one tested on Neil. `warm_batch5000_final`: the last one (`eval_loss` 1.037). | `training/athena/train_v2.job` |
 | `3_cold_start_weights` | Cold run (Athena job 267612, started from `lerobot/smolvla_base`, 10000 batches). `cold_batch2000_chosen`: lowest `eval_loss` of the saved checkpoints (0.934). `cold_batch10000_final`: the last one (`eval_loss` 1.441). | `training/athena/train_v2.job` |
 | `4_inference_2026.10.22` | Videos of all 10 times a model ran on Neil that day, one folder per run, named by number, time, weights, mode and outcome. Its README has the table. | the control panel (`logs/gui_run_20261022_*`) |
-| `result_run_physical_AI_WS.ipynb` / `.html` | The results notebook: data, training curves, cold vs warm, inference runs, the chosen weights. | |
+| `result_run_physical_AI_WS.ipynb` | The results notebook: data, training curves, cold vs warm, inference runs, the chosen weights. | |
 
 ## Which weights are in git
 
