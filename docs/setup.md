@@ -1,44 +1,15 @@
-# Setup: replicate Neil
+# Setup: train the VLA without Athena
 
-This page is for someone who wants to rebuild Neil and train their own copy of our SmolVLA model without access to Technion's Athena cluster. It has two parts: what to buy, and how to train on a rented A100 on Vast.ai.
+This page is for someone who wants to train their own copy of our SmolVLA model without access to Technion's Athena cluster, on a rented A100 on Vast.ai.
 
-The robot setup itself (Pi, cameras, gamepad, recording demos) is in the main [README](../README.md#setup). Training on Athena is in [`training/README.md`](../training/README.md).
+Neil itself (the robot, its parts and the embodiment code) lives in [f1ren/lego-robot-mcp](https://github.com/f1ren/lego-robot-mcp). Recording demos is in the main [README](../README.md#setup). Training on Athena is in [`training/README.md`](../training/README.md).
 
-## 1. What you need (bill of materials)
-
-<!-- Prices marked "approx." are typical list prices, not what we paid. TODO cells are for the team to fill in. -->
-
-### Robot
-
-| Item | What we used | Qty | Approx. price | Link |
-|---|---|---|---|---|
-| Single-board computer | Raspberry Pi 4 (2 GB or more) | 1 | ~$45–55 | [raspberrypi.com](https://www.raspberrypi.com/products/raspberry-pi-4-model-b/) |
-| Motor controller | Raspberry Pi Build HAT | 1 | ~$25 | [raspberrypi.com](https://www.raspberrypi.com/products/build-hat/) |
-| Build HAT power supply | 8 V barrel-jack PSU (the motors need it) | 1 | ~$15 | [raspberrypi.com](https://www.raspberrypi.com/products/build-hat-power-supply/) |
-| Robot camera | Pi Camera v1 (OV5647) | 1 | ~$15–25 | |
-| microSD card | 32 GB, Raspberry Pi OS Bookworm | 1 | ~$10 | |
-| LEGO motors | TODO: model (Build HAT-compatible, with encoders). Ports A/B wheels, C gripper, D arm | 4 | TODO | |
-| LEGO parts | TODO: chassis, gripper and arm parts (set number or parts list) | – | TODO | |
-
-### Data collection and control
-
-| Item | What we used | Qty | Approx. price | Notes |
-|---|---|---|---|---|
-| Laptop | MacBook (Apple M4) | 1 | – | Runs the gamepad driver, recorder and policy server. Any laptop with Python 3.12 works; a GPU or Apple silicon makes inference faster. |
-| Top camera | Any phone with an MJPEG IP-camera app | 1 | – | Mounted above the table, same Wi-Fi as the Pi |
-| Phone mount | Tripod or clamp arm | 1 | ~$15–25 | |
-| USB gamepad | D-pad and four face buttons (ours: USB ID `0810:E501`) | 1 | ~$15 | Other pads need their IDs set in `gamepad.py` |
-| Task objects | Cups | a few | ~$5 | |
-| Wi-Fi network | Pi, phone and laptop on the same network | – | – | |
-
-### Compute
+## 1. What training costs
 
 | Item | Unit | Per training run | Notes |
 |---|---|---|---|
 | A100 80GB on Vast.ai | GPU-hour, ~$0.80 | ~$3–5 | One `pick_cup_pos2` run (10k steps, batch 32) is about 4–6 hours. See [cloud-training.md](cloud-training.md) for other providers. |
 | Vast.ai prepaid credit | – | $10 to start | Covers two or three full runs plus tests |
-
-**Rough total:** about $150–200 for the electronics and accessories, plus the LEGO parts, plus about $3–5 per training run.
 
 ## 2. Train on a rented A100 (Vast.ai)
 
